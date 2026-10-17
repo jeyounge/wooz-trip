@@ -121,11 +121,24 @@ const q = (s) => (s === null || s === undefined ? 'null' : `'${String(s).replace
 const num = (n) => (n === null || n === undefined ? 'null' : Number(n));
 const arr = (a) => `'{${a.map((x) => `"${x.replaceAll('"', '')}"`).join(',')}}'::text[]`;
 
+// 테이블 정의(0001 과 같은 내용)를 앞에 붙여서, 0001 을 예전에 실행한 DB 에서도 이 파일 하나로 끝나게 한다
+const init = readFileSync(new URL('supabase/migrations/0001_wooz_trip_init.sql', ROOT), 'utf8');
+const a = init.indexOf('-- 이미 만든 테이블에 나중에 추가된 컬럼');
+const b = init.indexOf('for each row execute function wooz_trip_touch_updated();', init.indexOf('wooz_trip_ai_routes_touch'));
+if (a < 0 || b < 0) {
+  console.error('0001 에서 ai_routes 테이블 정의를 찾지 못했어요');
+  process.exit(1);
+}
+const schema = init.slice(a, b + 'for each row execute function wooz_trip_touch_updated();'.length);
+
 let sql = `-- ============================================================
--- wooz-trip — 미리 만든 AI 루트 ${routes.length}개
+-- wooz-trip — 미리 만든 AI 루트 ${routes.length}개 (+ 테이블이 없으면 만든다)
 -- 생성: node scripts/gen_ai_routes_sql.mjs  (직접 고치지 말고 data/ai-routes/*.json 을 고친다)
 -- 같은 code 는 덮어쓴다 → 여러 번 실행해도 안전. 꺼 둔 루트(is_active)는 그대로 둔다.
 -- ============================================================
+
+${schema}
+alter table wooz_trip_ai_routes enable row level security;
 `;
 if (routes.length) {
   sql += `

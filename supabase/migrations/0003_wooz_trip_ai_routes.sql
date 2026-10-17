@@ -1,8 +1,43 @@
 -- ============================================================
--- wooz-trip — 미리 만든 AI 루트 23개
+-- wooz-trip — 미리 만든 AI 루트 23개 (+ 테이블이 없으면 만든다)
 -- 생성: node scripts/gen_ai_routes_sql.mjs  (직접 고치지 말고 data/ai-routes/*.json 을 고친다)
 -- 같은 code 는 덮어쓴다 → 여러 번 실행해도 안전. 꺼 둔 루트(is_active)는 그대로 둔다.
 -- ============================================================
+
+-- 이미 만든 테이블에 나중에 추가된 컬럼 (다시 실행해도 안전)
+alter table wooz_trip_trips add column if not exists ai_route_id bigint;
+
+-- ─────────────────────────────────────────────
+-- ai_routes: 미리 LLM으로 만들어 둔 추천 루트 (서비스에서는 API 키 없이 꺼내 쓴다)
+--  "AI 초안" 버튼 → 지역·동행·일수가 맞는 루트를 골라 빈 슬롯에 넣고,
+--  사용자 날짜 기준으로 휴무·영업시간을 다시 검사한다 (src/lib/ai/routes.js)
+--  days 형식: [{ "slots": [{ "slot":"am", "place":"sample-11" | 12, "reason":"..." }] }]
+--    place 는 장소 id(숫자) 또는 source_external_id(문자열)
+--  데이터는 data/ai-routes/*.json → node scripts/gen_ai_routes_sql.mjs 로 만든 SQL 로 넣는다
+-- ─────────────────────────────────────────────
+create table if not exists wooz_trip_ai_routes (
+  id              bigint generated always as identity primary key,
+  code            text not null unique,          -- 사람이 읽는 고유 이름 (west-kids-3d-a). 다시 넣으면 덮어쓴다
+  title           text not null,
+  summary         text,
+  region          text not null,
+  companion_type  text not null check (companion_type in ('kids','parents','couple','friends')),
+  day_count       smallint not null check (day_count between 1 and 7),
+  kid_age_min     smallint,
+  kid_age_max     smallint,
+  tags            text[] not null default '{}',  -- indoor, beach, rainy 등 자유 태그
+  days            jsonb not null,
+  is_active       boolean not null default true,
+  pick_count      integer not null default 0,    -- 사용자에게 꺼내 준 횟수
+  source          text not null default 'llm',
+  created_ts      timestamptz not null default now(),
+  updated_ts      timestamptz not null default now()
+);
+create index if not exists wooz_trip_ai_routes_match_idx on wooz_trip_ai_routes (is_active, region, companion_type, day_count);
+drop trigger if exists wooz_trip_ai_routes_touch on wooz_trip_ai_routes;
+create trigger wooz_trip_ai_routes_touch before update on wooz_trip_ai_routes
+  for each row execute function wooz_trip_touch_updated();
+alter table wooz_trip_ai_routes enable row level security;
 
 insert into wooz_trip_ai_routes
   (code, title, summary, region, companion_type, day_count, kid_age_min, kid_age_max, tags, days, source)
