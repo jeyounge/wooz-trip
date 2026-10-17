@@ -217,7 +217,7 @@ const DAYS = { 일: 0, 월: 1, 화: 2, 수: 3, 목: 4, 금: 5, 토: 6 };
  */
 export function parseClosedDays(raw) {
   const text = cleanText(raw);
-  if (!text || /연중\s*무휴|휴무\s*(?:일\s*)?없음|없음|무휴/.test(text)) return { days: [], flags: [] };
+  if (!text || /연중\s*무휴?|휴무\s*(?:일\s*)?없음|없음|무휴/.test(text)) return { days: [], flags: [] };
   const flags = [];
   if (/첫째|둘째|셋째|넷째|마지막|격주|\d\s*,\s*\d\s*주|째\s*주|번째/.test(text)) flags.push('closed_monthly');
   if (/부정기|비정기|변동|인스타|공지|문의/.test(text)) flags.push('closed_irregular');
