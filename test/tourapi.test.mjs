@@ -37,6 +37,28 @@ test('tourapi: 영업시간 글 → 시간', () => {
   assert.deepEqual(parseHours(''), { hours: null, flags: ['hours_missing'] });
 });
 
+test('tourapi: 실제 응답 모양 (2026-10 probe)', () => {
+  // 음식점: 요일 범위별 시간
+  const food = parseHours('- 화요일~금요일 09:00~19:00<br>- 토요일~월요일 09:00~21:00');
+  assert.deepEqual(food.hours.all, { open: '09:00', close: '19:00' }); // 화~금 4일이 더 많음
+  for (const d of ['6', '0', '1']) assert.deepEqual(food.hours[d], { open: '09:00', close: '21:00' });
+  assert.equal(food.hours['3'], undefined);
+  // 문화시설: "입장 마감"
+  assert.deepEqual(parseHours('- 09:00~18:00- 입장 마감 17:30').hours, { all: { open: '09:00', close: '18:00', lastOrder: '17:30' } });
+  // 레포츠: 계절별 + 정비시간
+  const lp = parseHours('[1월~6월/9월~10월]- 09:00~18:30- 정비시간 12:00~13:00- 운행 마감 18:10[7월~8월]- 09:00~18:30');
+  assert.deepEqual(lp.hours.all, { open: '09:00', close: '18:30', lastOrder: '18:10' });
+  assert.ok(lp.flags.includes('hours_seasonal') && lp.flags.includes('hours_break'));
+  // 관광지: 시간 없이 안내문
+  assert.ok(parseHours('※ 일부 출입이 제한되거나 통제되므로 방문 시 전화문의 요망').flags.includes('hours_check'));
+  // 휴무: 날짜만 있는 경우 / 무휴 + 안내
+  assert.deepEqual(parseClosedDays('1월 1일 / 설·추석 연휴'), { days: [], flags: [] });
+  assert.deepEqual(parseClosedDays('연중무휴<br>※ 변동 가능성이 있으므로 전화문의 요망'), { days: [], flags: [] });
+  // 아이 태그: 놀이방 0/1, 무장애 "아기의자 9개", 주차 "불가능"
+  assert.deepEqual(kidTagsOf({ kidsfacility: '0', parkingfood: '불가능' }, { babysparechair: '아기의자 9개', stroller: '' }), ['baby_chair']);
+  assert.deepEqual(kidTagsOf({ kidsfacility: '1' }, {}), ['kids_zone']);
+});
+
 test('tourapi: 휴무 글 → 매주 쉬는 요일', () => {
   assert.deepEqual(parseClosedDays('매주 월요일'), { days: [1], flags: [] });
   assert.deepEqual(parseClosedDays('월·화요일 휴무'), { days: [1, 2], flags: [] });

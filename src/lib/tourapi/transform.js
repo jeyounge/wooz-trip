@@ -95,7 +95,7 @@ function ranges(text) {
 }
 
 function lastOrderOf(text) {
-  const m = text.match(new RegExp(`(?:라스트\\s*오더|L\\.?\\s*O\\.?|주문\\s*마감|입장\\s*마감|매표\\s*마감|발권\\s*마감)[^0-9]{0,6}${T}`, 'i'));
+  const m = text.match(new RegExp(`(?:라스트\\s*오더|L\\.?\\s*O\\.?|주문\\s*마감|입장\\s*마감|매표\\s*마감|발권\\s*마감|운행\\s*마감|탑승\\s*마감)[^0-9]{0,6}${T}`, 'i'));
   return m ? normTime(m[1], m[2]) : null;
 }
 
@@ -118,11 +118,11 @@ export function parseHours(raw) {
   }
 
   if (/하절기|동절기|여름|겨울|성수기|비수기|\d{1,2}\s*월\s*~|\d{1,2}\s*~\s*\d{1,2}\s*월/.test(text)) flags.push('hours_seasonal');
-  if (/브레이크|break|휴게\s*시간/i.test(text)) flags.push('hours_break');
+  if (/브레이크|break|휴게\s*시간|정비\s*시간|점심\s*시간/i.test(text)) flags.push('hours_break');
 
   const lo = lastOrderOf(text);
   // 브레이크·마감 시각이 범위로 잡힌 경우를 빼고 가장 긴 범위를 기본으로
-  const main = rs.filter((r) => !/브레이크|break|휴게/i.test(text.slice(Math.max(0, r.index - 12), r.index)));
+  const main = rs.filter((r) => !/브레이크|break|휴게|정비|점심/i.test(text.slice(Math.max(0, r.index - 12), r.index)));
   const base = (main.length ? main : rs).reduce((a, b) => (span(b) > span(a) ? b : a));
 
   const make = (r) => {
@@ -131,6 +131,20 @@ export function parseHours(raw) {
     return h;
   };
   const hours = { all: make(base) };
+
+  // 요일별: "화요일~금요일 09:00~19:00 / 토요일~월요일 09:00~21:00", "월요일 11:00~15:00"
+  const byDay = dayRangeHours(text);
+  if (byDay) {
+    const keyOf = (x) => `${x.open}-${x.close}`;
+    const tally = {};
+    for (const x of Object.values(byDay)) tally[keyOf(x)] = (tally[keyOf(x)] || 0) + 1;
+    const commonKey = Object.entries(tally).sort((a, b) => b[1] - a[1])[0][0];
+    const common = Object.values(byDay).find((x) => keyOf(x) === commonKey);
+    hours.all = make(common);
+    for (const [d, x] of Object.entries(byDay)) if (keyOf(x) !== commonKey) hours[d] = make(x);
+    if (span(common) < 60) flags.push('hours_check');
+    return { hours, flags };
+  }
 
   // 평일 / 주말
   const wk = text.match(new RegExp(`평일[^0-9]{0,8}${T}\\s*(?:~|-|∼)\\s*${T}`));
@@ -148,6 +162,42 @@ export function parseHours(raw) {
   }
   if (span(base) < 60) flags.push('hours_check');
   return { hours, flags };
+}
+
+const DAY_ORDER = ['월', '화', '수', '목', '금', '토', '일'];
+const DAY_NUM = { 일: 0, 월: 1, 화: 2, 수: 3, 목: 4, 금: 5, 토: 6 };
+const DAY = '([월화수목금토일])(?:요일)?';
+const DAY_RANGE_RE = new RegExp(
+  `${DAY}\\s*(?:~|-|∼)\\s*${DAY}\\s*[:：]?\\s*${T}\\s*(?:~|-|∼)\\s*${T}|([월화수목금토일])요일\\s*[:：]?\\s*${T}\\s*(?:~|-|∼)\\s*${T}`,
+  'g'
+);
+
+/** 요일 범위별 시간 → { "0".."6": {open, close} } (두 요일 이상 잡힐 때만) */
+function dayRangeHours(text) {
+  const out = {};
+  for (const m of text.matchAll(DAY_RANGE_RE)) {
+    let days;
+    let t;
+    if (m[1]) {
+      const a = DAY_ORDER.indexOf(m[1]);
+      const b = DAY_ORDER.indexOf(m[2]);
+      days = [];
+      for (let i = a; days.length < 7; i = (i + 1) % 7) {
+        days.push(DAY_ORDER[i]);
+        if (i === b) break;
+      }
+      t = [m[3], m[4], m[5], m[6]];
+    } else {
+      days = [m[7]];
+      t = [m[8], m[9], m[10], m[11]];
+    }
+    const open = normTime(t[0], t[1]);
+    let close = normTime(t[2], t[3]);
+    if (!open || !close) continue;
+    if (close === '24:00') close = '23:59';
+    for (const d of days) out[DAY_NUM[d]] = { open, close };
+  }
+  return Object.keys(out).length >= 2 ? out : null;
 }
 
 function span(r) {
@@ -187,16 +237,19 @@ export function parseClosedDays(raw) {
 // ─────────────────────────────────────────────
 // 아이 태그 (공식 데이터로 알 수 있는 것만. 나머지는 운영자 확인)
 // ─────────────────────────────────────────────
-const yes = (s) => !!s && /가능|있음|보유|대여|구비|운영|무료|유료|O\b|○/.test(s) && !/불가|없음|미보유|불가능|X\b|×/.test(s);
+const no = (s) => /불가|없음|미보유|미운영|미설치|X\b|×|^0$/.test(s);
+const yes = (s) => !!s && (s === '1' || /가능|있음|보유|대여|구비|운영|무료|유료|O\b|○/.test(s)) && !no(s);
+// 무장애 항목은 "아기의자 9개"처럼 내용만 적혀 있어서, 비어 있지 않고 '없음'이 아니면 있음으로 본다
+const has = (s) => !!s && !no(s);
 
 export function kidTagsOf(intro = {}, withTour = {}) {
   const tags = new Set();
   if (yes(pick(intro, 'parking', 'parkingfood', 'parkingculture', 'parkingleports', 'parkingshopping'))) tags.add('parking');
   if (yes(pick(intro, 'chkbabycarriage', 'chkbabycarriageculture', 'chkbabycarriageleports', 'chkbabycarriageshopping'))) tags.add('stroller');
   if (yes(pick(intro, 'kidsfacility'))) tags.add('kids_zone');
-  if (yes(cleanText(pick(withTour, 'stroller')))) tags.add('stroller');
-  if (yes(cleanText(pick(withTour, 'lactationroom')))) tags.add('nursing');
-  if (yes(cleanText(pick(withTour, 'babysparechair')))) tags.add('baby_chair');
+  if (has(cleanText(pick(withTour, 'stroller')))) tags.add('stroller');
+  if (has(cleanText(pick(withTour, 'lactationroom')))) tags.add('nursing');
+  if (has(cleanText(pick(withTour, 'babysparechair')))) tags.add('baby_chair');
   return [...tags];
 }
 
@@ -264,7 +317,7 @@ export function toPlace(item, intro = {}, withTour = {}, codeNames = {}) {
       cat3: cat3 || null,
       hoursText: cleanText(hoursRaw) || null,
       closedText: cleanText(closedRaw) || null,
-      kidsText: cleanText(pick(intro, 'kidsfacility')) || null,
+      kidsText: { 0: '없음', 1: '있음' }[pick(intro, 'kidsfacility')] ?? (cleanText(pick(intro, 'kidsfacility')) || null),
       strollerText: cleanText(pick(intro, 'chkbabycarriage', 'chkbabycarriageculture', 'chkbabycarriageleports') || pick(withTour, 'stroller')) || null,
       nursingText: cleanText(pick(withTour, 'lactationroom')) || null,
       babyChairText: cleanText(pick(withTour, 'babysparechair')) || null,
