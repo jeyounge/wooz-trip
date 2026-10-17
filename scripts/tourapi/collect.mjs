@@ -109,11 +109,16 @@ async function probe() {
     const d = await call(BASE, 'detailIntro2', { contentId: item.contentid, contentTypeId: String(t) });
     console.log(`[${t}] 상세 필드:`, JSON.stringify(d.items[0] || {}, null, 0).slice(0, 900));
   }
-  const w = await call(WITH, 'areaBasedList2', { ...JEJU, numOfRows: '1', pageNo: '1' });
-  console.log('\n무장애 목록', w.total, '건', w.items[0] ? Object.keys(w.items[0]).join(', ') : '');
-  if (w.items[0]) {
-    const d = await call(WITH, 'detailWithTour2', { contentId: w.items[0].contentid });
-    console.log('무장애 상세 필드:', JSON.stringify(d.items[0] || {}).slice(0, 900));
+  // 무장애 API 는 선택 (활용신청 전이면 건너뛴다)
+  try {
+    const w = await call(WITH, 'areaBasedList2', { ...JEJU, numOfRows: '1', pageNo: '1' });
+    console.log('\n무장애 목록', w.total, '건', w.items[0] ? Object.keys(w.items[0]).join(', ') : '');
+    if (w.items[0]) {
+      const d = await call(WITH, 'detailWithTour2', { contentId: w.items[0].contentid });
+      console.log('무장애 상세 필드:', JSON.stringify(d.items[0] || {}).slice(0, 900));
+    }
+  } catch (e) {
+    console.log('\n무장애 API 건너뜀 (활용신청 전이면 정상):', firstLine(e.message));
   }
   writeJson('probe.json', { at: new Date().toISOString() });
 }
@@ -147,14 +152,19 @@ async function list() {
     console.warn('분류 이름은 건너뜀:', firstLine(e.message));
   }
   // 무장애 정보가 있는 장소 ID 목록
-  const ids = [];
-  for (let page = 1; ; page++) {
-    const r = await call(WITH, 'areaBasedList2', { ...JEJU, numOfRows: '500', pageNo: String(page) });
-    ids.push(...r.items.map((x) => String(x.contentid)));
-    if (!r.items.length || ids.length >= r.total) break;
+  // (선택) 무장애 API 활용신청 전이면 건너뛰고, 나중에 list 를 다시 실행하면 채워진다
+  try {
+    const ids = [];
+    for (let page = 1; ; page++) {
+      const r = await call(WITH, 'areaBasedList2', { ...JEJU, numOfRows: '500', pageNo: String(page) });
+      ids.push(...r.items.map((x) => String(x.contentid)));
+      if (!r.items.length || ids.length >= r.total) break;
+    }
+    writeJson('withtour-ids.json', ids);
+    console.log(`무장애 정보 있는 곳 ${ids.length}건`);
+  } catch (e) {
+    console.log('무장애 API 건너뜀 (활용신청 전이면 정상):', firstLine(e.message));
   }
-  writeJson('withtour-ids.json', ids);
-  console.log(`무장애 정보 있는 곳 ${ids.length}건`);
 }
 
 function listed() {
