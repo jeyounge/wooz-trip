@@ -5,6 +5,7 @@ import { BackLink } from '@/components/ui';
 import { COMPANIONS, MAX_TRIP_DAYS, REGIONS } from '@/lib/config';
 import { addDays, dayCount, shortDate, weekdayLabel } from '@/lib/hours';
 import { createTrip } from '@/app/actions/trips';
+import AiThinking, { waitAtLeast } from '@/components/AiThinking';
 
 const STARTS = [
   { id: 'self', title: '직접 짜기', desc: '빈 칸부터', color: '#BFE6D5' },
@@ -51,7 +52,8 @@ export default function TripSetupForm({ initialCompanion }) {
       return;
     }
     startTransition(async () => {
-      const res = await createTrip({ region, startDate, endDate, arrivalTime, departureTime, companion, kidsAges: ages, stayName, start });
+      const req = createTrip({ region, startDate, endDate, arrivalTime, departureTime, companion, kidsAges: ages, stayName, start });
+      const res = start === 'ai' ? await waitAtLeast(req) : await req;
       if (!res.ok) return setError(res.message);
       router.push(`/trips/${res.id}/edit${start === 'ai' ? '?ai=1' : ''}`);
     });
@@ -212,6 +214,7 @@ export default function TripSetupForm({ initialCompanion }) {
           {pending ? (start === 'ai' ? 'AI가 동선을 고르는 중…' : '만드는 중…') : NEXT_LABEL[start]}
         </button>
       </div>
+      {pending && start === 'ai' && <AiThinking companion={companion} />}
     </>
   );
 }

@@ -7,7 +7,6 @@ import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { TABLES } from '@/lib/tables';
 import { CATEGORIES, REGIONS } from '@/lib/config';
-import { draftPlaceIntro } from '@/lib/ai/provider';
 
 const fail = (message) => ({ ok: false, message });
 const TIME = /^\d{2}:\d{2}$/;
@@ -105,8 +104,25 @@ export async function draftIntro(id) {
     db.from(TABLES.kidTags).select('id, label'),
   ]);
   if (!place) return fail('장소 없음');
-  const intro = await draftPlaceIntro(place, Object.fromEntries((tags || []).map((t) => [t.id, t.label])));
-  return { ok: true, intro };
+  return { ok: true, intro: introTemplate(place, Object.fromEntries((tags || []).map((t) => [t.id, t.label]))) };
+}
+
+/** 운영자가 체크한 종류·태그만으로 만든 소개 문장 틀 (운영자가 다듬어서 저장) */
+function introTemplate(place, tagLabels) {
+  const tags = (place.kid_tags || []).filter((t) => t !== 'regular_closed').map((t) => tagLabels[t] || t);
+  const kind = place.sub_category || '장소';
+  const parts = [`${kind}${place.indoor ? '(실내)' : ''}`];
+  if (tags.length) parts.push(`${tags.slice(0, 3).join(', ')} 있어요`);
+  return parts.join(' · ');
+}
+
+/** AI 루트 켜기/끄기 (끈 루트는 AI 초안에서 고르지 않는다) */
+export async function setAiRouteActive(id, active) {
+  const db = await guard();
+  if (!db) return fail('권한 없음');
+  const { error } = await db.from(TABLES.aiRoutes).update({ is_active: !!active }).eq('id', id);
+  if (error) return fail(error.message);
+  return { ok: true };
 }
 
 /** 제보 처리: applied | rejected. 태그 제보는 반영 시 장소 태그에 합친다 */

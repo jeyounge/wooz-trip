@@ -5,6 +5,7 @@ import { checkVisit, dowOf, dayCount, addDays, toMin, hoursOn } from '../src/lib
 import { buildDays, computeDay, summarize, redateDays, overlapsNap } from '../src/lib/trip.js';
 import { rankCandidates } from '../src/lib/candidates.js';
 import { buildFillTasks, validatePicks, applyPicks, finalCheck } from '../src/lib/ai/fill.js';
+import { chooseRoute, planFromRoute, placeIndex, scoreRoute } from '../src/lib/ai/routes.js';
 
 const FRI = '2026-11-06'; // 금요일
 const place = (id, extra = {}) => ({
@@ -141,7 +142,7 @@ test('ai fill: 후보 밖 ID·중복은 버리고 코드 후보로 채운다', (
   assert.equal(picks.length, 2);
   const L = picks.find((p) => p.slotId === 'L');
   const D = picks.find((p) => p.slotId === 'D');
-  assert.equal(D.source, 'llm');
+  assert.equal(D.source, 'pick');
   assert.equal(L.source, 'rule');
   assert.notEqual(L.placeId, D.placeId);
 
@@ -150,4 +151,57 @@ test('ai fill: 후보 밖 ID·중복은 버리고 코드 후보로 채운다', (
   const { days: checked, filled } = finalCheck(trip, days, map);
   assert.equal(filled, 2);
   assert.ok(checked[0].slots.every((s) => s.placeId));
+});
+
+test('ai routes: 장소 참조는 id 숫자와 source_external_id 둘 다 된다', () => {
+  const find = placeIndex([place(7, { source_external_id: 'sample-07' }), place(8)]);
+  assert.equal(find(7).id, 7);
+  assert.equal(find('7').id, 7);
+  assert.equal(find('sample-07').id, 7);
+  assert.equal(find('sample-99'), null);
+});
+
+test('ai routes: 맞는 루트를 골라 빈 슬롯에만 넣고, 그날 쉬는 곳은 버린다', () => {
+  const places = [
+    place(1, { category: 'sight', source_external_id: 's1', opening_hours: null }),
+    place(2, { source_external_id: 's2' }),
+    place(3, { source_external_id: 's3', regular_closed_days: [5] }), // 금요일 휴무
+    place(4, { category: 'cafe', source_external_id: 's4' }),
+  ];
+  const trip = {
+    region: 'jeju-west',
+    companion_type: 'kids',
+    kids_ages: [5],
+    days: [{
+      date: FRI,
+      slots: [
+        { id: 'A', time: '10:00', slotType: 'am', placeId: null, stayMinutes: 120 },
+        { id: 'L', time: '12:00', slotType: 'lunch', placeId: null, stayMinutes: 60 },
+        { id: 'C', time: '16:00', slotType: 'cafe', placeId: 4, stayMinutes: 60 }, // 사용자가 이미 고름
+        { id: 'D', time: '18:00', slotType: 'dinner', placeId: null, stayMinutes: 90 },
+      ],
+    }],
+  };
+  const good = {
+    id: 10, region: 'jeju-west', companion_type: 'kids', day_count: 1, kid_age_min: 3, kid_age_max: 8,
+    days: [{ slots: [
+      { slot: 'am', place: 's1', reason: '모래놀이' },
+      { slot: 'lunch', place: 's2', reason: '아기의자' },
+      { slot: 'cafe', place: 's4', reason: '이미 쓴 곳' },
+      { slot: 'dinner', place: 's3', reason: '금요일 휴무' },
+    ] }],
+  };
+  const other = { ...good, id: 11, region: 'jeju-east', companion_type: 'couple' };
+  assert.ok(scoreRoute(good, trip) > scoreRoute(other, trip));
+
+  const picks = planFromRoute(good, trip, places);
+  assert.deepEqual(picks.map((p) => [p.slotId, p.placeId]), [['A', 1], ['L', 2]]);
+  assert.ok(picks.every((p) => p.source === 'route' && p.reason));
+
+  const chosen = chooseRoute([other, good], trip, places, { random: () => 0 });
+  assert.equal(chosen.route.id, 10);
+  // 비슷한 루트가 여럿이면 직전에 쓴 루트는 피한다
+  const twin = { ...good, id: 12 };
+  assert.equal(chooseRoute([good, twin], trip, places, { excludeId: 10, random: () => 0 }).route.id, 12);
+  assert.equal(chooseRoute([], trip, places), null);
 });

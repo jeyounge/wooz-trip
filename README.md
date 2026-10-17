@@ -12,9 +12,16 @@
 3. `npm install` → `npm run dev` → http://localhost:3000
 
 ```bash
-npm test        # 계산 로직 단위 테스트
-npm run build   # 빌드 + 린트
+npm test              # 계산 로직 단위 테스트
+npm run build         # 빌드 + 린트
+npm run routes:sql    # AI 루트 JSON 검사 → SQL 생성 (docs/ai-routes.md)
 ```
+
+## AI 초안
+
+서비스는 LLM API를 부르지 않는다. 운영자가 LLM으로 미리 만든 루트(`data/ai-routes/*.json`)를 DB에 넣어 두고,
+"AI 초안"을 누르면 조건에 맞는 루트를 꺼내 내 날짜 기준으로 휴무·영업시간을 다시 검사해 넣는다.
+루트 추가 방법과 LLM 프롬프트는 [`docs/ai-routes.md`](docs/ai-routes.md).
 
 ## 화면
 
@@ -27,4 +34,4 @@ npm run build   # 빌드 + 린트
 | `/routes`, `/routes/:id` | 둘러보기 목록, S06 공개 루트 상세 + 내 일정으로 복사 |
 | `/s/:shareId` | 가족 공유 링크 (읽기 전용, 로그인 불필요) |
 | `/trips`, `/my`, `/login` | 내 여행, 마이, 로그인 |
-| `/admin` | 운영자: 장소 검수 · 제보 처리 · 지표 |
+| `/admin` | 운영자: 장소 검수 · 제보 처리 · AI 루트 켜기/끄기 · 지표 |

@@ -18,4 +18,5 @@ export const TABLES = {
   travelCache: t('travel_cache'),
   reports: t('reports'),
   events: t('events'),
+  aiRoutes: t('ai_routes'), // 미리 만든 AI 추천 루트
 };

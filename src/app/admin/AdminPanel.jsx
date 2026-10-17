@@ -1,13 +1,13 @@
 'use client';
 import { useMemo, useState, useTransition } from 'react';
 import { TopBar } from '@/components/ui';
-import { CATEGORIES, REGIONS, WEEKDAYS } from '@/lib/config';
-import { createPlace, draftIntro, resolveReport, updatePlace } from './actions';
+import { CATEGORIES, COMPANIONS, REGIONS, WEEKDAYS } from '@/lib/config';
+import { createPlace, draftIntro, resolveReport, setAiRouteActive, updatePlace } from './actions';
 
 const STATUS = { candidate: '후보', approved: '승인', excluded: '제외' };
 const REPORT_TYPES = { closed: '휴무·폐업', info: '정보 변경', tag: '아이 태그' };
 
-export default function AdminPanel({ places: initialPlaces, tags, reports: initialReports, metrics }) {
+export default function AdminPanel({ places: initialPlaces, tags, reports: initialReports, aiRoutes = [], metrics }) {
   const [tab, setTab] = useState('places');
   const [places, setPlaces] = useState(initialPlaces);
   const [reports, setReports] = useState(initialReports);
@@ -16,11 +16,12 @@ export default function AdminPanel({ places: initialPlaces, tags, reports: initi
 
   return (
     <>
-      <TopBar back="/my" title="운영자 화면" sub="장소 검수 · 제보 · 지표" />
-      <nav className="grid grid-cols-3 gap-1.5 px-5 pb-3" role="tablist">
+      <TopBar back="/my" title="운영자 화면" sub="장소 검수 · 제보 · AI 루트 · 지표" />
+      <nav className="grid grid-cols-4 gap-1.5 px-5 pb-3" role="tablist">
         {[
           ['places', `장소 ${places.length}`],
           ['reports', `제보 ${reports.length}`],
+          ['routes', `AI 루트 ${aiRoutes.length}`],
           ['metrics', '지표'],
         ].map(([id, label]) => (
           <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={`pill ${tab === id ? 'pill-on' : ''}`}>
@@ -33,6 +34,7 @@ export default function AdminPanel({ places: initialPlaces, tags, reports: initi
         {tab === 'reports' && (
           <ReportsTab reports={reports} placeName={placeName} tagLabel={tagLabel} onResolved={(id) => setReports((r) => r.filter((x) => x.id !== id))} />
         )}
+        {tab === 'routes' && <AiRoutesTab routes={aiRoutes} />}
         {tab === 'metrics' && (
           <div className="grid grid-cols-2 gap-2">
             {metrics.map((m) => (
@@ -46,6 +48,59 @@ export default function AdminPanel({ places: initialPlaces, tags, reports: initi
           </div>
         )}
       </main>
+    </>
+  );
+}
+
+function AiRoutesTab({ routes: initial }) {
+  const [routes, setRoutes] = useState(initial);
+  const [pending, start] = useTransition();
+  const [msg, setMsg] = useState(null);
+  const region = (id) => REGIONS.find((r) => r.id === id)?.short || id;
+  const companion = (id) => COMPANIONS.find((c) => c.id === id)?.label || id;
+
+  if (!routes.length) {
+    return (
+      <div className="card p-4 text-sm text-sub">
+        아직 넣은 AI 루트가 없어요. docs/ai-routes.md 순서대로 루트를 만들어 SQL을 실행하면 여기에 보여요. 루트가 없으면 AI 초안은 가까운 곳 위주 규칙으로 채워요.
+      </div>
+    );
+  }
+  return (
+    <>
+      <p className="m-0 text-xs text-sub">
+        켜진 루트 {routes.filter((r) => r.is_active).length}개 · 끈 루트는 AI 초안에서 고르지 않아요. 내용 수정은 data/ai-routes 파일을 고친 뒤 SQL을 다시 실행해요.
+      </p>
+      {msg && <p className="m-0 text-xs font-bold text-warn-ink">{msg}</p>}
+      <ul className="m-0 flex list-none flex-col gap-2 p-0">
+        {routes.map((r) => (
+          <li key={r.id} className={`card flex items-center gap-3 p-3.5 ${r.is_active ? '' : 'opacity-60'}`}>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-bold">{r.title}</div>
+              <div className="text-xs text-sub">
+                {region(r.region)} · {companion(r.companion_type)} · {r.day_count}일 · 꺼내 쓴 횟수 {r.pick_count}
+              </div>
+              <div className="truncate text-[11px] text-sub">{r.code}</div>
+            </div>
+            <button
+              type="button"
+              disabled={pending}
+              aria-pressed={r.is_active}
+              onClick={() =>
+                start(async () => {
+                  setMsg(null);
+                  const res = await setAiRouteActive(r.id, !r.is_active);
+                  if (!res.ok) return setMsg(res.message);
+                  setRoutes((all) => all.map((x) => (x.id === r.id ? { ...x, is_active: !x.is_active } : x)));
+                })
+              }
+              className={`h-11 flex-none rounded-full px-4 text-xs ${r.is_active ? 'bg-selected text-selected-ink' : 'border-2 border-line bg-surface'}`}
+            >
+              {r.is_active ? '켜짐' : '꺼짐'}
+            </button>
+          </li>
+        ))}
+      </ul>
     </>
   );
 }

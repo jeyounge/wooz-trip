@@ -84,8 +84,26 @@
 .sheet-in {
   animation: sheet-up 0.18s ease-out;
 }
+/* AI 초안 고르는 중 */
+.ai-pulse {
+  animation: ai-pulse 1.4s ease-in-out infinite;
+}
+.ai-dot {
+  animation: ai-pulse 0.9s ease-in-out infinite;
+}
+@keyframes ai-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
-  .sheet-in {
+  .sheet-in,
+  .ai-pulse,
+  .ai-dot {
     animation: none;
   }
 }

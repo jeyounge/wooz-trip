@@ -88,6 +88,7 @@ create table if not exists wooz_trip_trips (
   share_id        text unique,        -- 가족 공유 링크 /s/:share_id
   copied_from     uuid references wooz_trip_trips(id) on delete set null,
   copy_count      integer not null default 0,
+  ai_route_id     bigint,             -- 마지막으로 꺼내 쓴 AI 루트 (다시 누르면 다른 루트를 고르려고)
   published_ts    timestamptz,
   created_ts      timestamptz not null default now(),
   updated_ts      timestamptz not null default now(),
@@ -97,6 +98,40 @@ create index if not exists wooz_trip_trips_owner_idx on wooz_trip_trips (owner_i
 create index if not exists wooz_trip_trips_public_idx on wooz_trip_trips (visibility, companion_type, copy_count desc);
 drop trigger if exists wooz_trip_trips_touch on wooz_trip_trips;
 create trigger wooz_trip_trips_touch before update on wooz_trip_trips
+  for each row execute function wooz_trip_touch_updated();
+
+-- 이미 만든 테이블에 나중에 추가된 컬럼 (다시 실행해도 안전)
+alter table wooz_trip_trips add column if not exists ai_route_id bigint;
+
+-- ─────────────────────────────────────────────
+-- ai_routes: 미리 LLM으로 만들어 둔 추천 루트 (서비스에서는 API 키 없이 꺼내 쓴다)
+--  "AI 초안" 버튼 → 지역·동행·일수가 맞는 루트를 골라 빈 슬롯에 넣고,
+--  사용자 날짜 기준으로 휴무·영업시간을 다시 검사한다 (src/lib/ai/routes.js)
+--  days 형식: [{ "slots": [{ "slot":"am", "place":"sample-11" | 12, "reason":"..." }] }]
+--    place 는 장소 id(숫자) 또는 source_external_id(문자열)
+--  데이터는 data/ai-routes/*.json → node scripts/gen_ai_routes_sql.mjs 로 만든 SQL 로 넣는다
+-- ─────────────────────────────────────────────
+create table if not exists wooz_trip_ai_routes (
+  id              bigint generated always as identity primary key,
+  code            text not null unique,          -- 사람이 읽는 고유 이름 (west-kids-3d-a). 다시 넣으면 덮어쓴다
+  title           text not null,
+  summary         text,
+  region          text not null,
+  companion_type  text not null check (companion_type in ('kids','parents','couple','friends')),
+  day_count       smallint not null check (day_count between 1 and 7),
+  kid_age_min     smallint,
+  kid_age_max     smallint,
+  tags            text[] not null default '{}',  -- indoor, beach, rainy 등 자유 태그
+  days            jsonb not null,
+  is_active       boolean not null default true,
+  pick_count      integer not null default 0,    -- 사용자에게 꺼내 준 횟수
+  source          text not null default 'llm',
+  created_ts      timestamptz not null default now(),
+  updated_ts      timestamptz not null default now()
+);
+create index if not exists wooz_trip_ai_routes_match_idx on wooz_trip_ai_routes (is_active, region, companion_type, day_count);
+drop trigger if exists wooz_trip_ai_routes_touch on wooz_trip_ai_routes;
+create trigger wooz_trip_ai_routes_touch before update on wooz_trip_ai_routes
   for each row execute function wooz_trip_touch_updated();
 
 -- ─────────────────────────────────────────────
@@ -150,7 +185,7 @@ create index if not exists wooz_trip_events_name_idx on wooz_trip_events (name, 
 --  - trips: 본인 것 읽기·쓰기 + 공개(public) 루트는 누구나 읽기
 --           가족 공유(shared) 링크는 서버가 service_role 로 share_id 조회 (목록 노출 방지)
 --  - reports: 로그인 사용자가 본인 명의로만 작성, 본인 것만 읽기
---  - travel_cache / events: 정책 없음 → service_role 만 접근
+--  - travel_cache / events / ai_routes: 정책 없음 → service_role 만 접근
 -- ============================================================
 alter table wooz_trip_kid_tags     enable row level security;
 alter table wooz_trip_places       enable row level security;
@@ -158,6 +193,7 @@ alter table wooz_trip_trips        enable row level security;
 alter table wooz_trip_travel_cache enable row level security;
 alter table wooz_trip_reports      enable row level security;
 alter table wooz_trip_events       enable row level security;
+alter table wooz_trip_ai_routes    enable row level security;
 
 drop policy if exists wooz_trip_kid_tags_read on wooz_trip_kid_tags;
 create policy wooz_trip_kid_tags_read on wooz_trip_kid_tags

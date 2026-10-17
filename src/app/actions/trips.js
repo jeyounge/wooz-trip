@@ -12,9 +12,10 @@ import { getCurrentUser } from '@/lib/auth';
 import { COMPANIONS, MAX_TRIP_DAYS, REGIONS, SLOT_TYPES } from '@/lib/config';
 import { buildDays, redateDays, usedPlaceIds } from '@/lib/trip';
 import { addDays, dayCount } from '@/lib/hours';
-import { getApprovedPlaces, getKidTags } from '@/lib/places';
-import { buildFillTasks, tasksForPrompt, validatePicks, applyPicks, finalCheck } from '@/lib/ai/fill';
-import { pickWithLLM } from '@/lib/ai/provider';
+import { getApprovedPlaces } from '@/lib/places';
+import { buildFillTasks, validatePicks, applyPicks, finalCheck } from '@/lib/ai/fill';
+import { chooseRoute } from '@/lib/ai/routes';
+import { bumpPickCount, getActiveAiRoutes } from '@/lib/ai/store';
 import { EVENTS, logEvent } from '@/lib/events';
 import { isUuid, TRIP_COLUMNS } from '@/lib/trips';
 
@@ -153,8 +154,10 @@ export async function updateTripMeta(tripId, { title, stayName }) {
 }
 
 /**
- * AI 빈칸 채우기 (CLAUDE.md 8장 4단계)
- * 1·2 코드 후보 → 3 LLM 선택·설명 → 4 코드 검증 후 저장
+ * AI 빈칸 채우기 / AI 초안
+ * LLM API 를 부르지 않는다. 미리 LLM 으로 만들어 둔 루트(wooz_trip_ai_routes)에서 맞는 것을 꺼내
+ * 내 날짜 기준으로 휴무·영업시간을 검사해 넣고, 남은 빈칸은 코드 후보로 채운다. (lib/ai/routes.js)
+ * "생각하는 중" 연출은 화면(AiThinking)에서 한다.
  */
 export async function aiFill(tripId) {
   const { user, db } = await authed();
@@ -163,21 +166,40 @@ export async function aiFill(tripId) {
   if (!trip) return fail('루트를 찾을 수 없어요');
 
   try {
-    const [places, tags] = await Promise.all([getApprovedPlaces(), getKidTags()]);
-    const tasks = buildFillTasks(trip, places);
-    if (!tasks.length) return { ok: true, filled: 0, usedLLM: false, days: trip.days, message: '채울 빈칸이 없거나 조건에 맞는 장소가 없어요' };
-
-    const tagLabels = Object.fromEntries(tags.map((t) => [t.id, t.label]));
-    const llmPicks = await pickWithLLM(trip, tasksForPrompt(tasks, tagLabels));
-    const picks = validatePicks(tasks, llmPicks);
+    const places = await getApprovedPlaces();
     const placeMap = Object.fromEntries(places.map((p) => [p.id, p]));
-    const { days, filled } = finalCheck(trip, applyPicks(trip.days, picks), placeMap);
 
-    const { error } = await db.from(TABLES.trips).update({ days }).eq('id', tripId);
+    // 1. 미리 만든 루트에서 꺼내기 (테이블이 비었거나 없어도 2단계로 진행)
+    let chosen = null;
+    try {
+      chosen = chooseRoute(await getActiveAiRoutes(trip), trip, places, { excludeId: trip.ai_route_id ?? null });
+    } catch (e) {
+      console.error('[ai] 루트 조회 실패:', e?.message || e);
+    }
+    let days = chosen ? applyPicks(trip.days, chosen.picks) : trip.days;
+
+    // 2. 남은 빈칸은 코드 후보 1순위
+    const tasks = buildFillTasks({ ...trip, days }, places);
+    days = applyPicks(days, validatePicks(tasks, []));
+
+    // 3. 다시 검사
+    const checked = finalCheck(trip, days, placeMap);
+    days = checked.days;
+    if (!checked.filled) return { ok: true, filled: 0, days: trip.days, message: '채울 빈칸이 없거나 조건에 맞는 장소가 없어요' };
+
+    const patch = { days };
+    if (chosen) patch.ai_route_id = chosen.route.id;
+    const { error } = await db.from(TABLES.trips).update(patch).eq('id', tripId);
     if (error) return fail(error.message);
-    await logEvent(EVENTS.aiFill, { userId: user.id, tripId, meta: { filled, usedLLM: !!llmPicks } });
-    const places_ = Object.fromEntries(usedPlaceIds(days).map((id) => [id, placeMap[id]]).filter(([, p]) => p));
-    return { ok: true, filled, usedLLM: !!llmPicks, days, places: places_ };
+
+    if (chosen) await bumpPickCount(chosen.route.id);
+    await logEvent(EVENTS.aiFill, {
+      userId: user.id,
+      tripId,
+      meta: { filled: checked.filled, route: chosen?.route.code || null, fromRoute: chosen?.picks.length || 0 },
+    });
+    const usedPlaces = Object.fromEntries(usedPlaceIds(days).map((id) => [id, placeMap[id]]).filter(([, p]) => p));
+    return { ok: true, filled: checked.filled, days, places: usedPlaces };
   } catch (e) {
     return fail(`AI 추천 실패: ${e.message}`);
   }

@@ -13,7 +13,7 @@
 | 언어 | **JavaScript (ESM, `.js`/`.jsx`)**, `jsconfig.json`의 `@/*` 경로 별칭 | 기존 서비스 전부 JS. 사용자 결정 |
 | 스타일 | Tailwind CSS 3.4 + CSS 변수 테마 토큰 | toto 동일 (Tailwind 4 아님) |
 | DB·인증 | Supabase 공용 프로젝트(`rncjg…`), `@supabase/ssr` 0.5 | toto·lotto·goat와 같은 인스턴스 |
-| AI | `@anthropic-ai/sdk` (Claude Opus 5.5), 구조화 출력 + 서버 쪽 대체 모델(fallback) | toto는 fetch 직접 호출이었으나 SDK 사용이 권장 방식 |
+| AI | **LLM API 호출 없음.** 운영자가 LLM으로 미리 만든 루트를 DB(`wooz_trip_ai_routes`)에 넣고 꺼내 쓴다 | 사용자 결정 (API 키 비용 없음) → `docs/ai-routes.md` |
 | 배포 | Vercel (지금은 로컬호스트에서만 테스트) | 도메인 미정 |
 | 패키지 매니저 | npm (`package-lock.json`) | 전 서비스 동일 |
 
@@ -34,10 +34,14 @@ src/
     places.js trips.js    DB 조회 (서버 전용)
     travel.js             이동시간 창구 (지금은 추정치, 나중에 캐시+API)
     events.js             MVP 지표 이벤트 기록
-    ai/fill.js            AI 빈칸 채우기 코드 단계 (후보·검증)
-    ai/provider.js        LLM 호출 (선택·설명만)
+    ai/routes.js          미리 만든 AI 루트 고르기·내 일정에 맞추기 (순수 함수)
+    ai/fill.js            남은 빈칸 규칙 채우기·최종 검사 (순수 함수)
+    ai/store.js           AI 루트 조회 (서버 전용)
+data/
+  sample-places.mjs       개발용 가짜 장소 (seed·루트 생성기 공용)
+  ai-routes/*.json        미리 만든 AI 루트 원본 → npm run routes:sql
 supabase/migrations/      000N_wooz_trip_*.sql (SQL Editor에 붙여 넣어 실행)
-scripts/                  시드 생성기 등 노드 스크립트
+scripts/                  시드·AI 루트 SQL 생성기, 장소 내보내기
 test/                     node --test 단위 테스트
 ```
 
@@ -52,7 +56,7 @@ test/                     node --test 단위 테스트
   - `places`, `kid_tags`: 공개 읽기(승인된 장소만), 쓰기는 service_role(운영자 서버 코드)만
   - `trips`: 본인 읽기·쓰기(`owner_id = auth.uid()`) + 공개 루트는 누구나 읽기. 가족 공유 링크는 서버가 service_role로 `share_id` 정확 일치 조회
   - `reports`: 로그인 사용자 본인 명의로만 작성
-  - `travel_cache`, `events`: service_role 전용
+  - `travel_cache`, `events`, `ai_routes`: service_role 전용
 - 위치 검색은 **PostGIS 없이** lat/lng 숫자 컬럼 + 코드의 하버사인 거리 계산. (장소 300곳 규모라 충분. 수천 곳이 되면 PostGIS + RPC로 옮긴다)
 - 일자·슬롯은 `trips.days` jsonb 하나에 저장. 서버 동작에서 모양을 정리(`sanitizeDays`)하고 장소 ID가 실제로 있는지 확인한 뒤 저장한다.
 - 마이그레이션은 여러 번 실행해도 안전하게(`if not exists`, `drop policy if exists`, `on conflict`).
@@ -79,7 +83,6 @@ test/                     node --test 단위 테스트
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | 공용 Supabase (toto와 같은 값) |
 | `SUPABASE_SERVICE_ROLE_KEY` | 서버 전용: 공유 링크 조회, 운영자, 이벤트 기록, 복사 수 |
 | `ADMIN_EMAIL` | 운영자 계정 |
-| `ANTHROPIC_API_KEY` | AI 빈칸 채우기·소개 초안 (없으면 규칙 기반으로 동작) |
 | `NEXT_PUBLIC_KAKAO_MAP_KEY` | 카카오맵 (없으면 간이 SVG 지도) |
 | `NEXT_PUBLIC_SERVICE_NAME` | 서비스명 (미정, 기본값 “우즈트립”) |
 
@@ -100,7 +103,8 @@ test/                     node --test 단위 테스트
 
 ## 8. 테스트·빌드·커밋
 
-- `npm test` = `node --test` (toto 동일). 거리·영업시간·타임라인·후보 정렬·AI 검증 단계를 테스트한다.
+- `npm test` = `node --test` (toto 동일). 거리·영업시간·타임라인·후보 정렬·AI 루트 고르기·검증 단계를 테스트한다.
+- `npm run routes:sql` = AI 루트 JSON 검사 + SQL 생성, `npm run seed:sql` = 개발용 시드 SQL 생성.
 - `npm run build`가 린트(`next/core-web-vitals`)까지 같이 돈다.
 - 커밋 메시지: 영어 `feat:` / `fix:` / `refactor:` 접두사 + 짧은 설명 (toto 최근 커밋 형식).
 

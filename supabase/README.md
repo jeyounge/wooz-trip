@@ -9,16 +9,18 @@
 | --- | --- | --- |
 | 1 | `migrations/0001_wooz_trip_init.sql` | 테이블 6개 + 인덱스 + RLS 정책 + updated_ts 트리거 |
 | 2 | `migrations/0002_wooz_trip_seed.sql` | 아이 태그 9개 + 개발용 가짜 장소 31곳(`[샘플]`, 승인 30 · 후보 1) |
+| 3 | `migrations/0003_wooz_trip_ai_routes.sql` | 미리 만든 AI 추천 루트 23개 (샘플 장소로 만든 개발용) |
 
 ### 방법 — Supabase 대시보드 SQL Editor
 
 1. [Supabase 대시보드](https://supabase.com/dashboard) → 프로젝트 `rncjgtyqzjewnmxycexp` → **SQL Editor** → New query
 2. `0001_wooz_trip_init.sql` 전체를 붙여 넣고 **Run**
 3. 새 쿼리에 `0002_wooz_trip_seed.sql` 전체를 붙여 넣고 **Run**
-4. **Table Editor**에서 `wooz_trip_` 로 시작하는 테이블 6개 확인
-   - `wooz_trip_kid_tags`, `wooz_trip_places`, `wooz_trip_trips`, `wooz_trip_travel_cache`, `wooz_trip_reports`, `wooz_trip_events`
+4. 새 쿼리에 `0003_wooz_trip_ai_routes.sql` 전체를 붙여 넣고 **Run**
+5. **Table Editor**에서 `wooz_trip_` 로 시작하는 테이블 7개 확인
+   - `wooz_trip_kid_tags`, `wooz_trip_places`, `wooz_trip_trips`, `wooz_trip_travel_cache`, `wooz_trip_reports`, `wooz_trip_events`, `wooz_trip_ai_routes`
 
-두 파일 모두 여러 번 실행해도 안전하다 (중복 생성·중복 입력 없음).
+세 파일 모두 여러 번 실행해도 안전하다 (중복 생성·중복 입력 없음).
 기존 서비스 테이블은 건드리지 않는다 (만들거나 바꾸는 것은 전부 `wooz_trip_` 이름).
 
 ### 확인용 쿼리
@@ -26,15 +28,18 @@
 ```sql
 select status, count(*) from wooz_trip_places group by status;   -- approved 30, candidate 1
 select count(*) from wooz_trip_kid_tags;                          -- 9
+select count(*) from wooz_trip_ai_routes;                         -- 23
 ```
 
 ## 나중에 실데이터로 바꿀 때
 
 ```sql
 delete from wooz_trip_places where is_sample;   -- 가짜 장소 지우기 (이 장소를 쓴 루트의 슬롯은 "삭제된 장소"로 보임)
+delete from wooz_trip_ai_routes where code like 'sample-%';   -- 샘플 AI 루트 지우기
 ```
 
-시드를 고치려면 `scripts/gen_seed_sql.mjs`를 고친 뒤 `node scripts/gen_seed_sql.mjs`로 다시 만든다.
+시드를 고치려면 `data/sample-places.mjs`를 고친 뒤 `npm run seed:sql`로 다시 만든다.
+AI 루트를 추가·수정하려면 `data/ai-routes/*.json`을 고친 뒤 `npm run routes:sql` → 0003 파일을 다시 실행한다 (`docs/ai-routes.md`).
 
 ## Auth 설정 (공용 프로젝트 — 필요할 때만)
 

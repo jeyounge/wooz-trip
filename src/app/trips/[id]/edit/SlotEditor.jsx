@@ -13,6 +13,7 @@ import { shortDate, toHHMM, toMin, weekdayLabel } from '@/lib/hours';
 import { tripSubtitle, slotLabel } from '@/lib/format';
 import { formatDuration } from '@/lib/geo';
 import { aiFill, markRouteDrawn, saveDays, updateTripMeta } from '@/app/actions/trips';
+import AiThinking, { waitAtLeast } from '@/components/AiThinking';
 
 export default function SlotEditor({ trip: initialTrip, initialPlaces, tags, fromAi, initialDay = 0 }) {
   const router = useRouter();
@@ -100,7 +101,7 @@ export default function SlotEditor({ trip: initialTrip, initialPlaces, tags, fro
       clearTimeout(timer.current);
       const ok = await persist(latest.current);
       if (!ok) return;
-      const res = await aiFill(trip.id);
+      const res = await waitAtLeast(aiFill(trip.id));
       if (!res.ok) return setAiMsg(res.message);
       setPlaces((m) => ({ ...m, ...(res.places || {}) }));
       setDays(res.days);
@@ -234,6 +235,7 @@ export default function SlotEditor({ trip: initialTrip, initialPlaces, tags, fro
           onClose={() => setPicker(null)}
         />
       )}
+      {aiPending && <AiThinking companion={trip.companion_type} />}
       {report && <ReportSheet place={report} tripId={trip.id} tags={tags} onClose={() => setReport(null)} />}
       {metaOpen && (
         <MetaSheet

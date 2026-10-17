@@ -1,11 +1,10 @@
 /**
- * fill.js — AI 빈칸 채우기 파이프라인의 코드 단계 (순수 함수, 테스트 대상)
+ * fill.js — 빈칸 채우기의 코드 단계 (순수 함수, 테스트 대상)
  *
- * CLAUDE.md 8장 순서를 지킨다.
- *  1. 후보 필터 (코드)   → buildFillTasks
- *  2. 동선 계산 (코드)   → buildFillTasks (앞 장소 기준 이동시간으로 정렬)
- *  3. 선택과 설명 (LLM)  → lib/ai/provider.js (후보 ID 목록 안에서만 고른다)
- *  4. 검증 (코드)        → validatePicks + applyPicks + finalCheck
+ * "AI 초안" 순서 (서비스는 LLM API 를 직접 부르지 않는다):
+ *  1. 미리 만든 AI 루트에서 맞는 장소를 넣는다       → lib/ai/routes.js
+ *  2. 남은 빈칸은 코드 후보 1순위로 채운다            → buildFillTasks + validatePicks
+ *  3. 반영 후 휴무·영업시간을 다시 검사해 충돌은 비운다 → applyPicks + finalCheck
  */
 import { SLOT_TYPES, WEEKDAYS } from '../config.js';
 import { rankCandidates } from '../candidates.js';
@@ -29,7 +28,7 @@ function score(c, companion) {
 }
 
 /**
- * 1·2단계: 빈 슬롯마다 코드로 거른 후보 목록을 만든다.
+ * 빈 슬롯마다 코드로 거른 후보 목록을 만든다.
  * 다음 슬롯의 출발점은 "1순위 후보"로 가정해 이어서 계산한다.
  */
 export function buildFillTasks(trip, places, { perSlot = PER_SLOT } = {}) {
@@ -78,45 +77,26 @@ export function buildFillTasks(trip, places, { perSlot = PER_SLOT } = {}) {
   return tasks;
 }
 
-/** LLM 에 넘길 최소 정보 (후보 ID 목록 밖의 장소를 만들 수 없게) */
-export function tasksForPrompt(tasks, tagLabels = {}) {
-  return tasks.map((t) => ({
-    slotId: t.slotId,
-    day: t.dayIndex + 1,
-    weekday: t.weekday,
-    time: t.time,
-    slot: t.slotLabel,
-    candidates: t.candidates.map((c) => ({
-      id: c.id,
-      name: c.name,
-      kind: c.sub_category || c.category,
-      indoor: !!c.indoor,
-      tags: (c.kid_tags || []).map((x) => tagLabels[x] || x),
-      driveMinutesFromPrev: c.travel,
-    })),
-  }));
-}
-
 /**
- * 4단계-1: LLM 결과 검증. 후보에 없는 ID, 중복 장소는 버리고
- * 버려진 슬롯은 코드 1순위(아직 안 쓴 것)로 채운다.
+ * 선택 검증. 후보에 없는 ID, 중복 장소는 버리고
+ * 버려진 슬롯은 코드 1순위(아직 안 쓴 것)로 채운다. picks 를 비우면 전부 코드 1순위.
  */
 export function validatePicks(tasks, picks) {
   const byTask = Object.fromEntries(tasks.map((t) => [t.slotId, t]));
   const taken = new Set();
   const result = [];
-  const llm = new Map();
+  const given = new Map();
   for (const p of picks || []) {
-    if (p && byTask[p.slotId] && !llm.has(p.slotId)) llm.set(p.slotId, p);
+    if (p && byTask[p.slotId] && !given.has(p.slotId)) given.set(p.slotId, p);
   }
 
   for (const t of tasks) {
     const ids = t.candidates.map((c) => c.id);
-    const p = llm.get(t.slotId);
+    const p = given.get(t.slotId);
     const pid = p ? Number(p.placeId) : NaN;
     if (p && ids.includes(pid) && !taken.has(pid)) {
       taken.add(pid);
-      result.push({ slotId: t.slotId, placeId: pid, reason: String(p.reason || '').slice(0, 160), source: 'llm' });
+      result.push({ slotId: t.slotId, placeId: pid, reason: String(p.reason || '').slice(0, 160), source: 'pick' });
       continue;
     }
     const fb = t.candidates.find((c) => !taken.has(c.id));
@@ -150,7 +130,7 @@ export function applyPicks(days, picks) {
   }));
 }
 
-/** 4단계-2: 반영 후 다시 계산해서 휴무·영업시간 충돌이 있는 AI 선택은 비운다 */
+/** 반영 후 다시 계산해서 휴무·영업시간 충돌이 있는 AI 선택은 비운다 */
 export function finalCheck(trip, days, placeMap) {
   const aiIds = new Set();
   const cleaned = days.map((d) => {

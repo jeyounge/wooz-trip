@@ -10,7 +10,7 @@ import { getPlaceMap, getKidTags } from './places.js';
 import { usedPlaceIds } from './trip.js';
 
 export const TRIP_COLUMNS =
-  'id, owner_id, title, region, start_date, end_date, arrival_time, departure_time, companion_type, kids_ages, stay_name, stay_lat, stay_lng, days, author_name, author_tip, visibility, share_id, copied_from, copy_count, published_ts, created_ts, updated_ts';
+  'id, owner_id, title, region, start_date, end_date, arrival_time, departure_time, companion_type, kids_ages, stay_name, stay_lat, stay_lng, days, author_name, author_tip, visibility, share_id, copied_from, copy_count, ai_route_id, published_ts, created_ts, updated_ts';
 
 export async function getTrip(id) {
   if (!isUuid(id)) return null;

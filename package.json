@@ -8,16 +8,17 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node --test"
+    "test": "node --test",
+    "routes:sql": "node scripts/gen_ai_routes_sql.mjs",
+    "places:export": "node scripts/export_places_for_llm.mjs",
+    "seed:sql": "node scripts/gen_seed_sql.mjs"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "latest",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.93.2",
     "next": "~15.5.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "zod": "latest"
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

@@ -10,7 +10,7 @@ import { TABLES } from './tables.js';
 export { rankCandidates } from './candidates.js';
 
 export const PLACE_COLUMNS =
-  'id, name, category, sub_category, address, lat, lng, region, phone, opening_hours, regular_closed_days, kid_tags, indoor, intro, status, external_links, is_sample';
+  'id, name, category, sub_category, address, lat, lng, region, phone, opening_hours, regular_closed_days, kid_tags, indoor, intro, status, external_links, source_external_id, is_sample';
 
 /** 승인된 장소 전체 (공개 RLS: status = approved) */
 export async function getApprovedPlaces() {

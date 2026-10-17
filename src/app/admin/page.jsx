@@ -8,7 +8,7 @@ import AdminPanel from './AdminPanel';
 
 export const dynamic = 'force-dynamic';
 
-/** 운영자 화면: 장소 검수 · 제보 처리 · MVP 지표 */
+/** 운영자 화면: 장소 검수 · 제보 처리 · AI 루트 · MVP 지표 */
 export default async function AdminPage() {
   const user = await getCurrentUser();
   if (!user) redirect('/login?next=/admin');
@@ -17,15 +17,29 @@ export default async function AdminPage() {
   try {
     const db = createAdminClient();
     const since = new Date(Date.now() - 90 * 86400000).toISOString();
-    const [places, tags, reports, events] = await Promise.all([
+    const [places, tags, reports, events, aiRoutes] = await Promise.all([
       db.from(TABLES.places).select('*').order('status').order('updated_ts', { ascending: false }),
       db.from(TABLES.kidTags).select('*').order('sort_order'),
       db.from(TABLES.reports).select('*').eq('status', 'pending').order('created_ts', { ascending: false }).limit(100),
       db.from(TABLES.events).select('name, trip_id').gte('created_ts', since).limit(20000),
+      db
+        .from(TABLES.aiRoutes)
+        .select('id, code, title, region, companion_type, day_count, tags, is_active, pick_count')
+        .order('region')
+        .order('companion_type')
+        .order('day_count'),
     ]);
-    for (const r of [places, tags, reports, events]) if (r.error) throw new Error(r.error.message);
+    for (const r of [places, tags, reports, events, aiRoutes]) if (r.error) throw new Error(r.error.message);
 
-    return <AdminPanel places={places.data} tags={tags.data} reports={reports.data} metrics={computeMetrics(events.data)} />;
+    return (
+      <AdminPanel
+        places={places.data}
+        tags={tags.data}
+        reports={reports.data}
+        aiRoutes={aiRoutes.data}
+        metrics={computeMetrics(events.data)}
+      />
+    );
   } catch (e) {
     return (
       <>
@@ -52,6 +66,6 @@ function computeMetrics(events) {
     { label: '공유 수', value: count(EVENTS.tripShared) },
     { label: '공개 등록', value: count(EVENTS.tripPublished) },
     { label: '제보 수', value: count(EVENTS.reportCreated) },
-    { label: 'AI 빈칸 채우기', value: count(EVENTS.aiFill) },
+    { label: 'AI 초안·빈칸 채우기', value: count(EVENTS.aiFill) },
   ];
 }
