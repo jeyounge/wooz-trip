@@ -38,6 +38,10 @@ npm run tour:collect -- status     # 진행 상황
 - **개발계정은 API마다 하루 1,000회.** 스크립트가 하루 950회에서 멈추고, 다음 날 같은 명령을 다시 실행하면
   받은 것은 건너뛰고 이어서 받는다. 제주 장소가 2천 곳 안팎이면 `detail`은 2~3일 걸린다.
   빨리 하려면 data.go.kr에서 운영계정(트래픽 증가)을 신청한다.
+- **자동 이어받기**: 윈도우 작업 스케줄러 "wooz-trip TourAPI daily"가 매일 00:10에
+  `scripts/tourapi/daily.cmd`(detail → withtour → build)를 실행한다. 다 받은 뒤에는 호출 없이 끝난다.
+  로그는 `data/raw/tourapi/daily.log`. PC가 꺼져 있었으면 켜질 때 한 번 실행된다.
+  끄기: `Unregister-ScheduledTask -TaskName "wooz-trip TourAPI daily"` (PowerShell)
 - `detail`은 관광지 → 문화시설 → 음식점 → 레포츠 순서로 받는다. `--max 200`처럼 나눠 받을 수 있다.
 - 지역 필터가 0건이면 `.env.local`에 `TOURAPI_REGION=areaCode=39`를 넣는다 (probe가 둘 다 확인해 준다).
 
