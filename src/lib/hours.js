@@ -29,6 +29,8 @@ export function dowOf(dateStr) {
   return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
 }
 
+export const WEEKDAY_NAMES = WEEKDAYS;
+
 export function weekdayLabel(dateStr) {
   return WEEKDAYS[dowOf(dateStr)];
 }

@@ -199,10 +199,26 @@ export function rowWarning(r) {
 
 /** 하루 요약 문구: "공항 → 협재 모래놀이 → 카페 → 저녁" */
 export function daySummary(day, placeMap) {
+  if (!day.slots.some((s) => s.placeId && placeMap[s.placeId])) return '';
   return day.slots
     .map((s) => (s.placeId ? placeMap[s.placeId]?.name : s.fixed?.kind?.startsWith('airport') ? '공항' : null))
     .filter(Boolean)
     .join(' → ');
+}
+
+/** 지도용 점 목록: 일자별 [{ lat, lng, n, kind, label }] (장소만 번호를 매긴다) */
+export function mapDays(days, placeMap, trip) {
+  return (days || []).map((d) => {
+    let n = 0;
+    const points = [];
+    for (const s of d.slots) {
+      const pt = slotPoint(s, placeMap, trip);
+      if (!pt) continue;
+      if (s.placeId) points.push({ ...pt, n: ++n, kind: 'place', label: placeMap[s.placeId]?.name });
+      else points.push({ ...pt, kind: s.fixed?.kind?.startsWith('airport') ? 'airport' : 'stay', label: s.fixed?.name });
+    }
+    return { date: d.date, points };
+  });
 }
 
 /** 루트에 쓰인 장소 ID 목록 */

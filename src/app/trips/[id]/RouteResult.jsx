@@ -1,0 +1,347 @@
+'use client';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { BackLink } from '@/components/ui';
+import { IconBookmark, IconDown, IconEdit, IconHome, IconUp, IconWarn } from '@/components/Icons';
+import RouteMap from '@/components/RouteMap';
+import Sheet from '@/components/Sheet';
+import { DAY_LABELS, dayStyle } from '@/lib/config';
+import { computeDay, mapDays, rowWarning, summarize } from '@/lib/trip';
+import { formatDuration } from '@/lib/geo';
+import { tripSubtitle } from '@/lib/format';
+import { publishTrip, saveDays, shareTrip, unpublishTrip } from '@/app/actions/trips';
+
+/** S05 루트 결과: 지도 동선 + 타임라인 + 순서 바꾸기·메모 + 저장/공유/공개 */
+export default function RouteResult({ trip: initialTrip, placeMap, userEmail }) {
+  const router = useRouter();
+  const [trip, setTrip] = useState(initialTrip);
+  const [days, setDays] = useState(initialTrip.days);
+  const [day, setDay] = useState(0);
+  const [memoFor, setMemoFor] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [sharePending, startShare] = useTransition();
+  const timer = useRef(null);
+  const latest = useRef(days);
+
+  const view = useMemo(() => ({ ...trip, days }), [trip, days]);
+  const sum = useMemo(() => summarize(view, placeMap), [view, placeMap]);
+  const rows = sum.perDay[day] || [];
+  const mapData = useMemo(() => mapDays(days, placeMap, view), [days, placeMap, view]);
+
+  useEffect(() => () => clearTimeout(timer.current), []);
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 2500);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  async function persist(next = latest.current) {
+    const res = await saveDays(trip.id, next);
+    if (!res.ok) setToast(`저장 실패: ${res.message}`);
+    return res.ok;
+  }
+  function update(next) {
+    setDays(next);
+    latest.current = next;
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => persist(next), 800);
+  }
+
+  /** 순서 바꾸기: 시간 칸은 그대로 두고 장소만 앞/뒤 칸과 맞바꾼다 */
+  function move(slotId, dir) {
+    const slots = [...days[day].slots];
+    const i = slots.findIndex((s) => s.id === slotId);
+    let j = i + dir;
+    while (j >= 0 && j < slots.length && slots[j].fixed) j += dir;
+    if (j < 0 || j >= slots.length) return;
+    const a = slots[i];
+    const b = slots[j];
+    slots[i] = { ...a, placeId: b.placeId, memo: b.memo, aiReason: b.aiReason, stayMinutes: b.placeId ? b.stayMinutes : a.stayMinutes };
+    slots[j] = { ...b, placeId: a.placeId, memo: a.memo, aiReason: a.aiReason, stayMinutes: a.stayMinutes };
+    update(days.map((d, k) => (k === day ? { ...d, slots } : d)));
+  }
+
+  function setMemo(slotId, memo) {
+    update(days.map((d, k) => (k !== day ? d : { ...d, slots: d.slots.map((s) => (s.id === slotId ? { ...s, memo } : s)) })));
+  }
+
+  async function onSave() {
+    clearTimeout(timer.current);
+    if (await persist()) setToast('저장했어요. 내 여행에서 언제든 다시 볼 수 있어요');
+  }
+
+  function onShare() {
+    startShare(async () => {
+      clearTimeout(timer.current);
+      await persist();
+      const res = await shareTrip(trip.id);
+      if (!res.ok) return setToast(res.message);
+      setTrip((t) => ({ ...t, share_id: res.shareId, visibility: t.visibility === 'public' ? 'public' : 'shared' }));
+      const url = `${window.location.origin}/s/${res.shareId}`;
+      const text = `${trip.title} 동선이에요`;
+      try {
+        if (navigator.share) {
+          await navigator.share({ title: trip.title, text, url });
+          return;
+        }
+      } catch {
+        // 공유 창을 닫은 경우 복사로 넘어간다
+      }
+      try {
+        await navigator.clipboard.writeText(url);
+        setToast('링크를 복사했어요. 가족 단톡방에 붙여 넣어 주세요');
+      } catch {
+        setToast(url);
+      }
+    });
+  }
+
+  const allOk = sum.warns === 0;
+  const st = dayStyle(day);
+  let n = 0;
+
+  return (
+    <>
+      <header className="flex items-center gap-2.5 px-4 pt-4 pb-2">
+        <BackLink href={`/trips/${trip.id}/edit?day=${day}`} label="편집으로 돌아가기" />
+        <div className="min-w-0 flex-1">
+          <div className="font-display text-xl">{sum.empty ? trip.title : '짜잔, 동선 완성!'}</div>
+          <div className={`flex items-center gap-1 text-[13px] ${allOk ? 'text-ok' : 'text-warn-ink font-bold'}`}>
+            {!allOk && <IconWarn size={14} />}
+            {allOk ? '쉬는 날·영업시간 겹치는 곳 없어요' : `확인이 필요한 곳이 ${sum.warns}곳 있어요`}
+          </div>
+          {sum.travel > 0 && <div className="text-xs text-sub">총 이동 {formatDuration(sum.travel)}</div>}
+        </div>
+        <Link href={`/trips/${trip.id}/edit?day=${day}`} aria-label="루트 고치기" className="icon-btn">
+          <IconEdit />
+        </Link>
+      </header>
+
+      <div className="px-5">
+        <RouteMap days={mapData} active={day} />
+      </div>
+
+      <nav aria-label="일자" className="flex gap-2 overflow-x-auto px-5 pt-3.5 pb-2">
+        {days.map((d, i) => (
+          <button
+            key={d.date}
+            type="button"
+            aria-pressed={day === i}
+            onClick={() => setDay(i)}
+            className={`flex h-[42px] min-w-[96px] flex-1 items-center justify-center gap-1.5 rounded-full font-display text-sm ${
+              day === i ? 'bg-selected text-selected-ink' : 'border-2 border-line bg-surface'
+            }`}
+          >
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: dayStyle(i).hex }} />
+            {DAY_LABELS[i] || `${i + 1}일차`}
+          </button>
+        ))}
+      </nav>
+
+      <main className="flex flex-1 flex-col gap-1 px-5 pt-1 pb-3">
+        <div className="pb-1 text-xs text-sub">{tripSubtitle(trip)}</div>
+        {rows.map((r) => {
+          const s = r.slot;
+          if (!s.fixed && !s.placeId) return null; // 빈 칸은 결과에서 숨긴다
+          const isPlace = !!s.placeId;
+          if (isPlace) n++;
+          const warn = rowWarning(r);
+          const tr = r.travelFromPrev;
+          return (
+            <div key={s.id} className="flex flex-col gap-1">
+              {tr && (
+                <div className="py-0.5 pl-14 text-xs text-sub">
+                  차로 {formatDuration(tr.minutes) || '바로'}
+                  {tr.nap && ' · 아이들 낮잠'}
+                </div>
+              )}
+              <div className="flex items-center gap-3 rounded-[20px] bg-surface p-3 shadow-soft">
+                <div
+                  className="flex h-9 w-9 flex-none items-center justify-center font-display text-[17px]"
+                  style={
+                    isPlace
+                      ? { background: st.hex, color: '#fff', borderRadius: '12px 18px 14px 18px' }
+                      : { background: '#FFC93C', color: '#3A2A20', borderRadius: 18 }
+                  }
+                  aria-hidden="true"
+                >
+                  {isPlace ? n : <IconHome />}
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-[13px] font-bold text-sub">{s.time}</span>
+                    <span className="truncate font-display text-base">{isPlace ? placeMap[s.placeId]?.name || '삭제된 장소' : s.fixed.name}</span>
+                  </div>
+                  {isPlace && s.stayMinutes > 0 && <div className="text-xs text-sub">머무는 시간 {formatDuration(s.stayMinutes)}</div>}
+                  {s.memo && memoFor !== s.id && <div className="text-xs text-warn-ink">챙길 것 · {s.memo}</div>}
+                  {warn && (r.check.level === 'warn' || r.lateBy > 0) && <div className="text-xs font-bold text-warn-ink">{warn}</div>}
+                  {isPlace && memoFor !== s.id && (
+                    <button type="button" onClick={() => setMemoFor(s.id)} className="self-start text-xs text-sub underline">
+                      {s.memo ? '메모 고치기' : '+ 챙길 것 메모'}
+                    </button>
+                  )}
+                  {memoFor === s.id && (
+                    <MemoInput
+                      initial={s.memo}
+                      onDone={(v) => {
+                        setMemo(s.id, v);
+                        setMemoFor(null);
+                      }}
+                    />
+                  )}
+                </div>
+                {isPlace && (
+                  <div className="flex flex-none flex-col gap-1">
+                    <button type="button" aria-label="앞으로" onClick={() => move(s.id, -1)} className="flex h-8 w-9 items-center justify-center rounded-xl bg-bg text-sub">
+                      <IconUp />
+                    </button>
+                    <button type="button" aria-label="뒤로" onClick={() => move(s.id, 1)} className="flex h-8 w-9 items-center justify-center rounded-xl bg-bg text-sub">
+                      <IconDown />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        {sum.empty > 0 && (
+          <Link href={`/trips/${trip.id}/edit?day=${day}`} className="mt-2 rounded-2xl border-2 border-dashed border-line-strong p-3 text-center text-sm text-sub">
+            아직 빈 슬롯이 {sum.empty}개 있어요 · 채우러 가기
+          </Link>
+        )}
+      </main>
+
+      <div className="sticky bottom-0 z-10 flex gap-2 bg-bg px-5 pt-2.5 pb-6">
+        <button type="button" aria-label="저장" onClick={onSave} className="flex h-14 w-14 flex-none items-center justify-center rounded-full border-2 border-line bg-surface">
+          <IconBookmark />
+        </button>
+        <button type="button" onClick={onShare} disabled={sharePending} className="btn-yellow flex-1">
+          {sharePending ? '링크 만드는 중…' : '가족 단톡에 공유'}
+        </button>
+        <button type="button" onClick={() => setPublishOpen(true)} className="btn-cta flex-1 text-base">
+          {trip.visibility === 'public' ? '공개 중' : '자랑하기'}
+        </button>
+      </div>
+
+      {toast && (
+        <div role="status" className="fixed bottom-28 left-1/2 z-50 w-[calc(100%-40px)] max-w-[390px] -translate-x-1/2 break-all rounded-2xl bg-selected px-4 py-3 text-sm text-selected-ink">
+          {toast}
+        </div>
+      )}
+
+      {publishOpen && (
+        <PublishSheet
+          trip={trip}
+          defaultName={(userEmail || '').split('@')[0]}
+          onClose={() => setPublishOpen(false)}
+          onDone={(patch, goDetail) => {
+            setTrip((t) => ({ ...t, ...patch }));
+            setPublishOpen(false);
+            if (goDetail) router.push(`/routes/${trip.id}`);
+            else setToast('공개를 취소했어요. 가족 공유 링크는 그대로 열려요');
+          }}
+          beforePublish={() => {
+            clearTimeout(timer.current);
+            return persist();
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+function MemoInput({ initial, onDone }) {
+  const [v, setV] = useState(initial || '');
+  return (
+    <form
+      className="flex gap-1.5"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onDone(v.trim());
+      }}
+    >
+      <input
+        autoFocus
+        value={v}
+        maxLength={200}
+        onChange={(e) => setV(e.target.value)}
+        placeholder="예: 모래놀이 장난감, 여벌 옷"
+        aria-label="챙길 것 메모"
+        className="min-w-0 flex-1 rounded-xl bg-bg px-2.5 py-2 text-sm outline-none"
+      />
+      <button type="submit" className="rounded-xl bg-selected px-3 text-sm text-selected-ink">
+        완료
+      </button>
+    </form>
+  );
+}
+
+function PublishSheet({ trip, defaultName, onClose, onDone, beforePublish }) {
+  const [title, setTitle] = useState(trip.title);
+  const [authorName, setAuthorName] = useState(trip.author_name || defaultName);
+  const [tip, setTip] = useState(trip.author_tip || '');
+  const [err, setErr] = useState(null);
+  const [pending, start] = useTransition();
+  const isPublic = trip.visibility === 'public';
+
+  return (
+    <Sheet title={isPublic ? '공개 루트 고치기' : '우리 루트 자랑하기'} sub="다른 가족이 보고 그대로 따라갈 수 있어요" onClose={onClose}>
+      <div className="flex flex-col gap-2.5 px-5 pb-8">
+        <label className="field bg-surface">
+          루트 이름
+          <input value={title} maxLength={60} onChange={(e) => setTitle(e.target.value)} />
+        </label>
+        <label className="field bg-surface">
+          보여줄 이름 (예: 제키네 가족)
+          <input value={authorName} maxLength={20} onChange={(e) => setAuthorName(e.target.value)} />
+        </label>
+        <label className="field bg-surface">
+          엄마아빠 꿀팁 (선택)
+          <textarea
+            rows={3}
+            maxLength={500}
+            value={tip}
+            onChange={(e) => setTip(e.target.value)}
+            placeholder="예: 협재는 오후 물때가 좋아요. 비 오면 실내 코스로 바꿨어요."
+            className="resize-none font-normal"
+          />
+        </label>
+        <p className="m-0 text-xs leading-relaxed text-sub">공개하면 루트 이름·보여줄 이름·아이 나이·여행 달·장소 목록이 보여요. 이메일은 보이지 않아요.</p>
+        {err && <p className="m-0 text-sm font-bold text-warn-ink">{err}</p>}
+        <button
+          type="button"
+          disabled={pending}
+          className="btn-cta"
+          onClick={() =>
+            start(async () => {
+              if (!(await beforePublish())) return;
+              const res = await publishTrip(trip.id, { title, authorName, tip });
+              if (!res.ok) return setErr(res.message);
+              onDone({ title, author_name: authorName, author_tip: tip, visibility: 'public' }, true);
+            })
+          }
+        >
+          {pending ? '올리는 중…' : isPublic ? '고친 내용 올리기' : '공개하기'}
+        </button>
+        {isPublic && (
+          <button
+            type="button"
+            disabled={pending}
+            className="h-11 text-sm text-sub underline"
+            onClick={() =>
+              start(async () => {
+                const res = await unpublishTrip(trip.id);
+                if (!res.ok) return setErr(res.message);
+                onDone({ visibility: 'shared' }, false);
+              })
+            }
+          >
+            공개 취소하기
+          </button>
+        )}
+      </div>
+    </Sheet>
+  );
+}

@@ -1,0 +1,43 @@
+/*
+ * 테마 토큰 — 확정 시안: B "따뜻한 가족 앨범"
+ * 시안을 바꾸려면 :root 값만 교체한다 (A·C 값은 docs/conventions.md 표 참고).
+ *
+ * 참고: 시안 B의 주 CTA #D2492F 는 흰 글자 대비가 4.44:1 로 기준(4.5:1)에 조금 못 미쳐
+ *       #CC4329 (4.77:1) 로 아주 살짝 진하게 바꿨다.
+ */
+:root {
+  --c-bg: #fff7ec;
+  --c-surface: #ffffff;
+  --c-soft: #f3e3d1;
+  --c-ink: #3a2a20;
+  --c-sub: #7a6352;
+  --c-line: #f0dcc4;
+  --c-line-strong: #e8c9a8;
+
+  --c-cta: #cc4329;
+  --c-cta-ink: #ffffff;
+  --c-cta-shadow: #9e3520;
+
+  --c-accent: #ffc93c; /* 노랑: 히어로·시간 핀·두 번째 버튼 */
+  --c-accent-soft: #ffe08a;
+
+  --c-selected: #3a2a20;
+  --c-selected-ink: #ffffff;
+
+  --c-tag: #bfe6d5;
+  --c-tag-ink: #1e5a45;
+  --c-warn: #ffe3dc;
+  --c-warn-ink: #9e3520;
+  --c-ok: #1e5a45;
+
+  --c-mint: #bfe6d5;
+  --c-sky: #d9e4ff;
+  --c-peach: #ffc6b8;
+
+  --c-day1: #d2492f;
+  --c-day2: #2e8a6a;
+  --c-day3: #3b5ba5;
+
+  --r-card: 24px;
+  --r-btn: 9999px;
+}

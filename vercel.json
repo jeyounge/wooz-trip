@@ -1,0 +1,9 @@
+{
+  "framework": "nextjs",
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "s-maxage=0, no-cache, no-store, must-revalidate" }]
+    }
+  ]
+}

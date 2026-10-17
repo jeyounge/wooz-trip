@@ -44,6 +44,43 @@ function companionRules(trip) {
 }
 
 /**
+ * 관리자 화면: 운영자가 체크한 태그·종류만으로 장소 소개 초안 한 문장을 만든다.
+ * 운영자가 검수한 뒤 저장한다 (자동 저장하지 않음).
+ */
+export async function draftPlaceIntro(place, tagLabels) {
+  const tags = (place.kid_tags || []).map((t) => tagLabels[t] || t);
+  const fallback = `${place.sub_category || '장소'}${tags.length ? ` · ${tags.slice(0, 3).join(', ')}` : ''}${place.indoor ? ' · 실내' : ''}`;
+  if (!process.env.ANTHROPIC_API_KEY) return fallback;
+  try {
+    const client = new Anthropic();
+    const response = await client.beta.messages.create(
+      {
+        model: MODEL,
+        max_tokens: 2000,
+        betas: ['server-side-fallback-2026-07-01'],
+        fallbacks: 'default',
+        output_config: { effort: 'low' },
+        system:
+          '너는 제주 가족 여행 서비스의 장소 소개 문장을 쓰는 편집자다. 주어진 정보만 써서 한국어 한 문장(50자 안팎)으로 쓴다. 맛·분위기·리뷰·가격 등 주어지지 않은 사실은 지어내지 않는다. 문장만 출력한다.',
+        messages: [
+          {
+            role: 'user',
+            content: JSON.stringify({ 종류: place.sub_category || place.category, 아이편의: tags, 실내: !!place.indoor }),
+          },
+        ],
+      },
+      { timeout: 30_000 }
+    );
+    if (response.stop_reason === 'refusal') return fallback;
+    const text = response.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
+    return text || fallback;
+  } catch (e) {
+    console.error('[ai] draftPlaceIntro 실패:', e?.message || e);
+    return fallback;
+  }
+}
+
+/**
  * @param {object} trip
  * @param {object[]} promptTasks fill.tasksForPrompt 결과
  * @returns {Promise<Array<{slotId, placeId, reason}>|null>}
