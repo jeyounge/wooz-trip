@@ -26,8 +26,10 @@ try {
 } catch {
   // 이미 환경변수가 있으면 그대로
 }
-let KEY = process.env.TOURAPI_SERVICE_KEY || '';
-if (KEY.includes('%')) KEY = decodeURIComponent(KEY); // Encoding 키를 넣어도 동작하게
+// Encoding 키(%가 들어간 것)를 넣어도 동작하게 풀어서 쓴다
+const decodeKey = (k) => (k.includes('%') ? decodeURIComponent(k) : k).trim();
+const KEY = decodeKey(process.env.TOURAPI_SERVICE_KEY || ''); // 국문 관광정보
+const WITH_KEY = decodeKey(process.env.TOURAPI_WITH_SERVICE_KEY || '') || KEY; // 무장애 (따로 받았으면 이 키, 없으면 국문 키)
 
 const args = process.argv.slice(2);
 const cmd = args[0] || 'status';
@@ -58,7 +60,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function call(base, op, params = {}) {
   const api = base === WITH ? 'with' : 'kor';
   if (used(api) >= DAILY_LIMIT) throw new StopError(`오늘 ${api === 'with' ? '무장애' : '국문'} API 호출 ${used(api)}회 — 한도에 닿아 멈춰요. 내일 다시 실행하면 이어서 받아요.`);
-  const q = new URLSearchParams({ serviceKey: KEY, MobileOS: 'ETC', MobileApp: 'wooztrip', _type: 'json', ...params });
+  const q = new URLSearchParams({ serviceKey: base === WITH ? WITH_KEY : KEY, MobileOS: 'ETC', MobileApp: 'wooztrip', _type: 'json', ...params });
   for (let attempt = 1; attempt <= 3; attempt++) {
     let res;
     try {

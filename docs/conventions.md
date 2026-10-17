@@ -87,7 +87,8 @@ test/                     node --test 단위 테스트
 | `ADMIN_EMAIL` | 운영자 계정 |
 | `NEXT_PUBLIC_KAKAO_MAP_KEY` | 카카오맵 (없으면 간이 SVG 지도) |
 | `NEXT_PUBLIC_SERVICE_NAME` | 서비스명 (미정, 기본값 “우즈트립”) |
-| `TOURAPI_SERVICE_KEY` | 장소 수집 스크립트 전용 (공공데이터포털 인증키). 서비스 화면은 안 씀 |
+| `TOURAPI_SERVICE_KEY` | 장소 수집 스크립트 전용 (공공데이터포털 인증키, 국문 관광정보). 서비스 화면은 안 씀 |
+| `TOURAPI_WITH_SERVICE_KEY` | 무장애 여행 정보 키 (다른 키를 받았을 때만, 비우면 위 키 사용) |
 
 ## 7. 디자인 (시안 B 확정)
 
