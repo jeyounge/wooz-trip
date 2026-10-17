@@ -1,8 +1,8 @@
 'use client';
-import { useMemo, useState, useTransition } from 'react';
+import { Fragment, useMemo, useState, useTransition } from 'react';
 import { TopBar } from '@/components/ui';
 import { CATEGORIES, COMPANIONS, REGIONS, WEEKDAYS } from '@/lib/config';
-import { createPlace, draftIntro, resolveReport, setAiRouteActive, updatePlace } from './actions';
+import { createPlace, draftIntro, resolveReport, setAiRouteActive, setPlacesStatus, updatePlace } from './actions';
 
 const STATUS = { candidate: '후보', approved: '승인', excluded: '제외' };
 const REPORT_TYPES = { closed: '휴무·폐업', info: '정보 변경', tag: '아이 태그' };
@@ -105,22 +105,131 @@ function AiRoutesTab({ routes: initial }) {
   );
 }
 
+const FLAG_LABELS = {
+  hours_missing: '영업시간 없음',
+  hours_check: '영업시간 확인',
+  hours_seasonal: '계절별 시간',
+  hours_break: '브레이크타임',
+  closed_monthly: '월 단위 휴무',
+  closed_irregular: '부정기 휴무',
+  closed_check: '휴무 확인',
+  no_detail: '상세 미수집',
+  region_check: '지역 확인',
+};
+const PAGE = 30;
+const KID_ONLY = ['baby_chair', 'kids_menu', 'stroller', 'nursing', 'floor_seat', 'foot_wash', 'kids_zone'];
+
 function PlacesTab({ places, setPlaces, tags }) {
   const [filter, setFilter] = useState('candidate');
+  const [region, setRegion] = useState('');
+  const [category, setCategory] = useState('');
+  const [check, setCheck] = useState('');
+  const [q, setQ] = useState('');
+  const [shown, setShown] = useState(PAGE);
+  const [selected, setSelected] = useState(() => new Set());
   const [adding, setAdding] = useState(false);
-  const list = places.filter((p) => filter === 'all' || p.status === filter);
-  const replace = (p) => setPlaces((all) => all.map((x) => (x.id === p.id ? p : x)));
+  const [msg, setMsg] = useState(null);
+  const [pending, start] = useTransition();
 
+  const list = useMemo(() => {
+    const term = q.trim();
+    return places.filter(
+      (p) =>
+        (filter === 'all' || p.status === filter) &&
+        (!region || p.region === region) &&
+        (!category || p.category === category) &&
+        (!term || p.name.includes(term) || (p.address || '').includes(term) || (p.sub_category || '').includes(term)) &&
+        (!check ||
+          (check === 'flags' && p.source_data?.flags?.length > 0) ||
+          (check === 'notags' && !p.kid_tags?.some((t) => KID_ONLY.includes(t))) ||
+          (check === 'nohours' && !p.opening_hours))
+    );
+  }, [places, filter, region, category, check, q]);
+
+  const replace = (p) => setPlaces((all) => all.map((x) => (x.id === p.id ? p : x)));
+  const visible = list.slice(0, shown);
+  const toggleSel = (id) =>
+    setSelected((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+
+  function bulk(status) {
+    const ids = [...selected];
+    if (!ids.length) return;
+    start(async () => {
+      setMsg(null);
+      const res = await setPlacesStatus(ids, status);
+      if (!res.ok) return setMsg(res.message);
+      const picked = new Set(ids);
+      setPlaces((all) => all.map((x) => (picked.has(x.id) ? { ...x, status } : x)));
+      setSelected(new Set());
+      setMsg(`${ids.length}곳을 ${STATUS[status]}했어요`);
+    });
+  }
+
+  const sel = 'rounded-xl bg-surface px-2 py-2 text-xs';
   return (
     <>
       <div className="flex gap-1.5 overflow-x-auto">
         {[['candidate', '후보'], ['approved', '승인'], ['excluded', '제외'], ['all', '전체']].map(([id, l]) => (
-          <button key={id} type="button" onClick={() => setFilter(id)} className={`pill whitespace-nowrap ${filter === id ? 'pill-on' : ''}`}>
+          <button
+            key={id}
+            type="button"
+            onClick={() => {
+              setFilter(id);
+              setShown(PAGE);
+              setSelected(new Set());
+            }}
+            className={`pill whitespace-nowrap ${filter === id ? 'pill-on' : ''}`}
+          >
             {l} {id === 'all' ? places.length : places.filter((p) => p.status === id).length}
           </button>
         ))}
         <button type="button" onClick={() => setAdding(!adding)} className="pill ml-auto whitespace-nowrap">
           {adding ? '닫기' : '+ 장소 추가'}
+        </button>
+      </div>
+      <div className="grid grid-cols-3 gap-1.5">
+        <select className={sel} value={region} onChange={(e) => setRegion(e.target.value)} aria-label="지역 필터">
+          <option value="">지역 전체</option>
+          {REGIONS.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.short}
+            </option>
+          ))}
+        </select>
+        <select className={sel} value={category} onChange={(e) => setCategory(e.target.value)} aria-label="종류 필터">
+          <option value="">종류 전체</option>
+          {Object.entries(CATEGORIES).map(([k, v]) => (
+            <option key={k} value={k}>
+              {v}
+            </option>
+          ))}
+        </select>
+        <select className={sel} value={check} onChange={(e) => setCheck(e.target.value)} aria-label="확인 필요 필터">
+          <option value="">확인 전체</option>
+          <option value="flags">확인 필요 표시</option>
+          <option value="notags">아이 태그 없음</option>
+          <option value="nohours">영업시간 없음</option>
+        </select>
+      </div>
+      <input className="rounded-xl bg-surface px-3 py-2 text-sm outline-none" placeholder="이름·주소·세부 검색" value={q} onChange={(e) => setQ(e.target.value)} />
+      <div className="flex flex-wrap items-center gap-1.5 text-xs text-sub">
+        <span className="min-w-0 flex-1">
+          {list.length}곳{selected.size > 0 && ` · ${selected.size}곳 선택`}
+          {msg && <b className="ml-1 text-ink">{msg}</b>}
+        </span>
+        <button type="button" onClick={() => setSelected(new Set(visible.map((p) => p.id)))} className="rounded-full bg-surface px-3 py-2">
+          보이는 것 선택
+        </button>
+        <button type="button" disabled={pending || !selected.size} onClick={() => bulk('approved')} className="rounded-full bg-ok px-3 py-2 text-white disabled:opacity-40">
+          선택 승인
+        </button>
+        <button type="button" disabled={pending || !selected.size} onClick={() => bulk('excluded')} className="rounded-full bg-soft px-3 py-2 text-ink disabled:opacity-40">
+          선택 제외
         </button>
       </div>
       {adding && (
@@ -133,17 +242,60 @@ function PlacesTab({ places, setPlaces, tags }) {
           }}
         />
       )}
-      {list.map((p) => (
-        <PlaceForm key={p.id} place={p} tags={tags} onSaved={replace} />
+      {visible.map((p) => (
+        <PlaceForm key={p.id} place={p} tags={tags} onSaved={replace} selected={selected.has(p.id)} onSelect={() => toggleSel(p.id)} />
       ))}
-      {!list.length && <div className="card p-5 text-center text-sm text-sub">해당 상태의 장소가 없어요</div>}
+      {list.length > shown && (
+        <button type="button" onClick={() => setShown((n) => n + PAGE)} className="h-11 rounded-2xl bg-surface text-sm">
+          더 보기 ({list.length - shown}곳 남음)
+        </button>
+      )}
+      {!list.length && <div className="card p-5 text-center text-sm text-sub">조건에 맞는 장소가 없어요</div>}
     </>
   );
 }
 
-function PlaceForm({ place, tags, onSaved }) {
+/** TourAPI 원문 힌트 (운영자가 시간·태그를 확인할 때 참고) */
+function SourceHints({ data }) {
+  if (!data) return null;
+  const rows = [
+    ['영업시간', data.hoursText],
+    ['휴무', data.closedText],
+    ['유모차', data.strollerText],
+    ['수유실', data.nursingText],
+    ['유아 의자', data.babyChairText],
+    ['놀이방', data.kidsText],
+    ['주차', data.parkingText],
+    ['메뉴', data.menuText],
+    ['체험 연령', data.ageText],
+  ].filter(([, v]) => v);
+  return (
+    <div className="rounded-xl bg-bg px-3 py-2 text-xs text-sub">
+      <div className="mb-1 font-bold text-ink">
+        TourAPI 원문{data.type ? ` · ${data.type}` : ''}
+        {data.flags?.length > 0 && <span className="ml-1 text-warn-ink">· {data.flags.map((f) => FLAG_LABELS[f] || f).join(', ')}</span>}
+      </div>
+      {rows.length ? (
+        <dl className="m-0 grid grid-cols-[64px_1fr] gap-x-2 gap-y-0.5">
+          {rows.map(([k, v]) => (
+            <Fragment key={k}>
+              <dt>{k}</dt>
+              <dd className="m-0 whitespace-pre-line text-ink">{v}</dd>
+            </Fragment>
+          ))}
+        </dl>
+      ) : (
+        <div>상세 정보 없음</div>
+      )}
+    </div>
+  );
+}
+
+function PlaceForm({ place, tags, onSaved, selected = false, onSelect }) {
   const isNew = !place;
   const h = place?.opening_hours?.all || {};
+  // 요일별 시간("0".."6")은 이 폼에서 고치지 않지만 저장할 때 지우지 않게 같이 보낸다
+  const overrides = Object.fromEntries(Object.entries(place?.opening_hours || {}).filter(([k]) => k !== 'all'));
   const [f, setF] = useState({
     name: place?.name || '',
     category: place?.category || 'food',
@@ -152,6 +304,8 @@ function PlaceForm({ place, tags, onSaved }) {
     lat: place?.lat ?? '',
     lng: place?.lng ?? '',
     hours: { open: h.open || '', close: h.close || '', lastOrder: h.lastOrder || '' },
+    hoursOverrides: overrides,
+    address: place?.address || '',
     regular_closed_days: place?.regular_closed_days || [],
     kid_tags: place?.kid_tags || [],
     indoor: !!place?.indoor,
@@ -180,11 +334,14 @@ function PlaceForm({ place, tags, onSaved }) {
     <div className="card flex flex-col gap-2 p-4">
       {!isNew && (
         <div className="flex items-center gap-2">
+          {onSelect && <input type="checkbox" checked={selected} onChange={onSelect} aria-label={`${place.name} 선택`} className="h-5 w-5 flex-none" />}
           <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="min-w-0 flex-1 text-left">
             <div className="truncate font-display text-base">{place.name}</div>
             <div className="text-xs text-sub">
               {CATEGORIES[place.category]} · {REGIONS.find((r) => r.id === place.region)?.short} · {STATUS[place.status]}
               {place.is_sample && ' · 샘플'}
+              {place.source_provider === 'tourapi' && ' · TourAPI'}
+              {place.source_data?.flags?.length > 0 && <span className="text-warn-ink"> · 확인 {place.source_data.flags.length}</span>}
             </div>
           </button>
           {place.status !== 'approved' && (
@@ -201,7 +358,9 @@ function PlaceForm({ place, tags, onSaved }) {
       )}
       {open && (
         <div className="flex flex-col gap-2">
+          <SourceHints data={place?.source_data} />
           <input className={input} placeholder="이름 (실존 업체명은 공식 API/직접 확인한 것만)" value={f.name} onChange={(e) => set('name', e.target.value)} />
+          <input className={input} placeholder="주소" value={f.address} onChange={(e) => set('address', e.target.value)} />
           <div className="grid grid-cols-3 gap-1.5">
             <select className={input} value={f.category} onChange={(e) => set('category', e.target.value)} aria-label="종류">
               {Object.entries(CATEGORIES).map(([k, v]) => (
@@ -231,6 +390,17 @@ function PlaceForm({ place, tags, onSaved }) {
               </label>
             ))}
           </div>
+          {Object.keys(f.hoursOverrides).length > 0 && (
+            <div className="text-xs text-sub">
+              요일별 시간:{' '}
+              {Object.entries(f.hoursOverrides)
+                .map(([d, v]) => `${WEEKDAYS[d]} ${v.open}~${v.close}`)
+                .join(', ')}{' '}
+              <button type="button" onClick={() => set('hoursOverrides', {})} className="underline">
+                지우기
+              </button>
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-1 text-xs text-sub">
             정기휴무
             {WEEKDAYS.map((w, i) => (

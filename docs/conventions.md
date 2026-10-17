@@ -37,11 +37,13 @@ src/
     ai/routes.js          미리 만든 AI 루트 고르기·내 일정에 맞추기 (순수 함수)
     ai/fill.js            남은 빈칸 규칙 채우기·최종 검사 (순수 함수)
     ai/store.js           AI 루트 조회 (서버 전용)
+    tourapi/transform.js  TourAPI 응답 → 장소 행 (영업시간·휴무 글 해석, 순수 함수)
 data/
   sample-places.mjs       개발용 가짜 장소 (seed·루트 생성기 공용)
   ai-routes/*.json        미리 만든 AI 루트 원본 → npm run routes:sql
 supabase/migrations/      000N_wooz_trip_*.sql (SQL Editor에 붙여 넣어 실행)
-scripts/                  시드·AI 루트 SQL 생성기, 장소 내보내기
+scripts/                  시드·AI 루트 SQL 생성기, 장소 내보내기, tourapi/ 장소 수집·변환
+supabase/data/            TourAPI 장소 후보 SQL (생성물, 순서대로 실행)
 test/                     node --test 단위 테스트
 ```
 
@@ -85,6 +87,7 @@ test/                     node --test 단위 테스트
 | `ADMIN_EMAIL` | 운영자 계정 |
 | `NEXT_PUBLIC_KAKAO_MAP_KEY` | 카카오맵 (없으면 간이 SVG 지도) |
 | `NEXT_PUBLIC_SERVICE_NAME` | 서비스명 (미정, 기본값 “우즈트립”) |
+| `TOURAPI_SERVICE_KEY` | 장소 수집 스크립트 전용 (공공데이터포털 인증키). 서비스 화면은 안 씀 |
 
 ## 7. 디자인 (시안 B 확정)
 

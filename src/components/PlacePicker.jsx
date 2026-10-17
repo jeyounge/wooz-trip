@@ -167,6 +167,7 @@ export default function PlacePicker({ date, dayLabel, slot, from, tags, companio
             </article>
           );
         })}
+        <p className="m-0 px-1 pb-2 text-center text-[11px] text-sub">장소 기본 정보 일부 출처: 한국관광공사 TourAPI · 방문 전 영업 여부를 한 번 더 확인해 주세요</p>
       </div>
     </Sheet>
   );

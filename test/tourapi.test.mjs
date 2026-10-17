@@ -1,0 +1,80 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { cleanText, kidTagsOf, parseClosedDays, parseHours, regionOf, toPlace } from '../src/lib/tourapi/transform.js';
+
+test('tourapi: 지역은 주소 읍면동, 없으면 좌표', () => {
+  assert.equal(regionOf('제주특별자치도 제주시 애월읍 애월리 1'), 'jeju-west');
+  assert.equal(regionOf('제주특별자치도 서귀포시 대정읍 하모리'), 'jeju-west');
+  assert.equal(regionOf('제주특별자치도 서귀포시 성산읍 성산리'), 'jeju-east');
+  assert.equal(regionOf('제주특별자치도 제주시 구좌읍 월정리'), 'jeju-east');
+  assert.equal(regionOf('제주특별자치도 서귀포시 안덕면 사계리'), 'jeju-south');
+  assert.equal(regionOf('제주특별자치도 서귀포시 중문동'), 'jeju-south');
+  assert.equal(regionOf('제주특별자치도 제주시 연동'), 'jeju-city');
+  assert.equal(regionOf('', 33.39, 126.24), 'jeju-west');
+  assert.equal(regionOf('', 33.46, 126.93), 'jeju-east');
+  assert.equal(regionOf('', 33.25, 126.56), 'jeju-south');
+  assert.equal(regionOf('', 33.5, 126.53), 'jeju-city');
+});
+
+test('tourapi: 영업시간 글 → 시간', () => {
+  assert.deepEqual(parseHours('09:00~18:00 (입장마감 17:00)'), { hours: { all: { open: '09:00', close: '18:00', lastOrder: '17:00' } }, flags: [] });
+  assert.deepEqual(parseHours('10:00 ~ 21:00<br>라스트오더 20:30').hours, { all: { open: '10:00', close: '21:00', lastOrder: '20:30' } });
+  assert.deepEqual(parseHours('매일 9시~18시').hours, { all: { open: '09:00', close: '18:00' } });
+
+  const wk = parseHours('평일 11:00~21:00 / 주말 10:00~21:00');
+  assert.deepEqual(wk.hours.all, { open: '11:00', close: '21:00' });
+  assert.deepEqual(wk.hours['0'], { open: '10:00', close: '21:00' });
+  assert.deepEqual(wk.hours['6'], { open: '10:00', close: '21:00' });
+
+  const br = parseHours('11:00~21:00 (브레이크타임 15:00~17:00)');
+  assert.deepEqual(br.hours.all, { open: '11:00', close: '21:00' });
+  assert.ok(br.flags.includes('hours_break'));
+
+  assert.ok(parseHours('하절기 09:00~19:00 / 동절기 09:00~18:00').flags.includes('hours_seasonal'));
+  assert.deepEqual(parseHours('상시 개방 (24시간)'), { hours: null, flags: [] });
+  assert.deepEqual(parseHours('상시 개방'), { hours: null, flags: [] });
+  assert.deepEqual(parseHours('문의 바람'), { hours: null, flags: ['hours_check'] });
+  assert.deepEqual(parseHours(''), { hours: null, flags: ['hours_missing'] });
+});
+
+test('tourapi: 휴무 글 → 매주 쉬는 요일', () => {
+  assert.deepEqual(parseClosedDays('매주 월요일'), { days: [1], flags: [] });
+  assert.deepEqual(parseClosedDays('월·화요일 휴무'), { days: [1, 2], flags: [] });
+  assert.deepEqual(parseClosedDays('매주 화요일, 1월 1일, 설·추석 당일'), { days: [2], flags: [] });
+  assert.deepEqual(parseClosedDays('연중무휴'), { days: [], flags: [] });
+  assert.deepEqual(parseClosedDays('토,일 휴무'), { days: [0, 6], flags: [] });
+  const monthly = parseClosedDays('매월 첫째 주 월요일');
+  assert.deepEqual(monthly.days, []);
+  assert.ok(monthly.flags.includes('closed_monthly'));
+  assert.ok(parseClosedDays('부정기 휴무 (인스타 공지)').flags.includes('closed_irregular'));
+});
+
+test('tourapi: 아이 태그는 공식 항목에서만', () => {
+  assert.deepEqual(kidTagsOf({ parkingfood: '가능', kidsfacility: '없음' }, {}).sort(), ['parking']);
+  assert.deepEqual(
+    kidTagsOf({ chkbabycarriage: '불가' }, { stroller: '유모차 대여 가능', lactationroom: '수유실 있음(1층)', babysparechair: '' }).sort(),
+    ['nursing', 'stroller']
+  );
+  assert.equal(cleanText('a<br/>b &amp; c'), 'a\nb & c');
+});
+
+test('tourapi: 한 장소 변환 (카페 판별·휴무 태그·제주 밖 제외)', () => {
+  const item = {
+    contentid: '9001', contenttypeid: '39', title: '[테스트] 귤밭 카페', addr1: '제주특별자치도 제주시 한림읍 협재리 1',
+    mapx: '126.25', mapy: '33.39', cat3: 'A05020900', tel: '064-000-0000',
+  };
+  const { row, flags } = toPlace(item, { opentimefood: '10:00~18:00', restdatefood: '매주 화요일', parkingfood: '가능' }, {}, { A05020900: '카페/전통찻집' });
+  assert.equal(row.category, 'cafe');
+  assert.equal(row.region, 'jeju-west');
+  assert.equal(row.source_provider, 'tourapi');
+  assert.equal(row.source_external_id, '9001');
+  assert.deepEqual(row.regular_closed_days, [2]);
+  assert.ok(row.kid_tags.includes('parking') && row.kid_tags.includes('regular_closed'));
+  assert.deepEqual(row.opening_hours, { all: { open: '10:00', close: '18:00' } });
+  assert.equal(row.status, 'candidate');
+  assert.deepEqual(flags, []);
+
+  assert.equal(toPlace({ ...item, mapy: '37.5', mapx: '127.0' }), null, '제주 밖');
+  assert.equal(toPlace({ ...item, contenttypeid: '32' }), null, '숙박은 안 받음');
+  assert.ok(toPlace({ ...item, contenttypeid: '12' }).flags.includes('no_detail'));
+});

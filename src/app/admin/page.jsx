@@ -18,7 +18,7 @@ export default async function AdminPage() {
     const db = createAdminClient();
     const since = new Date(Date.now() - 90 * 86400000).toISOString();
     const [places, tags, reports, events, aiRoutes] = await Promise.all([
-      db.from(TABLES.places).select('*').order('status').order('updated_ts', { ascending: false }),
+      fetchAllPlaces(db),
       db.from(TABLES.kidTags).select('*').order('sort_order'),
       db.from(TABLES.reports).select('*').eq('status', 'pending').order('created_ts', { ascending: false }).limit(100),
       db.from(TABLES.events).select('name, trip_id').gte('created_ts', since).limit(20000),
@@ -48,6 +48,24 @@ export default async function AdminPage() {
       </>
     );
   }
+}
+
+/** 장소가 수천 곳이 될 수 있어 1,000개씩 나눠 읽는다 (Supabase 기본 한도 1,000) */
+async function fetchAllPlaces(db) {
+  const all = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await db
+      .from(TABLES.places)
+      .select('*')
+      .order('status')
+      .order('updated_ts', { ascending: false })
+      .order('id')
+      .range(from, from + 999);
+    if (error) return { data: null, error };
+    all.push(...data);
+    if (data.length < 1000) break;
+  }
+  return { data: all, error: null };
 }
 
 /** 최근 90일 지표: 루트 완성률·복사율·공유 수·제보 수 */

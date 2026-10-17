@@ -52,6 +52,7 @@ create table if not exists wooz_trip_places (
   verified_ts          timestamptz,
   external_links       jsonb not null default '{}'::jsonb,  -- {"map":"https://...","blog":"https://..."}
   is_sample            boolean not null default false,      -- 개발용 가짜 데이터 표시
+  source_data          jsonb,                  -- 출처 원문 (TourAPI 영업시간·휴무 글 등, 운영자 참고용)
   created_ts           timestamptz not null default now(),
   updated_ts           timestamptz not null default now(),
   unique (source_provider, source_external_id)
@@ -102,6 +103,7 @@ create trigger wooz_trip_trips_touch before update on wooz_trip_trips
 
 -- 이미 만든 테이블에 나중에 추가된 컬럼 (다시 실행해도 안전)
 alter table wooz_trip_trips add column if not exists ai_route_id bigint;
+alter table wooz_trip_places add column if not exists source_data jsonb;
 
 -- ─────────────────────────────────────────────
 -- ai_routes: 미리 LLM으로 만들어 둔 추천 루트 (서비스에서는 API 키 없이 꺼내 쓴다)

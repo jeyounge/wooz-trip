@@ -23,6 +23,11 @@ npm run routes:sql    # AI 루트 JSON 검사 → SQL 생성 (docs/ai-routes.md)
 "AI 초안"을 누르면 조건에 맞는 루트를 꺼내 내 날짜 기준으로 휴무·영업시간을 다시 검사해 넣는다.
 루트 추가 방법과 LLM 프롬프트는 [`docs/ai-routes.md`](docs/ai-routes.md).
 
+## 실데이터 (장소)
+
+한국관광공사 TourAPI로 후보를 모아 `/admin`에서 승인한다: `npm run tour:collect -- list` → `detail` → `npm run tour:build` → SQL 실행.
+자세한 순서는 [`docs/real-data.md`](docs/real-data.md).
+
 ## 화면
 
 | 경로 | 화면 |

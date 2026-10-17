@@ -46,6 +46,12 @@ function toPlaceRow(input, { partial = false } = {}) {
     if (h.open && h.close) {
       if (!TIME.test(h.open) || !TIME.test(h.close) || (h.lastOrder && !TIME.test(h.lastOrder))) throw new Error('영업시간 형식은 HH:MM');
       row.opening_hours = { all: h.lastOrder ? { open: h.open, close: h.close, lastOrder: h.lastOrder } : { open: h.open, close: h.close } };
+      // 요일별 시간("0".."6")은 그대로 둔다
+      for (const [d, v] of Object.entries(input.hoursOverrides || {})) {
+        if (/^[0-6]$/.test(d) && TIME.test(v?.open || '') && TIME.test(v?.close || '')) {
+          row.opening_hours[d] = { open: v.open, close: v.close, ...(TIME.test(v.lastOrder || '') ? { lastOrder: v.lastOrder } : {}) };
+        }
+      }
     } else {
       row.opening_hours = null;
     }
@@ -114,6 +120,21 @@ function introTemplate(place, tagLabels) {
   const parts = [`${kind}${place.indoor ? '(실내)' : ''}`];
   if (tags.length) parts.push(`${tags.slice(0, 3).join(', ')} 있어요`);
   return parts.join(' · ');
+}
+
+/** 여러 장소 한 번에 승인/제외 */
+export async function setPlacesStatus(ids, status) {
+  const db = await guard();
+  if (!db) return fail('권한 없음');
+  if (!['candidate', 'approved', 'excluded'].includes(status)) return fail('상태 오류');
+  const list = (ids || []).map(Number).filter(Number.isInteger).slice(0, 500);
+  if (!list.length) return fail('고른 장소가 없어요');
+  const patch = { status };
+  if (status === 'approved') patch.verified_ts = new Date().toISOString();
+  const { error } = await db.from(TABLES.places).update(patch).in('id', list);
+  if (error) return fail(error.message);
+  revalidatePath('/admin');
+  return { ok: true, count: list.length };
 }
 
 /** AI 루트 켜기/끄기 (끈 루트는 AI 초안에서 고르지 않는다) */
