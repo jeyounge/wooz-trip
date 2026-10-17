@@ -1,13 +1,15 @@
 'use client';
 import { Fragment, useMemo, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { TopBar } from '@/components/ui';
+import { AREAS } from '@/lib/areas';
 import { CATEGORIES, COMPANIONS, REGIONS, WEEKDAYS } from '@/lib/config';
 import { createPlace, draftIntro, resolveReport, setAiRouteActive, setPlacesStatus, updatePlace } from './actions';
 
 const STATUS = { candidate: '후보', approved: '승인', excluded: '제외' };
 const REPORT_TYPES = { closed: '휴무·폐업', info: '정보 변경', tag: '아이 태그' };
 
-export default function AdminPanel({ places: initialPlaces, tags, reports: initialReports, aiRoutes = [], metrics }) {
+export default function AdminPanel({ places: initialPlaces, area = '50', tags, reports: initialReports, aiRoutes = [], metrics }) {
   const [tab, setTab] = useState('places');
   const [places, setPlaces] = useState(initialPlaces);
   const [reports, setReports] = useState(initialReports);
@@ -30,7 +32,7 @@ export default function AdminPanel({ places: initialPlaces, tags, reports: initi
         ))}
       </nav>
       <main className="flex flex-1 flex-col gap-3 px-5 pb-10">
-        {tab === 'places' && <PlacesTab places={places} setPlaces={setPlaces} tags={tags} />}
+        {tab === 'places' && <PlacesTab key={area} area={area} places={places} setPlaces={setPlaces} tags={tags} />}
         {tab === 'reports' && (
           <ReportsTab reports={reports} placeName={placeName} tagLabel={tagLabel} onResolved={(id) => setReports((r) => r.filter((x) => x.id !== id))} />
         )}
@@ -119,7 +121,9 @@ const FLAG_LABELS = {
 const PAGE = 30;
 const KID_ONLY = ['baby_chair', 'kids_menu', 'stroller', 'nursing', 'floor_seat', 'foot_wash', 'kids_zone'];
 
-function PlacesTab({ places, setPlaces, tags }) {
+function PlacesTab({ area, places, setPlaces, tags }) {
+  const router = useRouter();
+  const isJeju = area === '50';
   const [filter, setFilter] = useState('candidate');
   const [region, setRegion] = useState('');
   const [category, setCategory] = useState('');
@@ -192,14 +196,22 @@ function PlacesTab({ places, setPlaces, tags }) {
           {adding ? '닫기' : '+ 장소 추가'}
         </button>
       </div>
-      <div className="grid grid-cols-3 gap-1.5">
-        <select className={sel} value={region} onChange={(e) => setRegion(e.target.value)} aria-label="지역 필터">
-          <option value="">지역 전체</option>
-          {REGIONS.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.short}
+      <div className="grid grid-cols-4 gap-1.5">
+        <select className={sel} value={area} onChange={(e) => router.push(`/admin?area=${e.target.value}`)} aria-label="시·도">
+          {AREAS.map((a) => (
+            <option key={a.code} value={a.code}>
+              {a.name}
             </option>
           ))}
+        </select>
+        <select className={sel} value={region} onChange={(e) => setRegion(e.target.value)} aria-label="권역 필터" disabled={!isJeju}>
+          <option value="">{isJeju ? '권역 전체' : '권역 없음'}</option>
+          {isJeju &&
+            REGIONS.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.short}
+              </option>
+            ))}
         </select>
         <select className={sel} value={category} onChange={(e) => setCategory(e.target.value)} aria-label="종류 필터">
           <option value="">종류 전체</option>
@@ -256,7 +268,7 @@ function PlacesTab({ places, setPlaces, tags }) {
 }
 
 /** TourAPI 원문 힌트 (운영자가 시간·태그를 확인할 때 참고) */
-function SourceHints({ data }) {
+function SourceHints({ data, home }) {
   if (!data) return null;
   const rows = [
     ['영업시간', data.hoursText],
@@ -268,12 +280,18 @@ function SourceHints({ data }) {
     ['주차', data.parkingText],
     ['메뉴', data.menuText],
     ['체험 연령', data.ageText],
+    ['소개', data.overview],
   ].filter(([, v]) => v);
   return (
     <div className="rounded-xl bg-bg px-3 py-2 text-xs text-sub">
       <div className="mb-1 font-bold text-ink">
         TourAPI 원문{data.type ? ` · ${data.type}` : ''}
         {data.flags?.length > 0 && <span className="ml-1 text-warn-ink">· {data.flags.map((f) => FLAG_LABELS[f] || f).join(', ')}</span>}
+        {home && (
+          <a href={home} target="_blank" rel="noopener noreferrer" className="ml-2 font-normal text-ok underline">
+            공식 홈페이지
+          </a>
+        )}
       </div>
       {rows.length ? (
         <dl className="m-0 grid grid-cols-[64px_1fr] gap-x-2 gap-y-0.5">
@@ -338,7 +356,7 @@ function PlaceForm({ place, tags, onSaved, selected = false, onSelect }) {
           <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="min-w-0 flex-1 text-left">
             <div className="truncate font-display text-base">{place.name}</div>
             <div className="text-xs text-sub">
-              {CATEGORIES[place.category]} · {REGIONS.find((r) => r.id === place.region)?.short} · {STATUS[place.status]}
+              {CATEGORIES[place.category]} · {REGIONS.find((r) => r.id === place.region)?.short || AREAS.find((a) => a.slug === place.region)?.name || place.region} · {STATUS[place.status]}
               {place.is_sample && ' · 샘플'}
               {place.source_provider === 'tourapi' && ' · TourAPI'}
               {place.source_data?.flags?.length > 0 && <span className="text-warn-ink"> · 확인 {place.source_data.flags.length}</span>}
@@ -358,7 +376,7 @@ function PlaceForm({ place, tags, onSaved, selected = false, onSelect }) {
       )}
       {open && (
         <div className="flex flex-col gap-2">
-          <SourceHints data={place?.source_data} />
+          <SourceHints data={place?.source_data} home={place?.external_links?.home} />
           <input className={input} placeholder="이름 (실존 업체명은 공식 API/직접 확인한 것만)" value={f.name} onChange={(e) => set('name', e.target.value)} />
           <input className={input} placeholder="주소" value={f.address} onChange={(e) => set('address', e.target.value)} />
           <div className="grid grid-cols-3 gap-1.5">
@@ -374,6 +392,11 @@ function PlaceForm({ place, tags, onSaved, selected = false, onSelect }) {
               {REGIONS.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.short}
+                </option>
+              ))}
+              {AREAS.filter((a) => a.slug !== 'jeju').map((a) => (
+                <option key={a.slug} value={a.slug}>
+                  {a.name}
                 </option>
               ))}
             </select>

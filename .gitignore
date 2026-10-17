@@ -41,3 +41,4 @@ next-env.d.ts
 
 # TourAPI 후보 SQL (npm run tour:build 로 다시 만든다)
 /supabase/data/
+/data/build/

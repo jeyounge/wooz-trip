@@ -7,6 +7,7 @@ import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { TABLES } from '@/lib/tables';
 import { CATEGORIES, REGIONS } from '@/lib/config';
+import { AREAS } from '@/lib/areas';
 
 const fail = (message) => ({ ok: false, message });
 const TIME = /^\d{2}:\d{2}$/;
@@ -31,7 +32,7 @@ function toPlaceRow(input, { partial = false } = {}) {
   if ('sub_category' in input) row.sub_category = String(input.sub_category || '').trim().slice(0, 30) || null;
   if ('address' in input) row.address = String(input.address || '').trim().slice(0, 120) || null;
   if (!partial || 'region' in input) {
-    if (!REGIONS.some((r) => r.id === input.region)) throw new Error('지역을 골라 주세요');
+    if (!REGIONS.some((r) => r.id === input.region) && !AREAS.some((a) => a.slug === input.region && a.slug !== 'jeju')) throw new Error('지역을 골라 주세요');
     row.region = input.region;
   }
   for (const k of ['lat', 'lng']) {
@@ -89,6 +90,8 @@ export async function updatePlace(id, input) {
   if (!db) return fail('권한 없음');
   try {
     const row = toPlaceRow(input, { partial: true });
+    // 내용을 고쳤으면 표시 → 매일 자동 반영(TourAPI)이 덮어쓰지 않는다 (0004 의 edited_ts)
+    if (Object.keys(row).length) row.edited_ts = new Date().toISOString();
     if ('status' in input) {
       if (!['candidate', 'approved', 'excluded'].includes(input.status)) return fail('상태 오류');
       row.status = input.status;

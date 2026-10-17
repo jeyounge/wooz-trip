@@ -9,6 +9,7 @@
 | --- | --- | --- |
 | 1 | `migrations/0001_wooz_trip_init.sql` | 테이블 6개 + 인덱스 + RLS 정책 + updated_ts 트리거 |
 | 2 | `migrations/0002_wooz_trip_seed.sql` | 아이 태그 9개 + 개발용 가짜 장소 31곳(`[샘플]`, 승인 30 · 후보 1) |
+| 4 | `migrations/0004_wooz_trip_places_import.sql` | 전국 장소 자동 반영용 컬럼·함수 (한 번만). 이후 매일 스케줄러가 후보를 넣는다 |
 | 3 | `migrations/0003_wooz_trip_ai_routes.sql` | AI 루트 테이블(없으면 생성) + 미리 만든 AI 추천 루트 23개 (샘플 장소로 만든 개발용) |
 
 > 0001·0002를 2026-10-17 이전 버전으로 이미 실행했다면 **0003만 실행하면 된다** (AI 루트 테이블·컬럼이 0003 안에도 들어 있다).

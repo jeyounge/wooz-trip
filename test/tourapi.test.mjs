@@ -1,6 +1,26 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cleanText, kidTagsOf, parseClosedDays, parseHours, regionOf, toPlace } from '../src/lib/tourapi/transform.js';
+import { cleanText, homepageOf, kidTagsOf, parseClosedDays, parseHours, regionOf, toPlace } from '../src/lib/tourapi/transform.js';
+
+test('tourapi: 전국 — 다른 시·도는 시·도 단위 지역, 홈페이지 링크', () => {
+  const item = {
+    contentid: 'i1', contenttypeid: '12', title: '[테스트] 인천 공원', addr1: '인천광역시 연수구', mapx: '126.64', mapy: '37.39',
+    lDongRegnCd: '28', lDongSignguCd: '185',
+  };
+  const { row } = toPlace(item, { usetime: '09:00~18:00' }, {}, {}, {
+    common: { homepage: '<a href="https://example.com/park" target="_blank">https://example.com/park</a>', overview: '<p>소개</p>' },
+    area: { code: '28', slug: 'incheon' },
+  });
+  assert.equal(row.region, 'incheon');
+  assert.equal(row.sido_code, '28');
+  assert.equal(row.sigungu_code, '185');
+  assert.equal(row.external_links.home, 'https://example.com/park');
+  assert.equal(row.source_data.overview, '소개');
+  // 제주 목록에 육지 좌표가 섞이면 뺀다, 다른 지역은 국내면 받는다
+  assert.equal(toPlace(item, {}, {}, {}, { area: { code: '50', slug: 'jeju' } }), null);
+  assert.equal(homepageOf('www.example.com'), 'https://www.example.com/');
+  assert.equal(homepageOf('없음'), null);
+});
 
 test('tourapi: 지역은 주소 읍면동, 없으면 좌표', () => {
   assert.equal(regionOf('제주특별자치도 제주시 애월읍 애월리 1'), 'jeju-west');

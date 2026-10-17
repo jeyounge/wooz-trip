@@ -4,12 +4,15 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { TABLES } from '@/lib/tables';
 import { EVENTS } from '@/lib/events';
 import { ErrorCard, TopBar } from '@/components/ui';
+import { AREAS, areaByCode } from '@/lib/areas';
 import AdminPanel from './AdminPanel';
 
 export const dynamic = 'force-dynamic';
 
 /** 운영자 화면: 장소 검수 · 제보 처리 · AI 루트 · MVP 지표 */
-export default async function AdminPage() {
+export default async function AdminPage({ searchParams }) {
+  const sp = await searchParams;
+  const area = areaByCode(sp?.area)?.code || AREAS[0].code; // 장소는 시·도 하나씩 본다 (전국 수만 곳)
   const user = await getCurrentUser();
   if (!user) redirect('/login?next=/admin');
   if (!isAdmin(user)) redirect('/my');
@@ -18,7 +21,7 @@ export default async function AdminPage() {
     const db = createAdminClient();
     const since = new Date(Date.now() - 90 * 86400000).toISOString();
     const [places, tags, reports, events, aiRoutes] = await Promise.all([
-      fetchAllPlaces(db),
+      fetchAllPlaces(db, area),
       db.from(TABLES.kidTags).select('*').order('sort_order'),
       db.from(TABLES.reports).select('*').eq('status', 'pending').order('created_ts', { ascending: false }).limit(100),
       db.from(TABLES.events).select('name, trip_id').gte('created_ts', since).limit(20000),
@@ -34,6 +37,7 @@ export default async function AdminPage() {
     return (
       <AdminPanel
         places={places.data}
+        area={area}
         tags={tags.data}
         reports={reports.data}
         aiRoutes={aiRoutes.data}
@@ -51,16 +55,23 @@ export default async function AdminPage() {
 }
 
 /** 장소가 수천 곳이 될 수 있어 1,000개씩 나눠 읽는다 (Supabase 기본 한도 1,000) */
-async function fetchAllPlaces(db) {
+async function fetchAllPlaces(db, area) {
   const all = [];
+  let filtered = true;
   for (let from = 0; ; from += 1000) {
-    const { data, error } = await db
-      .from(TABLES.places)
-      .select('*')
+    let query = db.from(TABLES.places).select('*');
+    // 제주는 예전 데이터(sido_code 없음)도 같이. 0004 를 아직 안 돌렸으면(컬럼 없음) 거르지 않는다
+    if (filtered) query = area === '50' ? query.or('sido_code.eq.50,sido_code.is.null') : query.eq('sido_code', area);
+    const { data, error } = await query
       .order('status')
       .order('updated_ts', { ascending: false })
       .order('id')
       .range(from, from + 999);
+    if (error && filtered && /sido_code/.test(error.message)) {
+      filtered = false;
+      from -= 1000;
+      continue;
+    }
     if (error) return { data: null, error };
     all.push(...data);
     if (data.length < 1000) break;

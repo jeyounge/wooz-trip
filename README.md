@@ -25,8 +25,8 @@ npm run routes:sql    # AI 루트 JSON 검사 → SQL 생성 (docs/ai-routes.md)
 
 ## 실데이터 (장소)
 
-한국관광공사 TourAPI로 후보를 모아 `/admin`에서 승인한다: `npm run tour:collect -- list` → `detail` → `npm run tour:build` → SQL 실행.
-자세한 순서는 [`docs/real-data.md`](docs/real-data.md).
+한국관광공사 TourAPI로 전국 장소 후보를 매일 자동 수집·DB 반영하고(LLM 호출 없음) `/admin`에서 승인한다.
+계획: [`docs/data-plan.md`](docs/data-plan.md) · 명령: [`docs/real-data.md`](docs/real-data.md).
 
 ## 화면
 

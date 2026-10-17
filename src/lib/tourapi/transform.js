@@ -253,6 +253,20 @@ export function kidTagsOf(intro = {}, withTour = {}) {
   return [...tags];
 }
 
+/** detailCommon2 의 homepage("<a href=\"https://...\">...</a>" 또는 주소 글) → URL */
+export function homepageOf(raw) {
+  const s = String(raw || '');
+  const href = s.match(/href\s*=\s*["']([^"']+)["']/i)?.[1] || s.match(/https?:\/\/[^\s"'<>]+/i)?.[0] || s.match(/\bwww\.[^\s"'<>]+/i)?.[0];
+  if (!href) return null;
+  const url = /^https?:\/\//i.test(href) ? href : `https://${href}`;
+  try {
+    const u = new URL(url.replace(/&amp;/g, '&'));
+    return u.protocol === 'https:' || u.protocol === 'http:' ? u.toString().slice(0, 300) : null;
+  } catch {
+    return null;
+  }
+}
+
 // ─────────────────────────────────────────────
 // 한 장소 변환
 // ─────────────────────────────────────────────
@@ -261,9 +275,10 @@ export function kidTagsOf(intro = {}, withTour = {}) {
  * @param {object} intro    detailIntro2 항목 (없으면 {})
  * @param {object} withTour detailWithTour2 항목 (없으면 {})
  * @param {object} codeNames 분류 코드 → 이름 (cat3 등)
+ * @param {{ common?: object, area?: { code, slug } }} opts  detailCommon2 항목, 수집 지역 (없으면 제주)
  * @returns {{ row, flags } | null}  관광 대상이 아니면 null
  */
-export function toPlace(item, intro = {}, withTour = {}, codeNames = {}) {
+export function toPlace(item, intro = {}, withTour = {}, codeNames = {}, { common = {}, area = { code: '50', slug: 'jeju' } } = {}) {
   const typeId = Number(pick(item, 'contenttypeid', 'contentTypeId'));
   const type = CONTENT_TYPES[typeId];
   if (!type) return null;
@@ -271,7 +286,10 @@ export function toPlace(item, intro = {}, withTour = {}, codeNames = {}) {
   const lat = parseFloat(pick(item, 'mapy'));
   const lng = parseFloat(pick(item, 'mapx'));
   const flags = [];
-  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < 33 || lat > 34 || lng < 126 || lng > 127.1) return null; // 제주 밖·좌표 없음
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null; // 좌표 없음
+  if (lat < 33 || lat > 38.7 || lng < 124.5 || lng > 132) return null; // 국내 밖
+  const isJeju = area.slug === 'jeju';
+  if (isJeju && (lat > 34 || lng < 126 || lng > 127.1)) return null; // 제주 목록에 섞인 육지
 
   const name = cleanText(pick(item, 'title')).slice(0, 80);
   const address = cleanText([pick(item, 'addr1'), pick(item, 'addr2')].filter(Boolean).join(' ')).slice(0, 120);
@@ -287,8 +305,10 @@ export function toPlace(item, intro = {}, withTour = {}, codeNames = {}) {
   flags.push(...h.flags, ...c.flags);
   if (!Object.keys(intro).length) flags.push('no_detail');
 
-  const region = regionOf(address, lat, lng);
+  // 제주는 서비스 권역(서쪽·동쪽·서귀포·제주시)으로, 다른 시·도는 우선 시·도 단위로 둔다
+  const region = isJeju ? regionOf(address, lat, lng) : area.slug;
   if (!region) flags.push('region_check');
+  const homepage = homepageOf(pick(common, 'homepage'));
   const kid = kidTagsOf(intro, withTour);
   if (c.days.length) kid.push('regular_closed');
 
@@ -300,7 +320,9 @@ export function toPlace(item, intro = {}, withTour = {}, codeNames = {}) {
     address: address || null,
     lat,
     lng,
-    region: region || 'jeju-city',
+    region: region || (isJeju ? 'jeju-city' : area.slug),
+    sido_code: pick(item, 'lDongRegnCd') || area.code,
+    sigungu_code: pick(item, 'lDongSignguCd') || null,
     phone: cleanText(pick(item, 'tel') || pick(intro, 'infocenterfood', 'infocenter', 'infocenterculture', 'infocenterleports')).slice(0, 30) || null,
     source_provider: 'tourapi',
     source_external_id: contentId,
@@ -309,7 +331,7 @@ export function toPlace(item, intro = {}, withTour = {}, codeNames = {}) {
     kid_tags: kid,
     indoor: !!type.indoor || (typeId === 12 && /실내|전시|박물관|미술관|아쿠아|체험관/.test(subName + name)),
     status: 'candidate',
-    external_links: { map: `https://map.kakao.com/?q=${encodeURIComponent(name)}` },
+    external_links: { map: `https://map.kakao.com/?q=${encodeURIComponent(name)}`, ...(homepage ? { home: homepage } : {}) },
     is_sample: false,
     source_data: {
       typeId,
@@ -324,6 +346,7 @@ export function toPlace(item, intro = {}, withTour = {}, codeNames = {}) {
       parkingText: cleanText(pick(intro, 'parking', 'parkingfood', 'parkingculture', 'parkingleports')) || null,
       menuText: cleanText(pick(intro, 'firstmenu', 'treatmenu')).slice(0, 120) || null,
       ageText: cleanText(pick(intro, 'expagerange', 'expagerangeleports')) || null,
+      overview: cleanText(pick(common, 'overview')).slice(0, 400) || null, // 운영자 참고용 (화면 소개는 운영자가 쓴다)
       modified: pick(item, 'modifiedtime') || null,
       flags: [...new Set(flags)],
     },
