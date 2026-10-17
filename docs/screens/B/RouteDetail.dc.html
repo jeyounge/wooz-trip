@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>B 공개 루트 상세</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Jua&amp;family=Gowun+Dodum&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#B23A22}a:hover{color:#3A2A20}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; font-family: 'Gowun Dodum', sans-serif; color: #3A2A20; background: #FFF7EC; display: flex; flex-direction: column; overflow: hidden">
+  <div style="position: relative; flex: none; background: #BFE6D5; border-radius: 0 0 36px 36px; padding: 16px 20px 24px; display: flex; flex-direction: column; gap: 12px; overflow: hidden">
+    <svg width="390" height="90" viewBox="0 0 390 90" aria-hidden="true" style="position: absolute; left: 0; bottom: 0">
+      <path d="M0 50 Q 50 25 100 50 T 200 50 T 300 50 T 400 50 V90 H0 Z" fill="#A9DCC8"></path>
+    </svg>
+    <div style="position: relative; display: flex; align-items: center">
+      <a href="B_Main.dc.html" aria-label="뒤로" style="width: 44px; height: 44px; border-radius: 22px; background: #FFFFFF; display: flex; align-items: center; justify-content: center">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3A2A20" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
+      </a>
+      <button aria-label="링크 공유" style="margin-left: auto; width: 44px; height: 44px; border-radius: 22px; border: none; background: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3A2A20" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 13v7h14v-7"></path></svg>
+      </button>
+    </div>
+    <h1 style="position: relative; margin: 0; font-family: 'Jua', sans-serif; font-weight: 400; font-size: 27px; line-height: 1.3">서쪽 2박 3일,<br>모래놀이 코스</h1>
+    <div style="position: relative; display: flex; align-items: center; gap: 10px">
+      <div style="width: 40px; height: 40px; border-radius: 20px; background: #FFC93C; display: flex; align-items: center; justify-content: center; font-family: 'Jua', sans-serif; font-size: 16px">[작]</div>
+      <div style="display: flex; flex-direction: column">
+        <span style="font-size: 15px; font-weight: 700">[작성자 닉네임]네 가족</span>
+        <span style="font-size: 13px; color: #2C5546">5살 · 2살이랑 · 2026년 8월</span>
+      </div>
+    </div>
+  </div>
+  <main style="flex: 1; overflow-y: auto; padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 16px">
+    <div style="display: flex; gap: 8px">
+      <div style="flex: 1; padding: 12px; border-radius: 20px; background: #FFFFFF; box-shadow: 0 3px 0 #F0DCC4; text-align: center">
+        <div style="font-family: 'Jua', sans-serif; font-size: 22px">14</div><div style="font-size: 12px; color: #7A6352">곳</div>
+      </div>
+      <div style="flex: 1; padding: 12px; border-radius: 20px; background: #FFFFFF; box-shadow: 0 3px 0 #F0DCC4; text-align: center">
+        <div style="font-family: 'Jua', sans-serif; font-size: 22px">3:10</div><div style="font-size: 12px; color: #7A6352">총 이동</div>
+      </div>
+      <div style="flex: 1; padding: 12px; border-radius: 20px; background: #FFFFFF; box-shadow: 0 3px 0 #F0DCC4; text-align: center">
+        <div style="font-family: 'Jua', sans-serif; font-size: 22px">[N]</div><div style="font-size: 12px; color: #7A6352">가족이 따라감</div>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <sc-for list="{{days}}" as="d" hint-placeholder-count="3">
+        <div style="display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 24px; background: #FFFFFF; box-shadow: 0 4px 0 #F0DCC4">
+          <button onClick="{{d.toggle}}" aria-expanded="{{d.open}}" style="display: flex; align-items: center; gap: 10px; padding: 0; min-height: 36px; border: none; background: transparent; font: inherit; color: #3A2A20; cursor: pointer; text-align: left">
+            <span style="{{d.badge}}">{{d.label}}</span>
+            <span style="flex: 1; font-size: 14px">{{d.summary}}</span>
+            <span style="font-size: 18px; color: #7A6352">{{d.arrow}}</span>
+          </button>
+          <sc-if value="{{d.open}}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 6px">
+              <sc-for list="{{d.stops}}" as="s" hint-placeholder-count="3">
+                <div style="display: flex; gap: 10px; padding: 8px 10px; border-radius: 14px; background: #FFF7EC; font-size: 14px">
+                  <span style="font-weight: 700; color: #7A6352">{{s.t}}</span><span>{{s.n}}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+    <div style="position: relative; padding: 16px 16px 16px 18px; border-radius: 24px; background: #FFC93C">
+      <div style="font-family: 'Jua', sans-serif; font-size: 16px; margin-bottom: 4px">엄마아빠 꿀팁</div>
+      <div style="font-size: 14px; line-height: 1.55">[작성자 메모. 예: 협재는 오후 물때가 좋아요. 둘째 날 비 와서 실내로 바꿨어요.]</div>
+    </div>
+    <button style="align-self: center; height: 40px; padding: 0 8px; border: none; background: transparent; font: inherit; font-size: 13px; color: #7A6352; text-decoration: underline; cursor: pointer">정보가 바뀌었나요? 알려주기</button>
+  </main>
+  <div style="padding: 10px 20px 24px">
+    <a href="B_SlotEditor.dc.html" style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 58px; border-radius: 29px; background: #D2492F; color: #FFFFFF; font-family: 'Jua', sans-serif; font-size: 18px; text-decoration: none; box-shadow: 0 4px 0 #9E3520">
+      우리 일정으로 가져오기
+      <span style="font-family: 'Gowun Dodum', sans-serif; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 10px; background: #FFFFFF; color: #9E3520">프리미엄</span>
+    </a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { open: 0 };
+}
+renderVals() {
+const colors = ['#D2492F', '#2E8A6A', '#3B5BA5'];
+const data = [
+{ label: '1일', summary: '공항 → 협재 모래놀이 → 카페 → 저녁', stops: [{ t: '12:00', n: '[식당명] 애월' }, { t: '13:30', n: '협재해수욕장' }, { t: '16:00', n: '[카페명] 한림' }, { t: '18:00', n: '[식당명] 한림' }] },
+{ label: '2일', summary: '오전 체험 → 낮잠 이동 → 실내 놀이', stops: [{ t: '10:00', n: '[볼거리] 한림' }, { t: '12:30', n: '[식당명] 귀덕' }, { t: '14:30', n: '[실내 놀이] 제주시' }] },
+{ label: '3일', summary: '해안 산책 → 점심 → 공항', stops: [{ t: '10:00', n: '[볼거리] 애월' }, { t: '12:00', n: '[식당명] 애월' }, { t: '16:40', n: '제주공항' }] }
+];
+const days = data.map((d, i) => {
+const open = this.state.open === i;
+return { ...d, open, arrow: open ? '−' : '+',
+badge: 'flex: none; width: 44px; height: 32px; border-radius: 16px; background: ' + colors[i] + '; color: #FFFFFF; font-family: \'Jua\', sans-serif; font-size: 14px; display: flex; align-items: center; justify-content: center',
+toggle: () => this.setState({ open: open ? -1 : i }) };
+});
+return { days };
+}
+}
+</script>
+</body>
+</html>

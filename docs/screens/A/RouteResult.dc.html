@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>S05 루트 결과</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1F6F6A}a:hover{color:#17312B}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; font-family: 'IBM Plex Sans KR', sans-serif; color: #17312B; background: #F6F8F7; display: flex; flex-direction: column; overflow: hidden">
+  <div style="position: relative; flex: none; height: 290px; background: #DCEBE6">
+    <svg width="390" height="290" viewBox="0 0 390 290" role="img" aria-label="일자별 색상 동선 지도 (카카오맵 영역 자리표시)">
+      <path d="M-10 60 C 60 40, 120 70, 180 55 S 300 30, 400 70 L 400 300 L -10 300 Z" fill="#EEF3EA"></path>
+      <path d="M-10 60 C 60 40, 120 70, 180 55 S 300 30, 400 70" fill="none" stroke="#B9D2CA" stroke-width="2"></path>
+      <polyline points="330,240 250,150 180,105 120,120 90,170" fill="none" stroke="#1F6F6A" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity="{{op1}}"></polyline>
+      <polyline points="90,170 70,110 140,90 210,140 260,200" fill="none" stroke="#C4661A" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="1 9" opacity="{{op2}}"></polyline>
+      <polyline points="90,170 160,190 250,220 330,240" fill="none" stroke="#3D5BA9" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="14 8" opacity="{{op3}}"></polyline>
+      <g opacity="{{op1}}">
+        <circle cx="330" cy="240" r="12" fill="#1F6F6A"></circle><text x="330" y="245" text-anchor="middle" font-size="13" font-weight="700" fill="#FFFFFF">1</text>
+        <circle cx="250" cy="150" r="12" fill="#1F6F6A"></circle><text x="250" y="155" text-anchor="middle" font-size="13" font-weight="700" fill="#FFFFFF">2</text>
+        <circle cx="180" cy="105" r="12" fill="#1F6F6A"></circle><text x="180" y="110" text-anchor="middle" font-size="13" font-weight="700" fill="#FFFFFF">3</text>
+        <circle cx="120" cy="120" r="12" fill="#1F6F6A"></circle><text x="120" y="125" text-anchor="middle" font-size="13" font-weight="700" fill="#FFFFFF">4</text>
+      </g>
+      <rect x="78" y="158" width="24" height="24" rx="6" fill="#17312B"></rect>
+      <path d="M84 172 l6 -6 l6 6 v4 h-12 z" fill="#FFFFFF"></path>
+    </svg>
+    <a href="SlotEditor.dc.html" aria-label="편집으로 돌아가기" style="position: absolute; top: 16px; left: 12px; width: 44px; height: 44px; border-radius: 22px; background: #FFFFFF; display: flex; align-items: center; justify-content: center">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#17312B" stroke-width="2" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
+    </a>
+    <div style="position: absolute; top: 22px; right: 16px; padding: 6px 10px; border-radius: 8px; background: #FFFFFF; font-size: 11px; color: #4A615B">지도: 카카오맵 SDK</div>
+  </div>
+  <div style="flex: 1; min-height: 0; margin-top: -20px; position: relative; display: flex; flex-direction: column; background: #FFFFFF; border-radius: 20px 20px 0 0">
+    <div style="padding: 16px 20px 8px; display: flex; flex-direction: column; gap: 4px">
+      <div style="font-size: 18px; font-weight: 700">제주 서쪽 2박 3일</div>
+      <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #1F6F6A; font-weight: 600">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1F6F6A" stroke-width="2.4" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg>
+        휴무·영업시간 충돌 없음 · 총 이동 3시간 20분
+      </div>
+    </div>
+    <nav aria-label="일자" style="display: flex; gap: 8px; padding: 4px 20px 10px">
+      <sc-for list="{{days}}" as="d" hint-placeholder-count="3">
+        <button onClick="{{d.pick}}" style="{{d.style}}">
+          <span style="{{d.dot}}"></span>{{d.label}}
+        </button>
+      </sc-for>
+    </nav>
+    <div style="flex: 1; overflow-y: auto; padding: 4px 20px 16px; display: flex; flex-direction: column">
+      <sc-for list="{{items}}" as="it" hint-placeholder-count="6">
+        <sc-if value="{{it.isTravel}}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; align-items: center; gap: 10px; padding: 4px 0 4px 64px; font-size: 12px; color: #4A615B">{{it.text}}</div>
+        </sc-if>
+        <sc-if value="{{it.isStop}}" hint-placeholder-val="{{ true }}">
+          <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #EEF2F1">
+            <div style="flex: none; width: 44px; font-size: 14px; font-weight: 700; padding-top: 2px">{{it.time}}</div>
+            <div style="{{it.num}}">{{it.n}}</div>
+            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+              <div style="font-size: 15px; font-weight: 700">{{it.name}}</div>
+              <div style="font-size: 12px; color: #4A615B">{{it.stay}}</div>
+              <sc-if value="{{it.memo}}" hint-placeholder-val="{{ false }}">
+                <div style="padding: 6px 8px; border-radius: 8px; background: #FFF6E6; font-size: 12px; color: #7A4508">메모 · {{it.memo}}</div>
+              </sc-if>
+            </div>
+            <button aria-label="순서 바꾸기" style="flex: none; width: 36px; height: 36px; border: none; background: transparent; display: flex; align-items: center; justify-content: center; cursor: grab">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9FB5AF" stroke-width="2" aria-hidden="true"><path d="M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01"></path></svg>
+            </button>
+          </div>
+        </sc-if>
+      </sc-for>
+      <button style="margin-top: 10px; height: 40px; border: 1px dashed #C9D6D2; border-radius: 10px; background: transparent; font: inherit; font-size: 13px; color: #4A615B; cursor: pointer">+ 메모 추가 (예: 모래놀이 장난감 챙기기)</button>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 12px 20px 24px; border-top: 1px solid #DCE5E2">
+      <button style="height: 52px; border-radius: 14px; border: 1.5px solid #C9D6D2; background: #FFFFFF; font: inherit; font-size: 14px; font-weight: 700; color: #17312B; cursor: pointer">저장</button>
+      <button style="height: 52px; border-radius: 14px; border: 1.5px solid #17312B; background: #FFFFFF; font: inherit; font-size: 14px; font-weight: 700; color: #17312B; cursor: pointer">가족에게 공유</button>
+      <a href="RouteDetail.dc.html" style="display: flex; align-items: center; justify-content: center; height: 52px; border-radius: 14px; background: #F2A33A; color: #17312B; font-size: 14px; font-weight: 700; text-decoration: none">공개 등록</a>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { day: 0 };
+}
+renderVals() {
+const colors = ['#1F6F6A', '#C4661A', '#3D5BA9'];
+const names = ['1일차', '2일차', '3일차'];
+const d = this.state.day;
+const S = (time, name, stay, memo) => ({ isStop: true, time, name, stay, memo: memo || '' });
+const T = (text) => ({ isTravel: true, text });
+const plans = [
+[S('10:30', '제주공항', '렌터카 수령'), T('차로 45분 · 낮잠 시간'), S('12:00', '[식당명] 애월', '머무는 시간 1시간'), T('차로 15분'),
+S('13:30', '협재해수욕장', '머무는 시간 2시간', '모래놀이 장난감, 여벌 옷'), T('차로 8분'), S('16:00', '[카페명] 한림', '머무는 시간 1시간'), T('차로 4분'), S('18:00', '[식당명 A] 한림', '머무는 시간 1시간 30분')],
+[S('10:00', '[볼거리] 한림', '머무는 시간 2시간'), T('차로 20분'), S('12:30', '[식당명] 애월', '머무는 시간 1시간'), T('차로 25분 · 낮잠 시간'), S('14:30', '[실내 대안] 제주시', '비 오면 이곳으로', '우천 시 대체 장소')],
+[S('10:00', '[볼거리] 애월', '머무는 시간 1시간 30분'), T('차로 10분'), S('12:00', '[식당명] 애월', '머무는 시간 1시간'), T('차로 40분'), S('16:40', '제주공항', '렌터카 반납 · 18:40 출발')]
+];
+let n = 0;
+const items = plans[d].map((it) => it.isStop ? ({ ...it, n: ++n,
+num: 'flex: none; width: 24px; height: 24px; border-radius: 12px; background: ' + colors[d] + '; color: #FFFFFF; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center' }) : it);
+const days = names.map((label, i) => ({ label,
+style: 'height: 40px; padding: 0 14px; display: flex; align-items: center; gap: 6px; border-radius: 20px; font: inherit; font-size: 14px; cursor: pointer; ' +
+(d === i ? 'border: 1.5px solid #17312B; background: #17312B; color: #FFFFFF; font-weight: 600' : 'border: 1.5px solid #C9D6D2; background: #FFFFFF; color: #17312B'),
+dot: 'width: 10px; height: 10px; border-radius: 5px; background: ' + colors[i] + '; box-shadow: 0 0 0 2px #FFFFFF',
+pick: () => this.setState({ day: i }) }));
+const op = (i) => (d === i ? '1' : '0.25');
+return { days, items, op1: op(0), op2: op(1), op3: op(2) };
+}
+}
+</script>
+</body>
+</html>

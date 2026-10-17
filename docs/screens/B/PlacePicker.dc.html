@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>B 장소 선택</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Jua&amp;family=Gowun+Dodum&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#B23A22}a:hover{color:#3A2A20}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; font-family: 'Gowun Dodum', sans-serif; color: #3A2A20; background: #6E5A4C; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden">
+  <a href="B_SlotEditor.dc.html" aria-label="닫고 루트 짜기로 돌아가기" style="flex: none; height: 80px; display: block"></a>
+  <section aria-label="장소 선택" style="flex: 1; min-height: 0; display: flex; flex-direction: column; background: #FFF7EC; border-radius: 32px 32px 0 0">
+    <div style="display: flex; justify-content: center; padding: 12px 0 2px">
+      <div style="width: 48px; height: 6px; border-radius: 3px; background: #E8C9A8"></div>
+    </div>
+    <div style="display: flex; align-items: center; padding: 10px 20px 12px; gap: 8px">
+      <div style="flex: 1">
+        <div style="font-family: 'Jua', sans-serif; font-size: 22px">저녁, 어디서 먹을까?</div>
+        <div style="font-size: 13px; color: #7A6352">첫째 날 18:00 · 카페에서 가까운 순</div>
+      </div>
+      <a href="B_SlotEditor.dc.html" aria-label="닫기" style="width: 44px; height: 44px; border-radius: 22px; background: #FFFFFF; display: flex; align-items: center; justify-content: center">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3A2A20" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+      </a>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 8px; padding: 0 20px 12px">
+      <div style="font-size: 13px; color: #7A6352">우리 아이한테 꼭 필요한 건?</div>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+        <sc-for list="{{filters}}" as="f" hint-placeholder-count="6">
+          <button onClick="{{f.toggle}}" aria-pressed="{{f.on}}" style="{{f.style}}">
+            <span style="{{f.box}}">
+              <sc-if value="{{f.on}}" hint-placeholder-val="{{ false }}">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg>
+              </sc-if>
+            </span>
+            {{f.label}}
+          </button>
+        </sc-for>
+      </div>
+    </div>
+    <div style="flex: 1; overflow-y: auto; padding: 4px 20px 24px; display: flex; flex-direction: column; gap: 12px">
+      <sc-for list="{{places}}" as="p" hint-placeholder-count="4">
+        <div style="{{p.cardStyle}}">
+          <div style="display: flex; align-items: center; gap: 8px">
+            <span style="{{p.badgeStyle}}">{{p.badge}}</span>
+            <span style="margin-left: auto; font-size: 13px; font-weight: 700; color: #1E5A45">{{p.dist}}</span>
+          </div>
+          <div style="font-family: 'Jua', sans-serif; font-size: 18px">{{p.name}}</div>
+          <div style="font-size: 13px; color: #7A6352">{{p.meta}}</div>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap">
+            <sc-for list="{{p.tags}}" as="t" hint-placeholder-count="3">
+              <span style="font-size: 12px; padding: 3px 9px; border-radius: 12px; background: #BFE6D5; color: #1E5A45">{{t}}</span>
+            </sc-for>
+          </div>
+          <sc-if value="{{p.warn}}" hint-placeholder-val="{{ false }}">
+            <div style="padding: 8px 10px; border-radius: 14px; background: #FFE3DC; color: #9E3520; font-size: 13px; font-weight: 700">{{p.warn}}</div>
+          </sc-if>
+          <div style="display: flex; align-items: center; gap: 12px">
+            <a href="https://map.kakao.com" style="font-size: 13px">사진·리뷰 보기</a>
+            <a href="https://search.naver.com" style="font-size: 13px">블로그 후기</a>
+            <sc-if value="{{p.ok}}" hint-placeholder-val="{{ true }}">
+              <a href="B_SlotEditor.dc.html" style="margin-left: auto; display: flex; align-items: center; justify-content: center; height: 44px; padding: 0 20px; border-radius: 22px; background: #D2492F; color: #FFFFFF; font-family: 'Jua', sans-serif; font-size: 16px; text-decoration: none">여기로!</a>
+            </sc-if>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { on: { '아기의자': true, '주차': true } };
+}
+renderVals() {
+const on = this.state.on;
+const labels = ['아기의자', '유아 메뉴', '주차', '유모차', '수유실', '좌식'];
+const filters = labels.map((l) => ({ label: l, on: !!on[l],
+style: 'height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 16px; font: inherit; font-size: 14px; cursor: pointer; color: #3A2A20; ' +
+(on[l] ? 'border: 2px solid #3A2A20; background: #FFFFFF' : 'border: 2px solid #F0DCC4; background: #FFFFFF'),
+box: 'flex: none; width: 20px; height: 20px; border-radius: 7px; display: flex; align-items: center; justify-content: center; ' + (on[l] ? 'background: #D2492F' : 'border: 2px solid #E8C9A8; box-sizing: border-box'),
+toggle: () => this.setState({ on: { ...on, [l]: !on[l] } }) }));
+const all = [
+{ name: '[식당명 A] 한림', meta: '고기국수 · 21:00까지', dist: '차로 4분', tags: ['아기의자', '유아 메뉴', '주차'] },
+{ name: '[식당명 B] 협재', meta: '해산물 · 20:30까지', dist: '차로 7분', tags: ['아기의자', '좌식', '주차'] },
+{ name: '[식당명 D] 한림', meta: '흑돼지 · 금요일 정기휴무', dist: '차로 5분', tags: ['아기의자', '주차', '수유실'], warn: '이 날은 쉬는 날이라 고를 수 없어요', closed: true },
+{ name: '[식당명 E] 귀덕', meta: '한식 뷔페 · 20:00까지', dist: '차로 12분', tags: ['아기의자', '유아 메뉴', '주차', '수유실'], warn: '도착하면 1시간 45분 머물 수 있어요' }
+];
+const need = labels.filter((l) => on[l]);
+const places = all.filter((p) => need.every((n) => p.tags.indexOf(n) >= 0)).map((p, i) => {
+const first = i === 0 && !p.closed;
+return { ...p, warn: p.warn || '', ok: !p.closed,
+badge: p.closed ? '쉬는 날' : (first ? '제일 가까워요' : '조건 딱 맞음'),
+badgeStyle: 'font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 12px; ' + (p.closed ? 'background: #EADFD3; color: #6B5445' : (first ? 'background: #FFC93C; color: #3A2A20' : 'background: #FFFFFF; color: #3A2A20; border: 1.5px solid #F0DCC4')),
+cardStyle: 'display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 24px; ' + (p.closed ? 'background: #F6EEE5; opacity: 0.8' : 'background: #FFFFFF; box-shadow: 0 4px 0 #F0DCC4') };
+});
+return { filters, places };
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>C 홈</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;600;800&amp;family=IBM+Plex+Mono:wght@500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#C8F25A}a:hover{color:#EEF2F3}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; font-family: 'Gothic A1', sans-serif; color: #EEF2F3; background: #0F1417; display: flex; flex-direction: column; overflow: hidden">
+  <header style="display: flex; justify-content: space-between; align-items: center; padding: 20px 20px 8px">
+    <div style="font-size: 17px; font-weight: 800; letter-spacing: -0.02em">[서비스명]</div>
+    <button aria-label="장소 검색" style="width: 44px; height: 44px; border: 1px solid #2A343C; border-radius: 12px; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EEF2F3" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+    </button>
+  </header>
+  <main style="flex: 1; overflow: hidden; padding: 16px 20px 0; display: flex; flex-direction: column; gap: 28px">
+    <section style="display: flex; flex-direction: column; gap: 16px">
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.08em; color: #C8F25A">JEJU · KIDS FRIENDLY ROUTES</div>
+      <h1 style="margin: 0; font-size: 36px; line-height: 1.18; font-weight: 800; letter-spacing: -0.03em">고르면,<br>시간표가 됩니다.</h1>
+      <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #9AA8B0">장소를 시간대에 넣으면 이동시간·휴무를 계산해 하루 동선을 짜 드려요.</p>
+      <a href="C_TripSetup.dc.html" style="display: flex; align-items: center; justify-content: space-between; height: 56px; padding: 0 20px; border-radius: 12px; background: #C8F25A; color: #0F1417; font-weight: 800; font-size: 16px; text-decoration: none">
+        새 루트 만들기
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0F1417" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+      </a>
+    </section>
+    <section style="display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; align-items: baseline; justify-content: space-between">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 800">인기 루트</h2>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #9AA8B0">UPDATED 11.06</span>
+      </div>
+      <div style="display: flex; gap: 6px">
+        <sc-for list="{{kinds}}" as="k" hint-placeholder-count="4">
+          <button onClick="{{k.pick}}" style="{{k.style}}">{{k.label}}</button>
+        </sc-for>
+      </div>
+      <div style="display: flex; flex-direction: column; border-top: 1px solid #2A343C">
+        <sc-for list="{{routes}}" as="r" hint-placeholder-count="3">
+          <a href="C_RouteDetail.dc.html" style="display: grid; grid-template-columns: 52px minmax(0, 1fr) 24px; gap: 12px; align-items: center; padding: 14px 0; border-bottom: 1px solid #2A343C; text-decoration: none; color: #EEF2F3">
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 600; color: #C8F25A">{{r.code}}</span>
+            <span style="display: flex; flex-direction: column; gap: 3px; min-width: 0">
+              <span style="font-size: 15px; font-weight: 600">{{r.title}}</span>
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #9AA8B0">{{r.meta}}</span>
+            </span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9AA8B0" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+          </a>
+        </sc-for>
+      </div>
+    </section>
+  </main>
+  <nav aria-label="하단 메뉴" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid #2A343C; background: #0F1417; padding: 6px 0 20px">
+    <a href="C_Main.dc.html" style="display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; height: 48px; font-size: 12px; font-weight: 600; color: #C8F25A; text-decoration: none"><span style="width: 18px; height: 3px; border-radius: 2px; background: #C8F25A"></span>홈</a>
+    <a href="C_RouteResult.dc.html" style="display: flex; justify-content: center; align-items: center; height: 48px; font-size: 12px; color: #9AA8B0; text-decoration: none">내 여행</a>
+    <a href="C_RouteDetail.dc.html" style="display: flex; justify-content: center; align-items: center; height: 48px; font-size: 12px; color: #9AA8B0; text-decoration: none">둘러보기</a>
+    <a href="C_Main.dc.html" style="display: flex; justify-content: center; align-items: center; height: 48px; font-size: 12px; color: #9AA8B0; text-decoration: none">마이</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { kind: 'kids' };
+}
+renderVals() {
+const kinds = [['kids', '아이'], ['parents', '부모님'], ['couple', '연인'], ['friends', '친구']].map((k) => {
+const on = this.state.kind === k[0];
+return { label: k[1],
+style: 'height: 36px; padding: 0 14px; border-radius: 8px; font: inherit; font-size: 13px; cursor: pointer; ' + (on ? 'border: 1px solid #EEF2F3; background: #EEF2F3; color: #0F1417; font-weight: 600' : 'border: 1px solid #2A343C; background: transparent; color: #EEF2F3'),
+pick: () => this.setState({ kind: k[0] }) };
+});
+const routes = [
+{ code: 'W-03', title: '서쪽 2박 3일, 모래놀이', meta: '2N3D · 14 PLACES · 이동 3H10M' },
+{ code: 'R-01', title: '비 오는 날 실내 코스', meta: '1D · 9 PLACES · 유모차 OK' },
+{ code: 'E-02', title: '동쪽 1박 2일, 목장·체험', meta: '1N2D · 10 PLACES · 이동 2H40M' }
+];
+return { kinds, routes };
+}
+}
+</script>
+</body>
+</html>

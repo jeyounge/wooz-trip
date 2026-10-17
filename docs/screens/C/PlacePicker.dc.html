@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>C 장소 선택</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;600;800&amp;family=IBM+Plex+Mono:wght@500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#C8F25A}a:hover{color:#EEF2F3}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; font-family: 'Gothic A1', sans-serif; color: #EEF2F3; background: #070A0C; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden">
+  <a href="C_SlotEditor.dc.html" aria-label="닫고 루트 짜기로 돌아가기" style="flex: none; height: 84px; display: block"></a>
+  <section aria-label="장소 선택" style="flex: 1; min-height: 0; display: flex; flex-direction: column; background: #0F1417; border-top: 1px solid #2A343C; border-radius: 20px 20px 0 0">
+    <div style="display: flex; justify-content: center; padding: 10px 0 2px">
+      <div style="width: 36px; height: 4px; border-radius: 2px; background: #2A343C"></div>
+    </div>
+    <div style="display: flex; align-items: center; padding: 8px 20px 12px">
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #C8F25A">DAY 1 · 18:00 · DINNER</span>
+        <span style="font-size: 18px; font-weight: 800">저녁 장소 선택</span>
+      </div>
+      <a href="C_SlotEditor.dc.html" aria-label="닫기" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EEF2F3" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+      </a>
+    </div>
+    <div style="display: flex; gap: 6px; flex-wrap: wrap; padding: 0 20px 12px">
+      <sc-for list="{{filters}}" as="f" hint-placeholder-count="6">
+        <button onClick="{{f.toggle}}" aria-pressed="{{f.on}}" style="{{f.style}}">{{f.label}}</button>
+      </sc-for>
+    </div>
+    <div style="display: grid; grid-template-columns: minmax(0, 1fr) 64px 64px; gap: 8px; padding: 8px 20px; border-top: 1px solid #2A343C; border-bottom: 1px solid #2A343C; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #9AA8B0">
+      <span>PLACE · FROM [카페명] 한림</span><span style="text-align: right">DRIVE</span><span style="text-align: right">ETA</span>
+    </div>
+    <div style="flex: 1; overflow-y: auto; padding: 0 20px 24px; display: flex; flex-direction: column">
+      <sc-for list="{{places}}" as="p" hint-placeholder-count="4">
+        <div style="{{p.row}}">
+          <div style="display: grid; grid-template-columns: minmax(0, 1fr) 64px 64px; gap: 8px; align-items: baseline">
+            <span style="font-size: 15px; font-weight: 600">{{p.name}}</span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; text-align: right">{{p.drive}}</span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; text-align: right; color: #7CC8FF">{{p.eta}}</span>
+          </div>
+          <div style="font-size: 12px; color: #9AA8B0">{{p.meta}}</div>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap">
+            <sc-for list="{{p.tags}}" as="t" hint-placeholder-count="3">
+              <span style="font-size: 11px; padding: 3px 7px; border-radius: 4px; border: 1px solid #3A4650; color: #CBD5DA">{{t}}</span>
+            </sc-for>
+          </div>
+          <sc-if value="{{p.warn}}" hint-placeholder-val="{{ false }}">
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; color: #FF9A76">! {{p.warn}}</div>
+          </sc-if>
+          <div style="display: flex; align-items: center; gap: 14px; font-size: 12px">
+            <a href="https://map.kakao.com">사진·리뷰 ↗</a>
+            <a href="https://search.naver.com">블로그 ↗</a>
+            <sc-if value="{{p.ok}}" hint-placeholder-val="{{ true }}">
+              <a href="C_SlotEditor.dc.html" style="margin-left: auto; display: flex; align-items: center; justify-content: center; height: 38px; padding: 0 16px; border-radius: 8px; background: #C8F25A; color: #0F1417; font-size: 13px; font-weight: 800; text-decoration: none">넣기</a>
+            </sc-if>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { on: { '아기의자': true } };
+}
+renderVals() {
+const on = this.state.on;
+const labels = ['아기의자', '유아 메뉴', '주차', '유모차', '수유실', '좌식'];
+const filters = labels.map((l) => ({ label: l, on: !!on[l],
+style: 'height: 34px; padding: 0 12px; border-radius: 6px; font: inherit; font-size: 12px; cursor: pointer; ' + (on[l] ? 'border: 1px solid #C8F25A; background: #C8F25A; color: #0F1417; font-weight: 800' : 'border: 1px solid #2A343C; background: transparent; color: #EEF2F3'),
+toggle: () => this.setState({ on: { ...on, [l]: !on[l] } }) }));
+const all = [
+{ name: '[식당명 A] 한림', meta: '고기국수 · OPEN 10:00–21:00', drive: '4M', eta: '17:58', tags: ['아기의자', '유아 메뉴', '주차'] },
+{ name: '[식당명 D] 한림', meta: '흑돼지 · 금 정기휴무', drive: '5M', eta: '—', tags: ['아기의자', '주차', '수유실'], warn: 'CLOSED ON FRI 11.06', closed: true },
+{ name: '[식당명 B] 협재', meta: '해산물 · OPEN 11:00–20:30', drive: '7M', eta: '18:01', tags: ['아기의자', '좌식', '주차'] },
+{ name: '[식당명 C] 금능', meta: '돈가스 · LAST ORDER 19:00', drive: '9M', eta: '18:03', tags: ['아기의자', '유아 메뉴', '유모차'], warn: '이용 가능 57분' }
+];
+const need = labels.filter((l) => on[l]);
+const places = all.filter((p) => need.every((n) => p.tags.indexOf(n) >= 0)).map((p) => ({ ...p, warn: p.warn || '', ok: !p.closed,
+row: 'display: flex; flex-direction: column; gap: 8px; padding: 14px 0; border-bottom: 1px solid #2A343C; ' + (p.closed ? 'opacity: 0.55' : '') }));
+return { filters, places };
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>C 여행 정보 입력</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;600;800&amp;family=IBM+Plex+Mono:wght@500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#C8F25A}a:hover{color:#EEF2F3}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; font-family: 'Gothic A1', sans-serif; color: #EEF2F3; background: #0F1417; display: flex; flex-direction: column; overflow: hidden">
+  <header style="display: flex; align-items: center; gap: 8px; padding: 16px 12px 8px">
+    <a href="C_Main.dc.html" aria-label="뒤로" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#EEF2F3" stroke-width="2" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
+    </a>
+    <div style="font-size: 16px; font-weight: 800">새 루트</div>
+    <div style="margin-left: auto; padding-right: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #9AA8B0">STEP 01/02</div>
+  </header>
+  <main style="flex: 1; overflow-y: auto; padding: 8px 20px 24px; display: flex; flex-direction: column; gap: 22px">
+    <section aria-label="항공편과 날짜" style="display: flex; flex-direction: column; border-radius: 16px; background: #182026; border: 1px solid #2A343C; overflow: hidden">
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 16px">
+        <label style="display: flex; flex-direction: column; gap: 4px">
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #9AA8B0">ARRIVE · CJU</span>
+          <input type="text" value="11.06 FRI" aria-label="도착 날짜" style="border: none; background: transparent; padding: 0; font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 600; color: #EEF2F3">
+          <input type="text" value="10:30" aria-label="도착 시각" style="border: none; background: transparent; padding: 0; font-family: 'IBM Plex Mono', monospace; font-size: 30px; font-weight: 600; color: #C8F25A">
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 4px; text-align: right">
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #9AA8B0">DEPART · CJU</span>
+          <input type="text" value="11.08 SUN" aria-label="출발 날짜" style="border: none; background: transparent; padding: 0; text-align: right; font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 600; color: #EEF2F3">
+          <input type="text" value="18:40" aria-label="출발 시각" style="border: none; background: transparent; padding: 0; text-align: right; font-family: 'IBM Plex Mono', monospace; font-size: 30px; font-weight: 600; color: #C8F25A">
+        </label>
+      </div>
+      <div style="border-top: 1px dashed #2A343C; padding: 10px 16px; display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #9AA8B0">
+        <span>2 NIGHTS · 3 DAYS</span><span>JEJU</span>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; color: #9AA8B0">AREA · 지역</h2>
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid #2A343C; border-radius: 10px; overflow: hidden">
+        <sc-for list="{{regions}}" as="r" hint-placeholder-count="4">
+          <button onClick="{{r.pick}}" style="{{r.style}}">{{r.label}}</button>
+        </sc-for>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; color: #9AA8B0">WITH · 동행</h2>
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid #2A343C; border-radius: 10px; overflow: hidden">
+        <sc-for list="{{companions}}" as="c" hint-placeholder-count="4">
+          <button onClick="{{c.pick}}" style="{{c.style}}">{{c.label}}</button>
+        </sc-for>
+      </div>
+      <sc-if value="{{withKids}}" hint-placeholder-val="{{ true }}">
+        <div style="display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-radius: 10px; background: #182026">
+          <span style="font-size: 13px; color: #9AA8B0">아이 나이</span>
+          <span style="margin-left: auto; height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid #C8F25A; display: flex; align-items: center; font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: #C8F25A">7Y</span>
+          <span style="height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid #C8F25A; display: flex; align-items: center; font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: #C8F25A">3Y</span>
+          <button aria-label="아이 추가" style="width: 34px; height: 34px; border-radius: 8px; border: 1px dashed #5A6871; background: transparent; color: #9AA8B0; font-size: 18px; cursor: pointer">+</button>
+        </div>
+      </sc-if>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; color: #9AA8B0">STAY · 숙소</h2>
+      <input type="text" aria-label="숙소" placeholder="숙소 이름 또는 주소" style="height: 48px; box-sizing: border-box; padding: 0 14px; border-radius: 10px; border: 1px solid #2A343C; background: #182026; font: inherit; font-size: 14px; color: #EEF2F3">
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; color: #9AA8B0">START · 시작 방법</h2>
+      <div style="display: flex; flex-direction: column; border-top: 1px solid #2A343C">
+        <sc-for list="{{starts}}" as="s" hint-placeholder-count="3">
+          <button onClick="{{s.pick}}" style="{{s.style}}">
+            <span style="{{s.idx}}">{{s.n}}</span>
+            <span style="flex: 1; display: flex; flex-direction: column; gap: 2px; text-align: left">
+              <span style="font-size: 15px; font-weight: 600">{{s.title}}</span>
+              <span style="font-size: 12px; color: #9AA8B0">{{s.desc}}</span>
+            </span>
+          </button>
+        </sc-for>
+      </div>
+    </section>
+  </main>
+  <div style="padding: 12px 20px 24px; border-top: 1px solid #2A343C">
+    <a href="{{nextHref}}" style="display: flex; align-items: center; justify-content: space-between; height: 56px; padding: 0 20px; border-radius: 12px; background: #C8F25A; color: #0F1417; font-weight: 800; font-size: 16px; text-decoration: none">{{nextLabel}}
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0F1417" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+    </a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { region: 'west', companion: 'kids', start: 'self' };
+}
+seg(on) {
+return 'height: 44px; border: none; font: inherit; font-size: 13px; cursor: pointer; ' + (on ? 'background: #EEF2F3; color: #0F1417; font-weight: 800' : 'background: transparent; color: #EEF2F3');
+}
+renderVals() {
+const s = this.state;
+const regions = [['west', '서쪽'], ['east', '동쪽'], ['south', '서귀포'], ['city', '제주시']]
+.map((r) => ({ label: r[1], style: this.seg(s.region === r[0]), pick: () => this.setState({ region: r[0] }) }));
+const companions = [['kids', '아이'], ['parents', '부모님'], ['couple', '연인'], ['friends', '친구']]
+.map((c) => ({ label: c[1], style: this.seg(s.companion === c[0]), pick: () => this.setState({ companion: c[0] }) }));
+const starts = [
+{ id: 'self', n: '01', title: '직접 짜기', desc: '빈 시간표에서 시작' },
+{ id: 'ai', n: '02', title: 'AI 초안', desc: '조건으로 초안 생성 후 수정' },
+{ id: 'browse', n: '03', title: '인기 루트 복사', desc: '검증된 루트를 내 날짜로' }
+].map((x) => {
+const on = s.start === x.id;
+return { ...x,
+style: 'display: flex; align-items: center; gap: 14px; padding: 14px 4px; border: none; border-bottom: 1px solid #2A343C; background: transparent; font: inherit; color: #EEF2F3; cursor: pointer',
+idx: 'flex: none; width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-family: \'IBM Plex Mono\', monospace; font-size: 13px; font-weight: 600; ' + (on ? 'background: #C8F25A; color: #0F1417' : 'border: 1px solid #2A343C; color: #9AA8B0'),
+pick: () => this.setState({ start: x.id }) };
+});
+const next = { self: ['C_SlotEditor.dc.html', '시간표 열기'], ai: ['C_SlotEditor.dc.html', 'AI 초안 생성'], browse: ['C_RouteDetail.dc.html', '인기 루트 보기'] }[s.start];
+return { regions, companions, starts, withKids: s.companion === 'kids', nextHref: next[0], nextLabel: next[1] };
+}
+}
+</script>
+</body>
+</html>

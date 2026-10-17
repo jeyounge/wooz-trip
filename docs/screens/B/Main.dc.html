@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>B 홈</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Jua&amp;family=Gowun+Dodum&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#B23A22}a:hover{color:#3A2A20}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; font-family: 'Gowun Dodum', sans-serif; color: #3A2A20; background: #FFF7EC; display: flex; flex-direction: column; overflow: hidden">
+  <header style="display: flex; justify-content: space-between; align-items: center; padding: 20px 20px 4px">
+    <div style="font-family: 'Jua', sans-serif; font-size: 22px; color: #D2492F">[서비스명]</div>
+    <button aria-label="장소 검색" style="width: 44px; height: 44px; border-radius: 22px; border: none; background: #FFFFFF; box-shadow: 0 3px 0 #F0DCC4; display: flex; align-items: center; justify-content: center; cursor: pointer">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3A2A20" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+    </button>
+  </header>
+  <main style="flex: 1; overflow: hidden; padding: 12px 20px 0; display: flex; flex-direction: column; gap: 22px">
+    <section style="position: relative; overflow: hidden; background: #FFC93C; border-radius: 28px; padding: 24px 22px 22px; display: flex; flex-direction: column; gap: 14px">
+      <svg width="150" height="150" viewBox="0 0 150 150" aria-hidden="true" style="position: absolute; right: -30px; top: -34px">
+        <circle cx="75" cy="75" r="44" fill="#FFE08A"></circle>
+        <circle cx="75" cy="75" r="26" fill="#FFF3C9"></circle>
+      </svg>
+      <svg width="390" height="60" viewBox="0 0 390 60" aria-hidden="true" style="position: absolute; left: 0; bottom: 0">
+        <path d="M0 30 Q 40 10 80 30 T 160 30 T 240 30 T 320 30 T 400 30 V60 H0 Z" fill="#F7B92A"></path>
+      </svg>
+      <h1 style="position: relative; margin: 0; font-family: 'Jua', sans-serif; font-weight: 400; font-size: 30px; line-height: 1.25">아이랑 제주,<br>어디부터 가볼까?</h1>
+      <p style="position: relative; margin: 0; font-size: 15px; line-height: 1.5; color: #4E3A2C">가고 싶은 곳만 골라 두면 낮잠·밥 시간에 맞춰 동선을 그려 줄게요.</p>
+      <a href="B_TripSetup.dc.html" style="position: relative; display: flex; align-items: center; justify-content: center; height: 54px; border-radius: 27px; background: #D2492F; color: #FFFFFF; font-family: 'Jua', sans-serif; font-size: 18px; text-decoration: none; box-shadow: 0 4px 0 #9E3520">우리 가족 여행 짜기</a>
+    </section>
+    <section style="display: flex; flex-direction: column; gap: 12px">
+      <h2 style="margin: 0; font-family: 'Jua', sans-serif; font-weight: 400; font-size: 20px">이런 가족이 다녀왔어요</h2>
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+        <sc-for list="{{kinds}}" as="k" hint-placeholder-count="4">
+          <button onClick="{{k.pick}}" style="{{k.style}}">
+            <span style="{{k.dot}}"></span>
+            <span style="font-size: 13px">{{k.label}}</span>
+          </button>
+        </sc-for>
+      </div>
+      <a href="B_RouteDetail.dc.html" style="display: flex; gap: 14px; align-items: center; padding: 14px; border-radius: 22px; background: #FFFFFF; box-shadow: 0 4px 0 #F0DCC4; text-decoration: none; color: #3A2A20">
+        <div style="flex: none; width: 64px; height: 64px; border-radius: 18px; background: #BFE6D5; display: flex; align-items: center; justify-content: center">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1E5A45" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M2 17c3-2 5-2 8 0s5 2 8 0 3-1 4 0"></path><path d="M6 13l3-7 3 7M7 11h4"></path></svg>
+        </div>
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+          <div style="font-family: 'Jua', sans-serif; font-size: 17px">서쪽 2박 3일, 모래놀이 코스</div>
+          <div style="font-size: 13px; color: #7A6352">애월 · 귀덕 · 협재 · 14곳</div>
+          <div style="display: flex; gap: 6px">
+            <span style="font-size: 12px; padding: 3px 9px; border-radius: 12px; background: #FFE9DF; color: #9E3520">아기의자</span>
+            <span style="font-size: 12px; padding: 3px 9px; border-radius: 12px; background: #FFE9DF; color: #9E3520">낮잠 이동</span>
+          </div>
+        </div>
+      </a>
+      <a href="B_RouteDetail.dc.html" style="display: flex; gap: 14px; align-items: center; padding: 14px; border-radius: 22px; background: #FFFFFF; box-shadow: 0 4px 0 #F0DCC4; text-decoration: none; color: #3A2A20">
+        <div style="flex: none; width: 64px; height: 64px; border-radius: 18px; background: #D9E4FF; display: flex; align-items: center; justify-content: center">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#2F4A8A" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 11a7 7 0 0114 0z"></path><path d="M12 11v8a2 2 0 01-4 0"></path><path d="M8 15v.01M15 15v.01M17 18v.01"></path></svg>
+        </div>
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+          <div style="font-family: 'Jua', sans-serif; font-size: 17px">비 오는 날 실내 코스</div>
+          <div style="font-size: 13px; color: #7A6352">제주시 · 서귀포 · 9곳</div>
+          <div style="display: flex; gap: 6px">
+            <span style="font-size: 12px; padding: 3px 9px; border-radius: 12px; background: #FFE9DF; color: #9E3520">유모차</span>
+            <span style="font-size: 12px; padding: 3px 9px; border-radius: 12px; background: #FFE9DF; color: #9E3520">수유실</span>
+          </div>
+        </div>
+      </a>
+    </section>
+  </main>
+  <nav aria-label="하단 메뉴" style="margin: 0 16px 20px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-radius: 30px; background: #3A2A20; padding: 6px">
+    <a href="B_Main.dc.html" style="display: flex; justify-content: center; align-items: center; height: 48px; border-radius: 24px; background: #FFF7EC; font-family: 'Jua', sans-serif; font-size: 15px; color: #3A2A20; text-decoration: none">홈</a>
+    <a href="B_RouteResult.dc.html" style="display: flex; justify-content: center; align-items: center; height: 48px; font-size: 14px; color: #F3E3D1; text-decoration: none">내 여행</a>
+    <a href="B_RouteDetail.dc.html" style="display: flex; justify-content: center; align-items: center; height: 48px; font-size: 14px; color: #F3E3D1; text-decoration: none">둘러보기</a>
+    <a href="B_Main.dc.html" style="display: flex; justify-content: center; align-items: center; height: 48px; font-size: 14px; color: #F3E3D1; text-decoration: none">마이</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { kind: 'kids' };
+}
+renderVals() {
+const list = [
+{ id: 'kids', label: '아이들과', c: '#FFC93C' }, { id: 'parents', label: '부모님과', c: '#BFE6D5' },
+{ id: 'couple', label: '연인과', c: '#FFC6B8' }, { id: 'friends', label: '친구끼리', c: '#D9E4FF' }
+];
+const kinds = list.map((k) => {
+const on = this.state.kind === k.id;
+return { ...k,
+style: 'height: 76px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; border-radius: 20px; font: inherit; cursor: pointer; color: #3A2A20; ' +
+(on ? 'border: 2px solid #3A2A20; background: #FFFFFF' : 'border: 2px solid transparent; background: #FFFFFF; box-shadow: 0 3px 0 #F0DCC4'),
+dot: 'width: 26px; height: 26px; border-radius: 13px; background: ' + k.c,
+pick: () => this.setState({ kind: k.id }) };
+});
+return { kinds };
+}
+}
+</script>
+</body>
+</html>

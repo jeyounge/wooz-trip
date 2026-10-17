@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>S02 여행 정보 입력</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1F6F6A}a:hover{color:#17312B}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; font-family: 'IBM Plex Sans KR', sans-serif; color: #17312B; background: #F6F8F7; display: flex; flex-direction: column; overflow: hidden">
+  <header style="display: flex; align-items: center; gap: 4px; padding: 16px 12px 8px">
+    <a href="Main.dc.html" aria-label="뒤로" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#17312B" stroke-width="2" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
+    </a>
+    <div style="font-size: 17px; font-weight: 700">새 여행 루트</div>
+    <div style="margin-left: auto; padding-right: 8px; font-size: 13px; color: #4A615B">1 / 2</div>
+  </header>
+  <main style="flex: 1; overflow-y: auto; padding: 8px 20px 24px; display: flex; flex-direction: column; gap: 22px">
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-size: 15px; font-weight: 700">어디로 가요?</h2>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap">
+        <sc-for list="{{regions}}" as="r" hint-placeholder-count="4">
+          <button onClick="{{r.pick}}" style="{{r.style}}">{{r.label}}</button>
+        </sc-for>
+      </div>
+      <div style="font-size: 12px; color: #4A615B">MVP는 제주만 지원해요. 다른 지역은 준비 중이에요.</div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-size: 15px; font-weight: 700">언제 가요?</h2>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #4A615B">가는 날
+          <input type="date" value="2026-11-06" style="height: 44px; box-sizing: border-box; padding: 0 12px; border: 1px solid #C9D6D2; border-radius: 12px; background: #FFFFFF; font: inherit; font-size: 14px; color: #17312B">
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #4A615B">오는 날
+          <input type="date" value="2026-11-08" style="height: 44px; box-sizing: border-box; padding: 0 12px; border: 1px solid #C9D6D2; border-radius: 12px; background: #FFFFFF; font: inherit; font-size: 14px; color: #17312B">
+        </label>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #4A615B">제주 도착 시각
+          <input type="time" value="10:30" style="height: 44px; box-sizing: border-box; padding: 0 12px; border: 1px solid #C9D6D2; border-radius: 12px; background: #FFFFFF; font: inherit; font-size: 14px; color: #17312B">
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #4A615B">제주 출발 시각
+          <input type="time" value="18:40" style="height: 44px; box-sizing: border-box; padding: 0 12px; border: 1px solid #C9D6D2; border-radius: 12px; background: #FFFFFF; font: inherit; font-size: 14px; color: #17312B">
+        </label>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-size: 15px; font-weight: 700">누구랑 가요?</h2>
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+        <sc-for list="{{companions}}" as="c" hint-placeholder-count="4">
+          <button onClick="{{c.pick}}" style="{{c.style}}">{{c.label}}</button>
+        </sc-for>
+      </div>
+      <sc-if value="{{withKids}}" hint-placeholder-val="{{ true }}">
+        <div style="display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 14px; background: #FDEBD3">
+          <div style="font-size: 13px; font-weight: 600; color: #7A4508">아이 나이를 알려주면 낮잠·식사 시간에 맞춰 동선을 짜요</div>
+          <div style="display: flex; gap: 8px; align-items: center">
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #7A4508">첫째
+              <input type="number" value="7" min="0" max="13" style="width: 56px; height: 40px; box-sizing: border-box; padding: 0 8px; border: 1px solid #E9C48F; border-radius: 10px; font: inherit; font-size: 14px; color: #17312B">세
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #7A4508">둘째
+              <input type="number" value="3" min="0" max="13" style="width: 56px; height: 40px; box-sizing: border-box; padding: 0 8px; border: 1px solid #E9C48F; border-radius: 10px; font: inherit; font-size: 14px; color: #17312B">세
+            </label>
+            <button style="margin-left: auto; height: 40px; padding: 0 10px; border: 1px dashed #B7782A; border-radius: 10px; background: transparent; font: inherit; font-size: 13px; color: #7A4508">+ 추가</button>
+          </div>
+        </div>
+      </sc-if>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-size: 15px; font-weight: 700">숙소</h2>
+      <label style="display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 14px; border: 1px solid #C9D6D2; border-radius: 12px; background: #FFFFFF">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A615B" stroke-width="2" aria-hidden="true"><path d="M3 11l9-7 9 7v9H3z"></path></svg>
+        <span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">숙소 검색</span>
+        <input type="text" placeholder="숙소 이름이나 주소 (일자별로 다르면 다음 단계에서)" style="flex: 1; min-width: 0; border: none; outline: none; font: inherit; font-size: 14px; color: #17312B; background: transparent">
+      </label>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-size: 15px; font-weight: 700">어떻게 시작할까요?</h2>
+      <sc-for list="{{starts}}" as="s" hint-placeholder-count="3">
+        <button onClick="{{s.pick}}" style="{{s.style}}">
+          <span style="display: flex; flex-direction: column; gap: 2px; text-align: left">
+            <span style="font-size: 15px; font-weight: 700">{{s.title}}</span>
+            <span style="font-size: 13px; color: #4A615B">{{s.desc}}</span>
+          </span>
+          <span style="{{s.radio}}"></span>
+        </button>
+      </sc-for>
+    </section>
+  </main>
+  <div style="padding: 12px 20px 24px; background: #FFFFFF; border-top: 1px solid #DCE5E2">
+    <a href="{{nextHref}}" style="display: flex; align-items: center; justify-content: center; height: 52px; border-radius: 14px; background: #F2A33A; color: #17312B; font-weight: 700; font-size: 16px; text-decoration: none">{{nextLabel}}</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { region: 'west', companion: 'kids', start: 'self' };
+}
+chip(on) {
+return 'height: 40px; padding: 0 14px; border-radius: 20px; font: inherit; font-size: 14px; cursor: pointer; ' +
+(on ? 'border: 1.5px solid #17312B; background: #17312B; color: #FFFFFF; font-weight: 600' : 'border: 1.5px solid #C9D6D2; background: #FFFFFF; color: #17312B');
+}
+renderVals() {
+const s = this.state;
+const regions = [
+{ id: 'west', label: '제주 서쪽' }, { id: 'east', label: '제주 동쪽' },
+{ id: 'south', label: '서귀포' }, { id: 'city', label: '제주시' }
+].map((r) => ({ ...r, style: this.chip(s.region === r.id), pick: () => this.setState({ region: r.id }) }));
+const companions = [
+{ id: 'kids', label: '아이들과' }, { id: 'parents', label: '부모님과' },
+{ id: 'couple', label: '연인과' }, { id: 'friends', label: '친구끼리' }
+].map((c) => ({ ...c, style: this.chip(s.companion === c.id) + '; padding: 0', pick: () => this.setState({ companion: c.id }) }));
+const starts = [
+{ id: 'self', title: '직접 짜기', desc: '빈 슬롯에서 시작해 장소를 하나씩 골라요' },
+{ id: 'ai', title: 'AI에게 맡기기', desc: '조건에 맞는 초안을 받고 고쳐 써요' },
+{ id: 'browse', title: '루트 둘러보기', desc: '아이 동반 인기 루트를 내 일정으로 복사해요' }
+].map((x) => {
+const on = s.start === x.id;
+return { ...x,
+style: 'display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-radius: 14px; font: inherit; color: #17312B; cursor: pointer; background: #FFFFFF; ' + (on ? 'border: 2px solid #17312B' : 'border: 1px solid #DCE5E2'),
+radio: 'flex: none; width: 20px; height: 20px; box-sizing: border-box; border-radius: 10px; ' + (on ? 'border: 6px solid #17312B' : 'border: 2px solid #C9D6D2'),
+pick: () => this.setState({ start: x.id }) };
+});
+const next = { self: ['SlotEditor.dc.html', '빈 루트로 시작하기'], ai: ['SlotEditor.dc.html', 'AI 초안 만들기'], browse: ['RouteDetail.dc.html', '인기 루트 보러 가기'] }[s.start];
+return { regions, companions, starts, withKids: s.companion === 'kids', nextHref: next[0], nextLabel: next[1] };
+}
+}
+</script>
+</body>
+</html>

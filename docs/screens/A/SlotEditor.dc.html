@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>S03 루트 짜기</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1F6F6A}a:hover{color:#17312B}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; font-family: 'IBM Plex Sans KR', sans-serif; color: #17312B; background: #F6F8F7; display: flex; flex-direction: column; overflow: hidden">
+  <header style="display: flex; align-items: center; gap: 4px; padding: 16px 12px 4px">
+    <a href="TripSetup.dc.html" aria-label="뒤로" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#17312B" stroke-width="2" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
+    </a>
+    <div style="display: flex; flex-direction: column">
+      <div style="font-size: 17px; font-weight: 700">제주 서쪽 2박 3일</div>
+      <div style="font-size: 12px; color: #4A615B">아이들과 · 7세, 3세 · 11.6 – 11.8</div>
+    </div>
+    <button aria-label="여행 정보 수정" style="margin-left: auto; width: 44px; height: 44px; border: none; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#17312B" stroke-width="2" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"></path></svg>
+    </button>
+  </header>
+  <nav aria-label="일자" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 8px 20px 12px">
+    <sc-for list="{{days}}" as="d" hint-placeholder-count="3">
+      <button onClick="{{d.pick}}" style="{{d.style}}">
+        <span style="font-size: 14px; font-weight: 700">{{d.label}}</span>
+        <span style="font-size: 12px">{{d.date}}</span>
+      </button>
+    </sc-for>
+  </nav>
+  <main style="flex: 1; overflow-y: auto; padding: 4px 20px 16px; display: flex; flex-direction: column">
+    <sc-for list="{{slots}}" as="s" hint-placeholder-count="8">
+      <sc-if value="{{s.isTravel}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; align-items: center; gap: 10px; padding: 6px 0 6px 21px">
+          <div style="width: 2px; height: 24px; background: #C9D6D2"></div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4A615B" stroke-width="2" aria-hidden="true"><path d="M5 16h14M6 16l2-6h8l2 6M7 19v-3M17 19v-3"></path></svg>
+          <span style="font-size: 12px; color: #4A615B">{{s.text}}</span>
+        </div>
+      </sc-if>
+      <sc-if value="{{s.isFilled}}" hint-placeholder-val="{{ true }}">
+        <div style="display: flex; gap: 12px; padding: 14px; border-radius: 16px; background: #FFFFFF; border: 1px solid #DCE5E2">
+          <div style="flex: none; width: 44px; display: flex; flex-direction: column; align-items: center; gap: 2px">
+            <span style="font-size: 14px; font-weight: 700">{{s.time}}</span>
+            <span style="font-size: 11px; color: #4A615B">{{s.slot}}</span>
+          </div>
+          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+            <div style="font-size: 15px; font-weight: 700">{{s.name}}</div>
+            <div style="font-size: 12px; color: #4A615B">{{s.meta}}</div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap">
+              <sc-for list="{{s.tags}}" as="t" hint-placeholder-count="2">
+                <span style="font-size: 11px; padding: 3px 7px; border-radius: 6px; background: #FDEBD3; color: #7A4508">{{t}}</span>
+              </sc-for>
+            </div>
+            <sc-if value="{{s.warn}}" hint-placeholder-val="{{ false }}">
+              <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px; padding: 6px 8px; border-radius: 8px; background: #FBE3E0; color: #8E2A1E; font-size: 12px; font-weight: 600">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8E2A1E" stroke-width="2.2" aria-hidden="true"><path d="M12 3l10 18H2zM12 10v5M12 18v.5"></path></svg>
+                {{s.warn}}
+              </div>
+            </sc-if>
+          </div>
+          <a href="PlacePicker.dc.html" aria-label="장소 바꾸기" style="flex: none; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: #F6F8F7">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#17312B" stroke-width="2" aria-hidden="true"><path d="M4 8h13l-3-3M20 16H7l3 3"></path></svg>
+          </a>
+        </div>
+      </sc-if>
+      <sc-if value="{{s.isEmpty}}" hint-placeholder-val="{{ false }}">
+        <a href="PlacePicker.dc.html" style="display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 16px; border: 1.5px dashed #9FB5AF; background: transparent; text-decoration: none; color: #17312B">
+          <div style="flex: none; width: 44px; display: flex; flex-direction: column; align-items: center; gap: 2px">
+            <span style="font-size: 14px; font-weight: 700; color: #4A615B">{{s.time}}</span>
+            <span style="font-size: 11px; color: #4A615B">{{s.slot}}</span>
+          </div>
+          <span style="flex: 1; font-size: 14px; font-weight: 600">{{s.name}}</span>
+          <span style="width: 32px; height: 32px; border-radius: 16px; background: #17312B; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 20px; line-height: 1">+</span>
+        </a>
+      </sc-if>
+      <sc-if value="{{s.isFixed}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: #E6EEEC">
+          <div style="flex: none; width: 44px; text-align: center; font-size: 14px; font-weight: 700">{{s.time}}</div>
+          <div style="display: flex; flex-direction: column; gap: 2px">
+            <span style="font-size: 14px; font-weight: 600">{{s.name}}</span>
+            <span style="font-size: 12px; color: #4A615B">{{s.meta}}</span>
+          </div>
+        </div>
+      </sc-if>
+    </sc-for>
+    <button style="margin-top: 12px; height: 44px; border: none; background: transparent; font: inherit; font-size: 14px; font-weight: 600; color: #1F6F6A; cursor: pointer">+ 슬롯 추가 (간식·놀이터 등)</button>
+  </main>
+  <div style="display: flex; flex-direction: column; gap: 8px; padding: 12px 20px 24px; background: #FFFFFF; border-top: 1px solid #DCE5E2">
+    <div style="font-size: 12px; color: #4A615B; text-align: center">{{summary}}</div>
+    <div style="display: flex; gap: 8px">
+      <button style="flex: 1; height: 52px; border-radius: 14px; border: 1.5px solid #17312B; background: #FFFFFF; font: inherit; font-size: 15px; font-weight: 700; color: #17312B; cursor: pointer">AI 빈칸 채우기</button>
+      <a href="RouteResult.dc.html" style="flex: 1; display: flex; align-items: center; justify-content: center; height: 52px; border-radius: 14px; background: #F2A33A; color: #17312B; font-weight: 700; font-size: 15px; text-decoration: none">루트 짜기</a>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { day: 0 };
+}
+renderVals() {
+const F = (time, slot, name, meta, tags, warn) => ({ isFilled: true, time, slot, name, meta, tags, warn: warn || '' });
+const E = (time, slot, name) => ({ isEmpty: true, time, slot, name });
+const T = (text) => ({ isTravel: true, text });
+const X = (time, name, meta) => ({ isFixed: true, time, name, meta });
+const plans = [
+[
+X('10:30', '제주공항 도착', '렌터카 수령 약 40분'),
+T('차로 45분 · 아이 낮잠 추천 구간'),
+F('12:00', '점심', '[식당명] 애월', '한식 · 영업 11:00–20:00', ['아기의자', '주차']),
+T('차로 15분'),
+F('13:30', '오후', '협재해수욕장', '해변 · 모래놀이', ['발 씻는 곳', '주차', '유모차 가능']),
+T('차로 8분'),
+F('16:00', '카페', '[카페명] 한림', '카페 · 금요일 정기휴무', ['키즈존'], '이 날(금)은 정기휴무예요. 다른 카페로 바꿔 주세요'),
+T('이동시간은 장소를 고르면 계산돼요'),
+E('18:00', '저녁', '저녁 먹을 곳 고르기'),
+X('20:00', '숙소', '[숙소명] 애월')
+],
+[
+X('09:30', '숙소 출발', '[숙소명] 애월'),
+E('10:00', '오전', '오전 볼거리 고르기'),
+E('12:00', '점심', '점심 먹을 곳 고르기'),
+E('14:00', '오후', '오후 볼거리 고르기'),
+E('16:00', '카페', '카페 고르기'),
+E('18:00', '저녁', '저녁 먹을 곳 고르기')
+],
+[
+X('09:30', '숙소 체크아웃', '[숙소명] 애월'),
+E('10:00', '오전', '오전 볼거리 고르기'),
+E('12:00', '점심', '점심 먹을 곳 고르기'),
+X('16:40', '제주공항', '렌터카 반납 · 18:40 출발 2시간 전')
+]
+];
+const labels = [['1일차', '11.6 금'], ['2일차', '11.7 토'], ['3일차', '11.8 일']];
+const days = labels.map((l, i) => ({
+label: l[0], date: l[1],
+style: 'height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; font: inherit; cursor: pointer; ' +
+(this.state.day === i ? 'border: none; background: #17312B; color: #FFFFFF' : 'border: 1px solid #DCE5E2; background: #FFFFFF; color: #17312B'),
+pick: () => this.setState({ day: i })
+}));
+const slots = plans[this.state.day];
+const empty = plans.flat().filter((s) => s.isEmpty).length;
+const warns = plans.flat().filter((s) => s.warn).length;
+return { days, slots, summary: '빈 슬롯 ' + empty + '개 · 확인 필요 ' + warns + '건' };
+}
+}
+</script>
+</body>
+</html>

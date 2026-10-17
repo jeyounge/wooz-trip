@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>S01 홈</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1F6F6A}a:hover{color:#17312B}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; font-family: 'IBM Plex Sans KR', sans-serif; color: #17312B; background: #F6F8F7; display: flex; flex-direction: column; overflow: hidden">
+  <header style="display: flex; justify-content: space-between; align-items: center; padding: 20px 20px 8px">
+    <div style="font-size: 18px; font-weight: 700">[서비스명]</div>
+    <button aria-label="장소 검색" style="width: 44px; height: 44px; border: none; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#17312B" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+    </button>
+  </header>
+  <main style="flex: 1; overflow: hidden; padding: 8px 20px 0; display: flex; flex-direction: column; gap: 24px">
+    <section style="background: #17312B; color: #FFFFFF; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+      <h1 style="margin: 0; font-size: 26px; line-height: 1.3; font-weight: 700">이번 여행,<br>누구랑 어디로 가요?</h1>
+      <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #D5E4E0">장소를 시간대에 넣으면 동선이 자동으로 그려져요.</p>
+      <a href="TripSetup.dc.html" style="display: flex; align-items: center; justify-content: center; height: 52px; border-radius: 14px; background: #F2A33A; color: #17312B; font-weight: 700; font-size: 16px; text-decoration: none">새 여행 루트 만들기</a>
+    </section>
+    <section style="display: flex; flex-direction: column; gap: 12px">
+      <h2 style="margin: 0; font-size: 17px; font-weight: 700">제주 인기 루트</h2>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap">
+        <button style="height: 36px; padding: 0 14px; border-radius: 18px; border: 1.5px solid #17312B; background: #17312B; color: #FFFFFF; font: inherit; font-size: 14px; font-weight: 600">아이들과</button>
+        <button style="height: 36px; padding: 0 14px; border-radius: 18px; border: 1.5px solid #C9D6D2; background: #FFFFFF; color: #17312B; font: inherit; font-size: 14px">부모님과</button>
+        <button style="height: 36px; padding: 0 14px; border-radius: 18px; border: 1.5px solid #C9D6D2; background: #FFFFFF; color: #17312B; font: inherit; font-size: 14px">연인과</button>
+        <button style="height: 36px; padding: 0 14px; border-radius: 18px; border: 1.5px solid #C9D6D2; background: #FFFFFF; color: #17312B; font: inherit; font-size: 14px">친구끼리</button>
+      </div>
+      <a href="RouteDetail.dc.html" style="display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: 16px; background: #FFFFFF; border: 1px solid #DCE5E2; text-decoration: none; color: #17312B">
+        <div style="font-size: 16px; font-weight: 700">제주 서쪽 2박 3일, 해변 모래놀이 코스</div>
+        <div style="font-size: 13px; color: #4A615B">애월 · 귀덕 · 협재 | 장소 14곳</div>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px">
+          <span style="font-size: 12px; padding: 4px 8px; border-radius: 6px; background: #FDEBD3; color: #7A4508">아기의자 있는 식당</span>
+          <span style="font-size: 12px; padding: 4px 8px; border-radius: 6px; background: #FDEBD3; color: #7A4508">이동 중 낮잠</span>
+        </div>
+      </a>
+      <a href="RouteDetail.dc.html" style="display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: 16px; background: #FFFFFF; border: 1px solid #DCE5E2; text-decoration: none; color: #17312B">
+        <div style="font-size: 16px; font-weight: 700">비 오는 날 제주 실내 코스</div>
+        <div style="font-size: 13px; color: #4A615B">제주시 · 서귀포 | 장소 9곳</div>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px">
+          <span style="font-size: 12px; padding: 4px 8px; border-radius: 6px; background: #FDEBD3; color: #7A4508">유모차 가능</span>
+          <span style="font-size: 12px; padding: 4px 8px; border-radius: 6px; background: #FDEBD3; color: #7A4508">수유실</span>
+        </div>
+      </a>
+    </section>
+  </main>
+  <nav aria-label="하단 메뉴" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid #DCE5E2; background: #FFFFFF; padding: 8px 0 20px">
+    <a href="Main.dc.html" style="display: flex; justify-content: center; align-items: center; height: 44px; font-size: 13px; font-weight: 700; color: #17312B; text-decoration: none">홈</a>
+    <a href="RouteResult.dc.html" style="display: flex; justify-content: center; align-items: center; height: 44px; font-size: 13px; color: #4A615B; text-decoration: none">내 여행</a>
+    <a href="RouteDetail.dc.html" style="display: flex; justify-content: center; align-items: center; height: 44px; font-size: 13px; color: #4A615B; text-decoration: none">둘러보기</a>
+    <a href="Main.dc.html" style="display: flex; justify-content: center; align-items: center; height: 44px; font-size: 13px; color: #4A615B; text-decoration: none">마이</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

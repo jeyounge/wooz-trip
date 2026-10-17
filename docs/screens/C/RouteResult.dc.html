@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>C 루트 결과</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;600;800&amp;family=IBM+Plex+Mono:wght@500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#C8F25A}a:hover{color:#EEF2F3}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; font-family: 'Gothic A1', sans-serif; color: #EEF2F3; background: #0F1417; display: flex; flex-direction: column; overflow: hidden">
+  <div style="position: relative; flex: none; height: 300px; background: #141B20">
+    <svg width="390" height="300" viewBox="0 0 390 300" role="img" aria-label="일자별 색상 동선 지도 (지도 영역 자리표시)">
+      <path d="M0 50 H390 M0 110 H390 M0 170 H390 M0 230 H390 M60 0 V300 M140 0 V300 M220 0 V300 M300 0 V300" stroke="#1C252B" stroke-width="1"></path>
+      <path d="M-10 70 C 60 50, 120 80, 180 64 S 300 40, 400 80 L 400 310 L -10 310 Z" fill="#182026"></path>
+      <path d="M-10 70 C 60 50, 120 80, 180 64 S 300 40, 400 80" fill="none" stroke="#2A343C" stroke-width="2"></path>
+      <polyline points="330,250 250,160 180,115 120,130 90,180" fill="none" stroke="#C8F25A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="{{op1}}"></polyline>
+      <polyline points="90,180 70,120 140,100 210,150 260,210" fill="none" stroke="#7CC8FF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 6" opacity="{{op2}}"></polyline>
+      <polyline points="90,180 160,200 250,230 330,250" fill="none" stroke="#FF8FC7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2 6" opacity="{{op3}}"></polyline>
+      <g opacity="{{op1}}" font-family="IBM Plex Mono, monospace" font-size="11" font-weight="600">
+        <rect x="318" y="238" width="24" height="24" rx="4" fill="#C8F25A"></rect><text x="330" y="254" text-anchor="middle" fill="#0F1417">01</text>
+        <rect x="238" y="148" width="24" height="24" rx="4" fill="#C8F25A"></rect><text x="250" y="164" text-anchor="middle" fill="#0F1417">02</text>
+        <rect x="168" y="103" width="24" height="24" rx="4" fill="#C8F25A"></rect><text x="180" y="119" text-anchor="middle" fill="#0F1417">03</text>
+        <rect x="108" y="118" width="24" height="24" rx="4" fill="#C8F25A"></rect><text x="120" y="134" text-anchor="middle" fill="#0F1417">04</text>
+      </g>
+      <rect x="78" y="168" width="24" height="24" rx="4" fill="none" stroke="#EEF2F3" stroke-width="2"></rect>
+      <path d="M84 184 l6 -6 l6 6" fill="none" stroke="#EEF2F3" stroke-width="2"></path>
+    </svg>
+    <a href="C_SlotEditor.dc.html" aria-label="편집으로 돌아가기" style="position: absolute; top: 16px; left: 12px; width: 44px; height: 44px; border-radius: 10px; background: #0F1417; border: 1px solid #2A343C; display: flex; align-items: center; justify-content: center">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EEF2F3" stroke-width="2" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
+    </a>
+    <div style="position: absolute; top: 24px; right: 16px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #9AA8B0">MAP · KAKAO SDK</div>
+  </div>
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 20px 10px; border-bottom: 1px solid #2A343C">
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <span style="font-size: 17px; font-weight: 800">제주 서쪽 2박 3일</span>
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #C8F25A">ALL CLEAR · 0 CONFLICTS · DRIVE 3H20M</span>
+    </div>
+  </div>
+  <nav aria-label="일자" style="display: flex; gap: 16px; padding: 0 20px; border-bottom: 1px solid #2A343C">
+    <sc-for list="{{days}}" as="d" hint-placeholder-count="3">
+      <button onClick="{{d.pick}}" style="{{d.style}}"><span style="{{d.dot}}"></span>{{d.label}}</button>
+    </sc-for>
+  </nav>
+  <div style="flex: 1; overflow-y: auto; padding: 0 20px 12px; display: flex; flex-direction: column">
+    <sc-for list="{{items}}" as="it" hint-placeholder-count="6">
+      <sc-if value="{{it.isTravel}}" hint-placeholder-val="{{ false }}">
+        <div style="display: grid; grid-template-columns: 48px 24px minmax(0, 1fr); gap: 10px; padding: 2px 0; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #9AA8B0">
+          <span></span><span style="justify-self: center; width: 1px; height: 16px; background: #3A4650"></span><span>{{it.text}}</span>
+        </div>
+      </sc-if>
+      <sc-if value="{{it.isStop}}" hint-placeholder-val="{{ true }}">
+        <div style="display: grid; grid-template-columns: 48px 24px minmax(0, 1fr) 36px; gap: 10px; align-items: start; padding: 10px 0">
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 600; padding-top: 1px">{{it.time}}</span>
+          <span style="{{it.num}}">{{it.n}}</span>
+          <span style="display: flex; flex-direction: column; gap: 3px; min-width: 0">
+            <span style="font-size: 15px; font-weight: 600">{{it.name}}</span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #9AA8B0">{{it.stay}}</span>
+            <sc-if value="{{it.memo}}" hint-placeholder-val="{{ false }}">
+              <span style="font-size: 12px; color: #7CC8FF">MEMO · {{it.memo}}</span>
+            </sc-if>
+          </span>
+          <button aria-label="순서 바꾸기" style="width: 36px; height: 36px; border: 1px solid #2A343C; border-radius: 8px; background: transparent; display: flex; align-items: center; justify-content: center; cursor: grab">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9AA8B0" stroke-width="2" aria-hidden="true"><path d="M4 9h16M4 15h16"></path></svg>
+          </button>
+        </div>
+      </sc-if>
+    </sc-for>
+  </div>
+  <div style="display: grid; grid-template-columns: 52px minmax(0, 1fr) minmax(0, 1fr); gap: 8px; padding: 12px 20px 24px; border-top: 1px solid #2A343C">
+    <button aria-label="저장" style="height: 52px; border-radius: 12px; border: 1px solid #2A343C; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EEF2F3" stroke-width="2" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"></path></svg>
+    </button>
+    <button style="height: 52px; border-radius: 12px; border: 1px solid #EEF2F3; background: transparent; font: inherit; font-size: 14px; font-weight: 800; color: #EEF2F3; cursor: pointer">가족 공유</button>
+    <a href="C_RouteDetail.dc.html" style="display: flex; align-items: center; justify-content: center; height: 52px; border-radius: 12px; background: #C8F25A; color: #0F1417; font-size: 14px; font-weight: 800; text-decoration: none">공개 등록</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { day: 0 };
+}
+renderVals() {
+const colors = ['#C8F25A', '#7CC8FF', '#FF8FC7'];
+const d = this.state.day;
+const S = (time, name, stay, memo) => ({ isStop: true, time, name, stay, memo: memo || '' });
+const T = (text) => ({ isTravel: true, text });
+const plans = [
+[S('10:30', '제주공항', 'RENT-A-CAR 40M'), T('DRIVE 45M · NAP'), S('12:00', '[식당명] 애월', 'STAY 1H'), T('DRIVE 15M'), S('13:30', '협재해수욕장', 'STAY 2H', '모래놀이 장난감, 여벌 옷'), T('DRIVE 08M'), S('16:00', '[카페명] 한림', 'STAY 1H'), T('DRIVE 04M'), S('18:00', '[식당명 A] 한림', 'STAY 1H30M')],
+[S('10:00', '[볼거리] 한림', 'STAY 2H'), T('DRIVE 20M'), S('12:30', '[식당명] 귀덕', 'STAY 1H'), T('DRIVE 25M · NAP'), S('14:30', '[실내 대안] 제주시', 'RAIN BACKUP', '우천 시 대체')],
+[S('10:00', '[볼거리] 애월', 'STAY 1H30M'), T('DRIVE 10M'), S('12:00', '[식당명] 애월', 'STAY 1H'), T('DRIVE 40M'), S('16:40', '제주공항', 'DEP 18:40')]
+];
+let n = 0;
+const items = plans[d].map((it) => it.isStop ? ({ ...it, n: String(++n).padStart(2, '0'),
+num: 'width: 24px; height: 24px; border-radius: 4px; background: ' + colors[d] + '; color: #0F1417; font-family: \'IBM Plex Mono\', monospace; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center' }) : it);
+const days = ['DAY 1', 'DAY 2', 'DAY 3'].map((label, i) => ({ label,
+style: 'height: 44px; display: flex; align-items: center; gap: 6px; padding: 0; border: none; background: transparent; font-family: \'IBM Plex Mono\', monospace; font-size: 13px; cursor: pointer; ' +
+(d === i ? 'color: #EEF2F3; font-weight: 600; box-shadow: inset 0 -2px 0 ' + colors[i] : 'color: #9AA8B0'),
+dot: 'width: 8px; height: 8px; border-radius: 2px; background: ' + colors[i],
+pick: () => this.setState({ day: i }) }));
+const op = (i) => (d === i ? '1' : '0.2');
+return { days, items, op1: op(0), op2: op(1), op3: op(2) };
+}
+}
+</script>
+</body>
+</html>
