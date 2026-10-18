@@ -42,3 +42,6 @@ next-env.d.ts
 # TourAPI 후보 SQL (npm run tour:build 로 다시 만든다)
 /supabase/data/
 /data/build/
+
+# 블로그 사실 수집 결과 (근거 주소·판정만)
+/data/raw/blog/

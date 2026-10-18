@@ -146,7 +146,9 @@ function PlacesTab({ area, places, setPlaces, tags }) {
         (!check ||
           (check === 'flags' && p.source_data?.flags?.length > 0) ||
           (check === 'notags' && !p.kid_tags?.some((t) => KID_ONLY.includes(t))) ||
-          (check === 'nohours' && !p.opening_hours))
+          (check === 'nohours' && !p.opening_hours) ||
+          (check === 'review' && Object.values(p.review_facts?.tags || {}).some((t) => t.verdict === 'yes' || t.verdict === 'no')) ||
+          (check === 'nokids' && p.review_facts?.nokids?.count > 0))
     );
   }, [places, filter, region, category, check, q]);
 
@@ -226,6 +228,8 @@ function PlacesTab({ area, places, setPlaces, tags }) {
           <option value="flags">확인 필요 표시</option>
           <option value="notags">아이 태그 없음</option>
           <option value="nohours">영업시간 없음</option>
+          <option value="review">후기로 확인된 정보</option>
+          <option value="nokids">노키즈존 언급</option>
         </select>
       </div>
       <input className="rounded-xl bg-surface px-3 py-2 text-sm outline-none" placeholder="이름·주소·세부 검색" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -268,6 +272,62 @@ function PlacesTab({ area, places, setPlaces, tags }) {
 }
 
 /** TourAPI 원문 힌트 (운영자가 시간·태그를 확인할 때 참고) */
+const VERDICT = { yes: '있음', no: '없음', mixed: '엇갈림', weak: '근거 1개' };
+
+/**
+ * 블로그 후기에서 뽑은 근거 (scripts/blogfacts). 태그에 자동으로 넣지 않고, 운영자가 링크를 보고 반영한다.
+ * 인정 기준: 협찬이 아닌 서로 다른 글 2개 이상이 같은 말 + 반대 0
+ */
+function ReviewFacts({ facts, tags, current, onApply }) {
+  if (!facts?.tags) return null;
+  const label = Object.fromEntries(tags.map((t) => [t.id, t.label]));
+  const entries = Object.entries(facts.tags).sort(([, a], [, b]) => (b.pos + b.neg) - (a.pos + a.neg));
+  if (!entries.length && !facts.nokids?.count) return null;
+  return (
+    <div className="rounded-xl bg-accent-soft px-3 py-2 text-xs text-sub">
+      <div className="mb-1 font-bold text-ink">
+        후기 근거 <span className="font-normal">· {String(facts.checkedAt || '').slice(0, 10)} 확인 · 글을 열어 보고 반영하세요</span>
+      </div>
+      {facts.nokids?.count > 0 && (
+        <div className="mb-1 font-bold text-warn-ink">
+          노키즈존 언급 {facts.nokids.count}건{' '}
+          {facts.nokids.evidence.map((e, i) => (
+            <a key={e.url} href={e.url} target="_blank" rel="noopener noreferrer" className="ml-1 font-normal underline">
+              글{i + 1}
+            </a>
+          ))}
+        </div>
+      )}
+      <ul className="m-0 flex list-none flex-col gap-1 p-0">
+        {entries.map(([tag, t]) => {
+          const has = current.includes(tag);
+          const canApply = t.verdict === 'yes' || t.verdict === 'no';
+          return (
+            <li key={tag} className="flex flex-wrap items-center gap-1.5">
+              <b className="text-ink">{label[tag] || tag}</b>
+              <span className={t.verdict === 'yes' ? 'text-ok' : t.verdict === 'no' ? 'text-warn-ink' : ''}>
+                {VERDICT[t.verdict]} ({t.pos}/{t.neg})
+              </span>
+              {t.evidence.map((e, i) => (
+                <a key={e.url + i} href={e.url} target="_blank" rel="noopener noreferrer" className="underline">
+                  {e.date?.slice(2, 7) || `글${i + 1}`}
+                  {e.value === 'no' ? '✕' : ''}
+                  {e.sponsored ? '(협찬)' : ''}
+                </a>
+              ))}
+              {canApply && (t.verdict === 'yes' ? !has : has) && (
+                <button type="button" onClick={() => onApply(tag, t.verdict === 'yes')} className="ml-auto rounded-full bg-surface px-2.5 py-1 text-ink">
+                  {t.verdict === 'yes' ? '태그 넣기' : '태그 빼기'}
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 function SourceHints({ data, home }) {
   if (!data) return null;
   const rows = [
@@ -377,6 +437,7 @@ function PlaceForm({ place, tags, onSaved, selected = false, onSelect }) {
       {open && (
         <div className="flex flex-col gap-2">
           <SourceHints data={place?.source_data} home={place?.external_links?.home} />
+          <ReviewFacts facts={place?.review_facts} tags={tags} current={f.kid_tags} onApply={(tag, on) => set('kid_tags', on ? [...new Set([...f.kid_tags, tag])] : f.kid_tags.filter((t) => t !== tag))} />
           <input className={input} placeholder="이름 (실존 업체명은 공식 API/직접 확인한 것만)" value={f.name} onChange={(e) => set('name', e.target.value)} />
           <input className={input} placeholder="주소" value={f.address} onChange={(e) => set('address', e.target.value)} />
           <div className="grid grid-cols-3 gap-1.5">
