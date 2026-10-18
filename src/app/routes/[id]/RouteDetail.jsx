@@ -5,11 +5,11 @@ import Link from 'next/link';
 import { IconBack, IconShare } from '@/components/Icons';
 import Sheet from '@/components/Sheet';
 import ReportSheet from '@/components/ReportSheet';
-import { DAY_LABELS, FEATURES, dayStyle } from '@/lib/config';
+import { DAY_LABELS, FEATURES, TRAVEL_MODES, dayStyle, departAreasFor } from '@/lib/config';
 import { formatHM } from '@/lib/geo';
 import { companionText, mapLink } from '@/lib/format';
 import { addDays } from '@/lib/hours';
-import { daySummary } from '@/lib/trip';
+import { daySummary, tripDepartArea, tripMode } from '@/lib/trip';
 import { copyRoute, logRouteView } from '@/app/actions/trips';
 import { LogLine, LogSummary } from '@/components/TripLog';
 import { slotLog } from '@/lib/triplog';
@@ -197,10 +197,23 @@ export default function RouteDetail({ trip, placeMap, tags, stats, places, isLog
 function CopySheet({ trip, setup, onClose }) {
   const router = useRouter();
   const n = trip.days.length;
+  const areas = departAreasFor(trip.region);
+  // 이동 방식: S02 에서 고른 것 → 없으면 원본 루트를 따른다
+  const srcMode = tripMode(trip);
+  const initMode = TRAVEL_MODES.some((m) => m.id === setup.mode) ? setup.mode : srcMode;
+  const [mode, setMode] = useState(initMode);
+  const [departAreaId, setDepartAreaId] = useState(areas.find((a) => a.id === setup.area)?.id || tripDepartArea(trip) || areas[0]?.id || '');
+  const sameMode = initMode === srcMode;
   const [startDate, setStartDate] = useState(setup.start || addDays(today(), 14));
-  const [arrivalTime, setArrivalTime] = useState(setup.arr || trip.arrival_time || '10:30');
-  const [departureTime, setDepartureTime] = useState(setup.dep || trip.departure_time || '18:40');
+  const [arrivalTime, setArrivalTime] = useState(setup.arr || (sameMode && trip.arrival_time) || (initMode === 'car' ? '08:00' : '10:30'));
+  const [departureTime, setDepartureTime] = useState(setup.dep || (sameMode && trip.departure_time) || (initMode === 'car' ? '20:00' : '18:40'));
   const [stayName, setStayName] = useState(setup.stay || '');
+  const isCar = mode === 'car';
+  function onMode(m) {
+    setMode(m);
+    setArrivalTime(m === 'car' ? '08:00' : '10:30');
+    setDepartureTime(m === 'car' ? '20:00' : '18:40');
+  }
   const [err, setErr] = useState(null);
   const [pending, start] = useTransition();
 
@@ -212,19 +225,40 @@ function CopySheet({ trip, setup, onClose }) {
             가는 날 (오는 날: {startDate ? addDays(startDate, n - 1) : '-'})
             <input type="date" value={startDate} min={today()} onChange={(e) => setStartDate(e.target.value)} />
           </label>
+          <div className="col-span-2 grid grid-cols-2 gap-1.5" role="group" aria-label="어떻게 가요?">
+            {TRAVEL_MODES.map((m) => (
+              <button key={m.id} type="button" aria-pressed={mode === m.id} onClick={() => onMode(m.id)} className={`pill px-0 ${mode === m.id ? 'pill-on' : ''}`}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+          {isCar && (
+            <label className="field bg-surface col-span-2">
+              어디서 출발해요?
+              <select value={departAreaId} onChange={(e) => setDepartAreaId(e.target.value)}>
+                {areas.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="field bg-surface">
-            제주 도착
+            {isCar ? '출발 시각' : '제주 도착'}
             <input type="time" value={arrivalTime} onChange={(e) => setArrivalTime(e.target.value)} />
           </label>
           <label className="field bg-surface">
-            제주 출발
+            {isCar ? '집에 오는 시각' : '제주 출발'}
             <input type="time" value={departureTime} onChange={(e) => setDepartureTime(e.target.value)} />
           </label>
         </div>
-        <label className="field bg-surface">
-          숙소 (선택)
-          <input value={stayName} placeholder="숙소 이름이나 주소" onChange={(e) => setStayName(e.target.value)} />
-        </label>
+        {n > 1 && (
+          <label className="field bg-surface">
+            숙소 (선택)
+            <input value={stayName} placeholder="숙소 이름이나 주소" onChange={(e) => setStayName(e.target.value)} />
+          </label>
+        )}
         <p className="m-0 text-xs leading-relaxed text-sub">가져온 뒤 내 날짜에 쉬는 곳이 있으면 루트 짜기 화면에서 빨간 경고로 알려 드려요.</p>
         {err && <p className="m-0 text-sm font-bold text-warn-ink">{err}</p>}
         <button
@@ -233,7 +267,7 @@ function CopySheet({ trip, setup, onClose }) {
           className="btn-cta"
           onClick={() =>
             start(async () => {
-              const res = await copyRoute(trip.id, { startDate, arrivalTime, departureTime, stayName });
+              const res = await copyRoute(trip.id, { startDate, arrivalTime, departureTime, stayName, mode, departAreaId: isCar ? departAreaId : null });
               if (!res.ok) return setErr(res.message);
               router.push(`/trips/${res.id}/edit`);
             })

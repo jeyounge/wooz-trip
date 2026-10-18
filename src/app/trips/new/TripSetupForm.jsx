@@ -2,7 +2,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { BackLink } from '@/components/ui';
-import { COMPANIONS, MAX_TRIP_DAYS, REGIONS } from '@/lib/config';
+import { COMPANIONS, MAX_TRIP_DAYS, REGIONS, TRAVEL_MODES, defaultMode, departAreasFor, zoneOf } from '@/lib/config';
 import { addDays, dayCount, shortDate, weekdayLabel } from '@/lib/hours';
 import { createTrip } from '@/app/actions/trips';
 import AiThinking, { waitAtLeast } from '@/components/AiThinking';
@@ -27,15 +27,40 @@ export default function TripSetupForm({ initialCompanion }) {
   const [region, setRegion] = useState('jeju-west');
   const [startDate, setStartDate] = useState(base);
   const [endDate, setEndDate] = useState(addDays(base, 2));
+  const [mode, setMode] = useState(defaultMode('jeju-west'));
+  const [departAreaId, setDepartAreaId] = useState(departAreasFor('jeju-west')[0]?.id || '');
   const [arrivalTime, setArrivalTime] = useState('10:30');
   const [departureTime, setDepartureTime] = useState('18:40');
   const [stayName, setStayName] = useState('');
+  const areas = departAreasFor(region);
+  const isCar = mode === 'car';
   const [start, setStart] = useState('self');
   const [error, setError] = useState(null);
   const [pending, startTransition] = useTransition();
 
   const n = startDate && endDate ? dayCount(startDate, endDate) : 0;
   const dateError = n < 1 ? '오는 날이 가는 날보다 빨라요' : n > MAX_TRIP_DAYS ? `최대 ${MAX_TRIP_DAYS}일까지 짤 수 있어요` : null;
+
+  function onRegion(id) {
+    // 권역 묶음이 바뀌면(제주 ↔ 수도권) 기본 이동 방식·출발 지역도 바꾼다
+    if (zoneOf(id) !== zoneOf(region)) {
+      onMode(defaultMode(id));
+      setDepartAreaId(departAreasFor(id)[0]?.id || '');
+    }
+    setRegion(id);
+  }
+
+  function onMode(m) {
+    setMode(m);
+    // 기본 시각: 비행기는 도착·출발, 차는 출발·집 도착
+    if (m === 'car') {
+      setArrivalTime('08:00');
+      setDepartureTime('20:00');
+    } else {
+      setArrivalTime('10:30');
+      setDepartureTime('18:40');
+    }
+  }
 
   function onStartDate(v) {
     setStartDate(v);
@@ -45,14 +70,29 @@ export default function TripSetupForm({ initialCompanion }) {
   function submit() {
     setError(null);
     if (dateError) return setError(dateError);
+    if (isCar && !departAreaId) return setError('어디서 출발하는지 골라 주세요');
+    if (n === 1 && arrivalTime >= departureTime) return setError(isCar ? '돌아오는 시각이 출발보다 빨라요' : '제주 출발이 도착보다 빨라요');
     if (start === 'browse') {
-      const q = new URLSearchParams({ c: companion, start: startDate, arr: arrivalTime, dep: departureTime });
+      const q = new URLSearchParams({ c: companion, start: startDate, arr: arrivalTime, dep: departureTime, mode });
+      if (isCar) q.set('area', departAreaId);
       if (stayName) q.set('stay', stayName);
       router.push(`/routes?${q}`);
       return;
     }
     startTransition(async () => {
-      const req = createTrip({ region, startDate, endDate, arrivalTime, departureTime, companion, kidsAges: ages, stayName, start });
+      const req = createTrip({
+        region,
+        startDate,
+        endDate,
+        arrivalTime,
+        departureTime,
+        companion,
+        kidsAges: ages,
+        stayName: n === 1 ? '' : stayName,
+        start,
+        mode,
+        departAreaId: isCar ? departAreaId : null,
+      });
       const res = start === 'ai' ? await waitAtLeast(req) : await req;
       if (!res.ok) return setError(res.message);
       router.push(`/trips/${res.id}/edit${start === 'ai' ? '?ai=1' : ''}`);
@@ -138,7 +178,7 @@ export default function TripSetupForm({ initialCompanion }) {
                 key={r.id}
                 type="button"
                 aria-pressed={region === r.id}
-                onClick={() => setRegion(r.id)}
+                onClick={() => onRegion(r.id)}
                 className={`pill ${region === r.id ? 'pill-on' : ''}`}
               >
                 {r.label}
@@ -148,7 +188,26 @@ export default function TripSetupForm({ initialCompanion }) {
         </section>
 
         <section className={card}>
-          <h2 className="m-0 h-display text-lg">언제, 몇 시 비행기예요?</h2>
+          <h2 className="m-0 h-display text-lg">언제, 어떻게 가요?</h2>
+          <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="어떻게 가요?">
+            {TRAVEL_MODES.map((m) => (
+              <button key={m.id} type="button" aria-pressed={mode === m.id} onClick={() => onMode(m.id)} className={`pill px-0 ${mode === m.id ? 'pill-on' : ''}`}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+          {isCar && (
+            <label className="field">
+              어디서 출발해요?
+              <select value={departAreaId} onChange={(e) => setDepartAreaId(e.target.value)}>
+                {areas.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <div className="grid grid-cols-2 gap-2">
             <label className="field">
               가는 날{startDate && ` · ${weekdayLabel(startDate)}`}
@@ -159,24 +218,27 @@ export default function TripSetupForm({ initialCompanion }) {
               <input type="date" required value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} />
             </label>
             <label className="field">
-              제주 도착
+              {isCar ? '출발 시각' : '제주 도착'}
               <input type="time" required value={arrivalTime} onChange={(e) => setArrivalTime(e.target.value)} />
             </label>
             <label className="field">
-              제주 출발
+              {isCar ? '집에 오는 시각' : '제주 출발'}
               <input type="time" required value={departureTime} onChange={(e) => setDepartureTime(e.target.value)} />
             </label>
           </div>
+          {isCar && <div className="text-xs text-sub">출발지에서 첫 장소까지, 마지막 장소에서 돌아오는 길도 이동시간에 넣어요</div>}
           {!dateError && n > 0 && (
             <div className="text-[13px] text-sub">
               {shortDate(startDate)} – {shortDate(endDate)} · {n === 1 ? '당일치기' : `${n - 1}박 ${n}일`}
             </div>
           )}
           {dateError && <div className="text-[13px] font-bold text-warn-ink">{dateError}</div>}
-          <label className="field">
-            숙소
-            <input type="text" placeholder="숙소 이름이나 주소" value={stayName} onChange={(e) => setStayName(e.target.value)} />
-          </label>
+          {n !== 1 && (
+            <label className="field">
+              숙소
+              <input type="text" placeholder="숙소 이름이나 주소" value={stayName} onChange={(e) => setStayName(e.target.value)} />
+            </label>
+          )}
         </section>
 
         <section className="flex flex-col gap-2.5">

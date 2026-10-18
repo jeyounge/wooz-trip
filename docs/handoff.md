@@ -10,7 +10,7 @@
    `https://trip.z-labs.kr` 와 `http://localhost:3000` 추가 → 저장. "카카오맵" 사용 설정 메뉴가 있으면 켜기.
    Vercel 환경변수 `NEXT_PUBLIC_KAKAO_MAP_KEY` 가 그 앱의 **JavaScript 키**인지 확인. (지금은 domain mismatched 로 거절돼서 간이 지도가 뜸)
 3. **테스트**: 사이트에서 여행 만들기 → AI 초안 → 결과 화면. 오늘이 들어간 여행이면 「+ 쓴 돈·한마디」가 보임. 어색한 볼거리·문구는 알려 주기
-4. 테스트가 괜찮으면 Claude 에게 **"당일치기 시작하자"** (설계: `docs/next-features.md`)
+4. 당일치기·차 여행 만듦 (2026-10-18): S02 「언제, 어떻게 가요?」에서 차 → 출발 지역 선택. 테스트해 보고 괜찮으면 다음은 골프·운동시설 (`docs/next-features.md` ③)
 
 ## 한눈에
 

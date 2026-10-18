@@ -42,6 +42,44 @@ export const SLOT_TYPES = {
 /** 제주공항 (공항은 고정 슬롯 위치로만 쓴다) */
 export const AIRPORT = { name: '제주공항', lat: 33.5066, lng: 126.4929 };
 
+/**
+ * 어떻게 가요? fly = 비행기(공항 도착·출발), car = 차(출발 지역에서 출발·도착).
+ * 제주 권역은 기본 비행기, 인천·경기를 열면 그 권역은 기본 차 (REGION_ZONE 참고).
+ */
+export const TRAVEL_MODES = [
+  { id: 'fly', label: '비행기' },
+  { id: 'car', label: '차' },
+];
+/** 권역(REGIONS.id) → 출발 지역 묶음. 지역을 새로 열면 여기에 추가한다 */
+export const REGION_ZONE = { 'jeju-west': 'jeju', 'jeju-east': 'jeju', 'jeju-south': 'jeju', 'jeju-city': 'jeju' };
+export const ZONE_DEFAULT_MODE = { jeju: 'fly', capital: 'car' };
+
+/**
+ * 차로 갈 때 출발 지역 (대표 좌표 하나씩, 이동시간 추정용). 집 주소는 받지 않는다 (2026-10-18 결정).
+ * zone: 이 출발 지역을 보여줄 권역 묶음
+ */
+export const DEPART_AREAS = [
+  { id: 'jeju-downtown', label: '제주시내', zone: 'jeju', lat: 33.4996, lng: 126.5312 },
+  { id: 'seogwipo-downtown', label: '서귀포시내', zone: 'jeju', lat: 33.2541, lng: 126.56 },
+  { id: 'jeju-port', label: '제주항 (배로 차 가져옴)', zone: 'jeju', lat: 33.5195, lng: 126.5434 },
+  { id: 'seoul-gangnam', label: '서울 강남', zone: 'capital', lat: 37.4979, lng: 127.0276 },
+  { id: 'seoul-gangbuk', label: '서울 강북·도심', zone: 'capital', lat: 37.5663, lng: 126.9779 },
+  { id: 'seoul-west', label: '서울 서부', zone: 'capital', lat: 37.5571, lng: 126.9245 },
+  { id: 'seoul-east', label: '서울 동부', zone: 'capital', lat: 37.5384, lng: 127.0822 },
+  { id: 'suwon', label: '수원', zone: 'capital', lat: 37.2659, lng: 127.0 },
+  { id: 'seongnam', label: '성남·분당', zone: 'capital', lat: 37.385, lng: 127.1233 },
+  { id: 'yongin', label: '용인', zone: 'capital', lat: 37.2411, lng: 127.1776 },
+  { id: 'goyang', label: '고양·일산', zone: 'capital', lat: 37.6597, lng: 126.7732 },
+  { id: 'bucheon', label: '부천', zone: 'capital', lat: 37.5034, lng: 126.766 },
+  { id: 'anyang', label: '안양·군포', zone: 'capital', lat: 37.3897, lng: 126.951 },
+  { id: 'uijeongbu', label: '의정부', zone: 'capital', lat: 37.7381, lng: 127.0337 },
+  { id: 'incheon', label: '인천', zone: 'capital', lat: 37.4563, lng: 126.7052 },
+];
+export const departArea = (id) => DEPART_AREAS.find((a) => a.id === id) || null;
+export const zoneOf = (region) => REGION_ZONE[region] || 'capital';
+export const departAreasFor = (region) => DEPART_AREAS.filter((a) => a.zone === zoneOf(region));
+export const defaultMode = (region) => ZONE_DEFAULT_MODE[zoneOf(region)] || 'car';
+
 export const DAY_LABELS = ['첫째 날', '둘째 날', '셋째 날', '넷째 날', '다섯째 날', '여섯째 날', '일곱째 날'];
 export const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 

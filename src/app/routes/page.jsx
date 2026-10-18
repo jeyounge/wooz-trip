@@ -16,7 +16,7 @@ export default async function RoutesPage({ searchParams }) {
 
   // S02 "따라가기"에서 넘어온 내 여행 정보는 상세 → 복사 시트까지 그대로 넘긴다
   const setup = new URLSearchParams();
-  for (const k of ['start', 'arr', 'dep', 'stay']) if (typeof sp?.[k] === 'string' && sp[k]) setup.set(k, sp[k]);
+  for (const k of ['start', 'arr', 'dep', 'stay', 'mode', 'area']) if (typeof sp?.[k] === 'string' && sp[k]) setup.set(k, sp[k]);
   const fromSetup = setup.toString();
 
   const href = (patch) => {

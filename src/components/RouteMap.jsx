@@ -63,7 +63,7 @@ function SvgMap({ days, active, height }) {
                 {on &&
                   d.points.map((p, j) => {
                     const [x, y] = pts[j];
-                    if (p.kind === 'stay' || p.kind === 'airport') {
+                    if (p.kind !== 'place') {
                       return (
                         <g key={j}>
                           <circle cx={x} cy={y} r="13" fill="#FFC93C" stroke="#FFFFFF" strokeWidth="3" />
@@ -147,7 +147,7 @@ function KakaoMap({ appKey, days, active, height }) {
             d.points.forEach((p) => {
               const pos = new kakao.maps.LatLng(p.lat, p.lng);
               bounds.extend(pos);
-              const isBase = p.kind === 'stay' || p.kind === 'airport';
+              const isBase = p.kind !== 'place'; // 숙소·공항·출발지
               const html = `<div style="width:28px;height:28px;border-radius:14px;border:3px solid #fff;background:${isBase ? '#FFC93C' : st.hex};color:${isBase ? '#3A2A20' : '#fff'};font:700 12px/22px sans-serif;text-align:center;box-sizing:border-box">${isBase ? '⌂' : p.n}</div>`;
               const ov = new kakao.maps.CustomOverlay({ position: pos, content: html, yAnchor: 0.5 });
               ov.setMap(map.current);

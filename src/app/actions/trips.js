@@ -9,8 +9,8 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { TABLES } from '@/lib/tables';
 import { getCurrentUser } from '@/lib/auth';
-import { COMPANIONS, MAX_TRIP_DAYS, REGIONS, SLOT_TYPES } from '@/lib/config';
-import { buildDays, redateDays, usedPlaceIds } from '@/lib/trip';
+import { COMPANIONS, MAX_TRIP_DAYS, REGIONS, SLOT_TYPES, TRAVEL_MODES, departArea, departAreasFor } from '@/lib/config';
+import { buildDays, redateDays, setTripEnds, tripDepartArea, tripMode, usedPlaceIds } from '@/lib/trip';
 import { addDays, dayCount } from '@/lib/hours';
 import { getApprovedPlaces } from '@/lib/places';
 import { buildFillTasks, validatePicks, applyPicks, finalCheck } from '@/lib/ai/fill';
@@ -36,6 +36,16 @@ async function loadOwnTrip(db, user, id) {
   return data;
 }
 
+const FIXED_KINDS = ['airport_arrive', 'airport_depart', 'home_start', 'home_end', 'stay_start', 'stay_end'];
+
+/** 이동 방식·출발 지역 확인 → { mode, departAreaId } | { error } */
+function travelOf(region, mode, departAreaId) {
+  const m = TRAVEL_MODES.some((x) => x.id === mode) ? mode : 'fly';
+  if (m === 'fly') return { mode: 'fly', departAreaId: null };
+  if (!departAreasFor(region).some((a) => a.id === departAreaId)) return { error: '어디서 출발하는지 골라 주세요' };
+  return { mode: 'car', departAreaId };
+}
+
 /** 클라이언트가 보낸 days 를 허용된 모양으로만 정리 */
 function sanitizeDays(days, startDate) {
   if (!Array.isArray(days) || !days.length || days.length > MAX_TRIP_DAYS) throw new Error('일자 형식 오류');
@@ -55,10 +65,11 @@ function sanitizeDays(days, startDate) {
       if (s.aiReason && out.placeId) out.aiReason = String(s.aiReason).slice(0, 200);
       if (s.fixed) {
         out.fixed = {
-          kind: ['airport_arrive', 'airport_depart', 'stay_start', 'stay_end'].includes(s.fixed.kind) ? s.fixed.kind : 'stay_end',
+          kind: FIXED_KINDS.includes(s.fixed.kind) ? s.fixed.kind : 'stay_end',
           name: String(s.fixed.name || '').slice(0, 60),
           note: String(s.fixed.note || '').slice(0, 80),
         };
+        if (out.fixed.kind.startsWith('home') && departArea(s.fixed.area)) out.fixed.area = s.fixed.area;
       }
       return out;
     }),
@@ -85,17 +96,20 @@ export async function createTrip(input) {
   const { user, db } = await authed();
   if (!user) return fail('로그인이 필요해요');
 
-  const { region, startDate, endDate, arrivalTime, departureTime, companion, kidsAges = [], stayName = '', start } = input || {};
+  const { region, startDate, endDate, arrivalTime, departureTime, companion, kidsAges = [], stayName = '', start, mode, departAreaId } = input || {};
   if (!REGIONS.some((r) => r.id === region)) return fail('지역을 골라 주세요');
   if (!COMPANIONS.some((c) => c.id === companion)) return fail('누구랑 가는지 골라 주세요');
   if (!DATE.test(startDate || '') || !DATE.test(endDate || '')) return fail('날짜를 확인해 주세요');
   const n = dayCount(startDate, endDate);
   if (n < 1) return fail('오는 날이 가는 날보다 빨라요');
   if (n > MAX_TRIP_DAYS) return fail(`여행은 최대 ${MAX_TRIP_DAYS}일까지 짤 수 있어요`);
-  if (!TIME.test(arrivalTime || '') || !TIME.test(departureTime || '')) return fail('비행기 시각을 확인해 주세요');
+  const travel = travelOf(region, mode, departAreaId);
+  if (travel.error) return fail(travel.error);
+  if (!TIME.test(arrivalTime || '') || !TIME.test(departureTime || '')) return fail(travel.mode === 'car' ? '출발·도착 시각을 확인해 주세요' : '비행기 시각을 확인해 주세요');
+  if (n === 1 && arrivalTime >= departureTime) return fail(travel.mode === 'car' ? '돌아오는 시각이 출발보다 빨라요' : '제주 출발이 도착보다 빨라요');
 
   const ages = companion === 'kids' ? kidsAges.map((a) => parseInt(a, 10)).filter((a) => a >= 0 && a <= 13).slice(0, 6) : [];
-  const days = buildDays({ startDate, endDate, arrivalTime, departureTime, stayName });
+  const days = buildDays({ startDate, endDate, arrivalTime, departureTime, stayName, ...travel });
 
   const { data, error } = await db
     .from(TABLES.trips)
@@ -116,7 +130,7 @@ export async function createTrip(input) {
     .single();
   if (error) return fail(`저장 실패: ${error.message}`);
 
-  await logEvent(EVENTS.tripCreated, { userId: user.id, tripId: data.id, meta: { start, companion, days: n } });
+  await logEvent(EVENTS.tripCreated, { userId: user.id, tripId: data.id, meta: { start, companion, days: n, mode: travel.mode } });
 
   let ai = null;
   if (start === 'ai') ai = await aiFill(data.id);
@@ -277,7 +291,7 @@ export async function unpublishTrip(tripId) {
  * 일자 수는 원본과 같고 날짜만 내 시작일로 바꾼다.
  * 휴무·영업시간·이동시간은 화면에서 내 날짜 기준으로 다시 계산된다.
  */
-export async function copyRoute(routeId, { startDate, arrivalTime, departureTime, stayName }) {
+export async function copyRoute(routeId, { startDate, arrivalTime, departureTime, stayName, mode, departAreaId }) {
   const { user, db } = await authed();
   if (!user) return fail('로그인이 필요해요');
   if (!isUuid(routeId)) return fail('루트를 찾을 수 없어요');
@@ -287,18 +301,12 @@ export async function copyRoute(routeId, { startDate, arrivalTime, departureTime
   if (!src) return fail('공개된 루트가 아니에요');
 
   const n = src.days.length;
-  const days = redateDays(src.days, startDate);
   const arr = TIME.test(arrivalTime || '') ? arrivalTime : src.arrival_time;
   const dep = TIME.test(departureTime || '') ? departureTime : src.departure_time;
-  // 공항 고정 슬롯 시각을 내 비행기 시각에 맞춘다
-  for (const s of days[0].slots) if (s.fixed?.kind === 'airport_arrive' && arr) s.time = arr;
-  const last = days[n - 1].slots.find((s) => s.fixed?.kind === 'airport_depart');
-  if (last && dep) {
-    const [h, m] = dep.split(':').map(Number);
-    const t = Math.max(0, h * 60 + m - 120);
-    last.time = `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
-    last.fixed.note = `${dep} 출발 · 렌터카 반납`;
-  }
+  // 이동 방식은 고르지 않으면 원본을 따른다. 첫 칸·끝 칸을 내 비행기·출발 시각에 맞춘다
+  const travel = travelOf(src.region, mode || tripMode(src), departAreaId || tripDepartArea(src));
+  if (travel.error) return fail(travel.error);
+  const days = setTripEnds(redateDays(src.days, startDate), { mode: travel.mode, arrivalTime: arr, departureTime: dep, departAreaId: travel.departAreaId });
   const stay = String(stayName || '').trim();
   if (stay) for (const d of days) for (const s of d.slots) if (s.fixed?.kind?.startsWith('stay')) s.fixed[s.fixed.kind === 'stay_end' ? 'name' : 'note'] = stay;
 
