@@ -20,6 +20,9 @@ test('tourapi: 전국 — 다른 시·도는 시·도 단위 지역, 홈페이�
   assert.equal(toPlace(item, {}, {}, {}, { area: { code: '50', slug: 'jeju' } }), null);
   assert.equal(homepageOf('www.example.com'), 'https://www.example.com/');
   assert.equal(homepageOf('없음'), null);
+  assert.equal(homepageOf('<a href="https://www.visitjeju.net/kr/">비짓제주</a>'), null, '포털 첫 화면은 버림');
+  assert.equal(homepageOf('https://www.visitjeju.net/kr'), null);
+  assert.ok(homepageOf('https://www.visitjeju.net/kr/detail/view?contentsid=CNTS_1'), '그 장소 상세 페이지는 남김');
 });
 
 test('tourapi: 지역은 주소 읍면동, 없으면 좌표', () => {

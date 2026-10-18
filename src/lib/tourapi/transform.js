@@ -261,7 +261,11 @@ export function homepageOf(raw) {
   const url = /^https?:\/\//i.test(href) ? href : `https://${href}`;
   try {
     const u = new URL(url.replace(/&amp;/g, '&'));
-    return u.protocol === 'https:' || u.protocol === 'http:' ? u.toString().slice(0, 300) : null;
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
+    // 관광 포털·기관 첫 화면은 그 장소 홈페이지가 아니다 (그 장소 상세 페이지 주소면 남긴다)
+    const portal = /(^|\.)(visitjeju\.net|visitkorea\.or\.kr|jeju\.go\.kr|heritage\.go\.kr|foresttrip\.go\.kr|go\.kr)$/i.test(u.hostname);
+    if (portal && u.pathname.replace(/\/(kr|ko|main|index\.\w+)?\/?$/i, '') === '' && !u.search) return null;
+    return u.toString().slice(0, 300);
   } catch {
     return null;
   }
