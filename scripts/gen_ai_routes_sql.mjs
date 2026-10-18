@@ -37,7 +37,10 @@ function outsideHours(place, slot) {
   if (!h) return false;
   const start = toMin(SLOT_TIME[slot] || '12:00');
   const end = start + (SLOT_TYPES[slot]?.stay || 60);
-  return start < toMin(h.open) || end > toMin(h.lastOrder || h.close) + 15;
+  const open = toMin(h.open);
+  let close = toMin(h.lastOrder || h.close);
+  if (close <= open) close += 1440; // 자정 넘어 닫는 곳 (src/lib/hours.js 와 같게)
+  return start < open || end > close + 15;
 }
 
 const errors = [];

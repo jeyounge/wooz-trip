@@ -55,14 +55,14 @@
 | 제주 TourAPI 장소 (DB) | 1,472곳 — **승인 1,028** (영업시간 있는 곳 전부, 2026-10-18) · 후보 444 (영업시간 기다리는 중) |
 | 영업시간 있음 / 공식 홈페이지 | 1,028 / 154 (공통정보 1,114곳 남음 → 1~2일) |
 | 블로그 후기 확인 | 22곳 (주차 13 · 키즈존 3 · 유모차 2 인정) |
-| 샘플 | 장소 31, AI 루트 23 (실데이터 승인 후 삭제) |
+| AI 루트 | **200개** (실장소, `docs/ai-routes.md`) · 샘플 장소·루트·테스트 여행 3개는 삭제함 (2026-10-18) |
 
 ## 다음 할 일
 
 1. **남은 444곳 승인**: 공통정보 수집이 끝나면 `npm run places:approve -- --area jeju --with-hours` 로 확인 → `--apply`
    (승인하면 매일 자동 반영이 그 장소를 더 이상 갱신하지 않으니 영업시간이 들어온 곳만 승인). 가족과 안 맞는 곳은 `/admin` 에서 제외
-2. 승인 장소로 **AI 루트 만들기**: `npm run places:export` → LLM(Claude Code 세션)으로 JSON → `npm run routes:sql` → SQL 실행
-3. **샘플 삭제**: `delete from wooz_trip_ai_routes where code like 'sample-%'; delete from wooz_trip_places where is_sample;`
+2. **장소 조회 속도**: 승인 장소가 1,000곳을 넘었다. 요청마다 전부 읽는 방식(`src/lib/places.js`)을 권역별로 나누거나 DB 로 옮긴다
+3. 444곳을 더 승인하면 AI 루트 다시 만들기: `places:export` → `pool.mjs` 에 볼거리 추가 → `routes:build` → `routes:sql`
 4. 도메인 등록 확인: Supabase Redirect URLs `https://trip.z-labs.kr/**`, 카카오 Web 도메인 `https://trip.z-labs.kr`
 5. 서비스명 정하기 (`NEXT_PUBLIC_SERVICE_NAME`)
 6. 제주 수집이 끝나면 TourAPI **운영계정(트래픽 증가)** 신청 → `TOURAPI_DAILY_LIMIT` 올리기

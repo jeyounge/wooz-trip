@@ -194,7 +194,6 @@ function PlacesTab({ area, places, setPlaces, tags }) {
           <li>
             빠르게 하려면: 확인 필터 「후기로 확인된 정보」 → 근거가 맞는 곳을 체크 → <b className="text-ink">선택 승인</b>. 가족과 안 맞는 곳은 <b className="text-ink">제외</b>.
           </li>
-          <li>샘플 장소([샘플])는 개발용이에요. 실제 장소를 300곳쯤 승인하면 지워요.</li>
         </ol>
       </details>
       <div className="flex gap-1.5 overflow-x-auto">

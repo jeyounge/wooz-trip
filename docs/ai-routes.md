@@ -16,7 +16,16 @@
 
 코드: `src/lib/ai/routes.js`(고르기·맞추기), `src/app/actions/trips.js`의 `aiFill`, 테스트 `test/core.test.mjs`.
 
-## 루트 추가하는 순서
+## 지금 들어 있는 루트 (2026-10-18)
+
+- **200개** = 지역 4 × 동행 4 × 1~4일. 아이 동반은 조합마다 4~5개, 나머지는 2~3개. 파일 `data/ai-routes/jeju-real.json`
+- 만드는 법: LLM(Claude Code)이 승인 볼거리를 하나씩 보고 동행 유형·테마를 붙여 고른 목록 `scripts/ai-routes/pool.mjs`(215곳)
+  → `npm run routes:build` 가 볼거리를 중심으로 가까운 식당·카페를 붙여 조립 (영업시간·휴무·거리·아이 규칙 검사, 시드 고정)
+- 추천 이유는 장소 데이터(종류·태그·실내)와 계산한 이동시간으로만 쓴다. 지어낸 사실 없음.
+- 장소를 더 승인했거나 볼거리를 고쳤으면: `npm run places:export` → `pool.mjs` 고치기 → `npm run routes:build` → `npm run routes:sql`
+- 샘플 루트·샘플 장소는 지웠다 (2026-10-18).
+
+## 루트 추가하는 순서 (LLM 이 JSON 을 직접 쓰는 방법)
 
 ```
 1) npm run places:export        # 승인된 장소 목록 → data/places-for-llm.json (DB 에 장소가 있어야 함)
@@ -29,8 +38,6 @@
 - 4단계에서 **오류**(모르는 장소, 승인 안 된 장소, 같은 장소 두 번, 이유 없음 등)가 있으면 SQL을 만들지 않는다.
 - **경고**(점심 슬롯에 카페, 기본 시각에 영업시간 밖 등)는 SQL을 만들되 고치는 게 좋다.
 - 내용을 고치려면 JSON을 고치고 4~5단계를 다시 한다. 빼고 싶은 루트는 `/admin` → AI 루트 탭에서 끈다.
-- 지금 들어 있는 `data/ai-routes/sample-jeju.json`(23개)은 가짜 장소(`sample-01`…)로 만든 **개발용 샘플**이다.
-  실데이터를 넣을 때 `delete from wooz_trip_ai_routes where code like 'sample-%';`로 지운다.
 
 ## JSON 형식
 
