@@ -8,6 +8,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { TABLES } from '@/lib/tables';
 import { CATEGORIES, REGIONS } from '@/lib/config';
 import { AREAS } from '@/lib/areas';
+import { introTemplate } from '@/lib/intro';
 
 const fail = (message) => ({ ok: false, message });
 const TIME = /^\d{2}:\d{2}$/;
@@ -114,15 +115,6 @@ export async function draftIntro(id) {
   ]);
   if (!place) return fail('장소 없음');
   return { ok: true, intro: introTemplate(place, Object.fromEntries((tags || []).map((t) => [t.id, t.label]))) };
-}
-
-/** 운영자가 체크한 종류·태그만으로 만든 소개 문장 틀 (운영자가 다듬어서 저장) */
-function introTemplate(place, tagLabels) {
-  const tags = (place.kid_tags || []).filter((t) => t !== 'regular_closed').map((t) => tagLabels[t] || t);
-  const kind = place.sub_category || '장소';
-  const parts = [`${kind}${place.indoor ? '(실내)' : ''}`];
-  if (tags.length) parts.push(`${tags.slice(0, 3).join(', ')} 있어요`);
-  return parts.join(' · ');
 }
 
 /** 여러 장소 한 번에 승인/제외 */

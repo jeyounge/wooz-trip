@@ -17,7 +17,8 @@
     "tour:import": "node scripts/tourapi/import.mjs",
     "tour:daily": "cmd /c scripts\\tourapi\\daily.cmd",
     "facts:run": "node scripts/blogfacts/run.mjs",
-    "facts:sync": "node scripts/blogfacts/sync.mjs"
+    "facts:sync": "node scripts/blogfacts/sync.mjs",
+    "places:approve": "node scripts/places/approve.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
