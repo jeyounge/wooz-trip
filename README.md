@@ -17,6 +17,18 @@ npm run build         # 빌드 + 린트
 npm run routes:sql    # AI 루트 JSON 검사 → SQL 생성 (docs/ai-routes.md)
 ```
 
+## 배포 (Vercel)
+
+GitHub `jeyounge/wooz-trip` 의 `main` 에 올리면 Vercel 이 자동 배포한다 (처음 한 번만 연결).
+
+1. [vercel.com/new](https://vercel.com/new) → GitHub `wooz-trip` 저장소 Import (Framework: Next.js, 설정 그대로)
+2. Environment Variables 에 `.env.vercel.local` 내용을 붙여 넣기 (로컬에만 있는 파일, 커밋 안 됨)
+   - 필요한 키: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_EMAIL`, `NEXT_PUBLIC_KAKAO_MAP_KEY`(선택), `NEXT_PUBLIC_SERVICE_NAME`(선택)
+   - TourAPI·카카오 REST 키는 넣지 않는다 (수집은 로컬 PC 스케줄러에서만 돈다)
+3. Deploy → 나온 주소(`*.vercel.app`)를
+   - Supabase → Authentication → URL Configuration → Redirect URLs 에 `https://<주소>/**` 추가
+   - 카카오 개발자센터 → 앱 → 플랫폼 → Web 사이트 도메인에 `https://<주소>` 추가 (카카오맵)
+
 ## AI 초안
 
 서비스는 LLM API를 부르지 않는다. 운영자가 LLM으로 미리 만든 루트(`data/ai-routes/*.json`)를 DB에 넣어 두고,
