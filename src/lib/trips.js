@@ -77,3 +77,23 @@ export async function loadPlaceMapAdmin(ids) {
 export function isUuid(v) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v || '');
 }
+
+/**
+ * 여행 기록 (쓴 돈·한마디). 읽기는 RLS: 본인, 또는 작성자가 보여주기를 켠 공개 루트.
+ * 테이블이 아직 없으면(0006 실행 전) null — 화면은 기록 없이 그대로 보인다.
+ */
+export async function getTripLog(tripId) {
+  if (!isUuid(tripId)) return null;
+  const s = await createClient();
+  const { data, error } = await s.from(TABLES.tripLogs).select('*').eq('trip_id', tripId).maybeSingle();
+  if (error) return null;
+  return data;
+}
+
+/** 가족 공유 링크용: 작성자가 보여주기를 켰을 때만 */
+export async function getPublicTripLogAdmin(tripId) {
+  if (!isUuid(tripId)) return null;
+  const { data, error } = await createAdminClient().from(TABLES.tripLogs).select('*').eq('trip_id', tripId).eq('is_public', true).maybeSingle();
+  if (error) return null;
+  return data;
+}

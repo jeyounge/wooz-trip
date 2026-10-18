@@ -19,4 +19,5 @@ export const TABLES = {
   reports: t('reports'),
   events: t('events'),
   aiRoutes: t('ai_routes'), // 미리 만든 AI 추천 루트
+  tripLogs: t('trip_logs'), // 쓴 돈·다녀온 뒤 한마디 (0006)
 };

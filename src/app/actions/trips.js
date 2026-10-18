@@ -18,6 +18,7 @@ import { chooseRoute } from '@/lib/ai/routes';
 import { bumpPickCount, getActiveAiRoutes } from '@/lib/ai/store';
 import { EVENTS, logEvent } from '@/lib/events';
 import { isUuid, TRIP_COLUMNS } from '@/lib/trips';
+import { sanitizeLog } from '@/lib/triplog';
 
 const fail = (message) => ({ ok: false, message });
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -233,7 +234,7 @@ export async function shareTrip(tripId) {
 }
 
 /** 공개 등록 ("자랑하기") */
-export async function publishTrip(tripId, { title, authorName, tip }) {
+export async function publishTrip(tripId, { title, authorName, tip, showLog }) {
   const { user, db } = await authed();
   if (!user) return fail('로그인이 필요해요');
   const trip = await loadOwnTrip(db, user, tripId);
@@ -251,7 +252,11 @@ export async function publishTrip(tripId, { title, authorName, tip }) {
     })
     .eq('id', tripId);
   if (error) return fail(error.message);
-  await logEvent(EVENTS.tripPublished, { userId: user.id, tripId });
+  if (typeof showLog === 'boolean') {
+    const r = await setLogPublic(db, user, tripId, showLog);
+    if (!r.ok) return r;
+  }
+  await logEvent(EVENTS.tripPublished, { userId: user.id, tripId, meta: { showLog: !!showLog } });
   revalidatePath('/');
   revalidatePath('/routes');
   return { ok: true };
@@ -363,4 +368,35 @@ export async function createReport({ placeId, tripId, type, message, tags }) {
   if (error) return fail(error.message);
   await logEvent(EVENTS.reportCreated, { userId: user.id, meta: { placeId: pid, type } });
   return { ok: true };
+}
+
+const LOG_MISSING = '기록 기능 준비 중이에요 (운영자: 0006 SQL 실행 필요)';
+
+/** 쓴 돈·다녀온 뒤 한마디 저장 (내 여행만). 공개 여부(isPublic)는 자랑하기 시트에서만 바꾼다 */
+export async function saveTripLog(tripId, input) {
+  const { user, db } = await authed();
+  if (!user) return fail('로그인이 필요해요');
+  const trip = await loadOwnTrip(db, user, tripId);
+  if (!trip) return fail('루트를 찾을 수 없어요');
+  const log = sanitizeLog(input, trip.days);
+  const { data: before, error: readErr } = await db.from(TABLES.tripLogs).select('rating, is_public').eq('trip_id', tripId).maybeSingle();
+  if (readErr) return fail(LOG_MISSING);
+  const { error } = await db.from(TABLES.tripLogs).upsert(
+    { trip_id: tripId, owner_id: user.id, slots: log.slots, extras: log.extras, rating: log.rating, comment: log.comment || null, is_public: before?.is_public ?? false },
+    { onConflict: 'trip_id' }
+  );
+  if (error) return fail(error.message);
+  if (log.rating && !before?.rating) await logEvent(EVENTS.tripReviewed, { userId: user.id, tripId, meta: { rating: log.rating } });
+  return { ok: true, log: { ...log, isPublic: before?.is_public ?? false } };
+}
+
+async function setLogPublic(db, user, tripId, isPublic) {
+  const { data: row, error: readErr } = await db.from(TABLES.tripLogs).select('trip_id').eq('trip_id', tripId).maybeSingle();
+  if (readErr) return isPublic ? fail(LOG_MISSING) : { ok: true };
+  const { error } = row
+    ? await db.from(TABLES.tripLogs).update({ is_public: isPublic }).eq('trip_id', tripId)
+    : isPublic
+      ? await db.from(TABLES.tripLogs).insert({ trip_id: tripId, owner_id: user.id, is_public: true })
+      : { error: null };
+  return error ? fail(error.message) : { ok: true };
 }

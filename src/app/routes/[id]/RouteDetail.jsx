@@ -11,6 +11,8 @@ import { companionText, mapLink } from '@/lib/format';
 import { addDays } from '@/lib/hours';
 import { daySummary } from '@/lib/trip';
 import { copyRoute, logRouteView } from '@/app/actions/trips';
+import { LogLine, LogSummary } from '@/components/TripLog';
+import { slotLog } from '@/lib/triplog';
 
 function today() {
   const d = new Date();
@@ -18,7 +20,7 @@ function today() {
 }
 
 /** S06 공개 루트 상세 (시안 B) */
-export default function RouteDetail({ trip, placeMap, tags, stats, places, isLoggedIn, isOwner, setup }) {
+export default function RouteDetail({ trip, placeMap, tags, stats, places, isLoggedIn, isOwner, setup, log }) {
   const router = useRouter();
   const [open, setOpen] = useState(0);
   const [copyOpen, setCopyOpen] = useState(false);
@@ -130,12 +132,15 @@ export default function RouteDetail({ trip, placeMap, tags, stats, places, isLog
                 {isOpen && (
                   <div className="flex flex-col gap-1.5">
                     {stops.map((s) => (
-                      <div key={s.id} className="flex items-center gap-2.5 rounded-[14px] bg-bg px-2.5 py-2 text-sm">
-                        <span className="font-bold text-sub">{s.time}</span>
-                        <span className="min-w-0 flex-1 truncate">{placeMap[s.placeId].name}</span>
-                        <a href={mapLink(placeMap[s.placeId])} target="_blank" rel="noopener noreferrer" className="text-xs text-ok underline">
-                          지도
-                        </a>
+                      <div key={s.id} className="flex flex-col gap-0.5 rounded-[14px] bg-bg px-2.5 py-2 text-sm">
+                        <div className="flex items-center gap-2.5">
+                          <span className="font-bold text-sub">{s.time}</span>
+                          <span className="min-w-0 flex-1 truncate">{placeMap[s.placeId].name}</span>
+                          <a href={mapLink(placeMap[s.placeId])} target="_blank" rel="noopener noreferrer" className="text-xs text-ok underline">
+                            지도
+                          </a>
+                        </div>
+                        {log && <LogLine entry={slotLog(log, s)} />}
                       </div>
                     ))}
                     {!stops.length && <div className="text-sm text-sub">{DAY_LABELS[i]}은 비어 있어요</div>}
@@ -145,6 +150,8 @@ export default function RouteDetail({ trip, placeMap, tags, stats, places, isLog
             );
           })}
         </div>
+
+        {log && <LogSummary log={log} days={trip.days} />}
 
         {trip.author_tip && (
           <div className="rounded-card bg-accent p-4">

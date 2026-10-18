@@ -8,9 +8,11 @@ import { mapDays, rowWarning, summarize } from '@/lib/trip';
 import { formatDuration } from '@/lib/geo';
 import { mapLink, tripSubtitle } from '@/lib/format';
 import { shortDate, weekdayLabel } from '@/lib/hours';
+import { LogLine, LogSummary } from '@/components/TripLog';
+import { slotLog } from '@/lib/triplog';
 
 /** 읽기 전용 루트: 지도 + 일자 탭 + 타임라인 */
-export default function SharedRoute({ trip, placeMap }) {
+export default function SharedRoute({ trip, placeMap, log }) {
   const [day, setDay] = useState(0);
   const sum = useMemo(() => summarize(trip, placeMap), [trip, placeMap]);
   const mapData = useMemo(() => mapDays(trip.days, placeMap, trip), [trip, placeMap]);
@@ -75,6 +77,7 @@ export default function SharedRoute({ trip, placeMap }) {
                     <span className="truncate font-display text-base">{place ? place.name : s.fixed.name}</span>
                   </div>
                   {s.memo && <div className="text-xs text-warn-ink">챙길 것 · {s.memo}</div>}
+                  {log && place && <LogLine entry={slotLog(log, s)} />}
                   {warn && (r.check.level === 'warn' || r.lateBy > 0) && <div className="text-xs font-bold text-warn-ink">{warn}</div>}
                 </div>
                 {place && (
@@ -86,6 +89,11 @@ export default function SharedRoute({ trip, placeMap }) {
             </div>
           );
         })}
+        {log && (
+          <div className="mt-3">
+            <LogSummary log={log} days={trip.days} />
+          </div>
+        )}
         <Link href="/" className="mt-5 text-center text-[13px] text-sub underline">
           {SERVICE_NAME}에서 우리 가족 여행도 짜 보기
         </Link>

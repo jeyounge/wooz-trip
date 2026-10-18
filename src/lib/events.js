@@ -15,6 +15,7 @@ export const EVENTS = {
   tripCopied: 'trip_copied',
   reportCreated: 'report_created',
   aiFill: 'ai_fill',
+  tripReviewed: 'trip_reviewed', // 다녀온 뒤 만족도를 처음 남김
 };
 
 export async function logEvent(name, { userId = null, tripId = null, meta = {} } = {}) {

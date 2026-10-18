@@ -10,10 +10,12 @@ import { DAY_LABELS, dayStyle } from '@/lib/config';
 import { computeDay, mapDays, rowWarning, summarize } from '@/lib/trip';
 import { formatDuration } from '@/lib/geo';
 import { tripSubtitle } from '@/lib/format';
-import { publishTrip, saveDays, shareTrip, unpublishTrip } from '@/app/actions/trips';
+import { publishTrip, saveDays, saveTripLog, shareTrip, unpublishTrip } from '@/app/actions/trips';
+import { ExtrasEditor, LogEditor, LogLine, ReviewEditor } from '@/components/TripLog';
+import { canLogSpend, canReview, hasLog, logTotals, slotLog, won } from '@/lib/triplog';
 
-/** S05 루트 결과: 지도 동선 + 타임라인 + 순서 바꾸기·메모 + 저장/공유/공개 */
-export default function RouteResult({ trip: initialTrip, placeMap, userEmail }) {
+/** S05 루트 결과: 지도 동선 + 타임라인 + 순서 바꾸기·메모 + 쓴 돈·한마디 기록 + 저장/공유/공개 */
+export default function RouteResult({ trip: initialTrip, placeMap, userEmail, log: initialLog }) {
   const router = useRouter();
   const [trip, setTrip] = useState(initialTrip);
   const [days, setDays] = useState(initialTrip.days);
@@ -24,13 +26,28 @@ export default function RouteResult({ trip: initialTrip, placeMap, userEmail }) 
   const [sharePending, startShare] = useTransition();
   const timer = useRef(null);
   const latest = useRef(days);
+  const daysDirty = useRef(false);
+  const [log, setLog] = useState(initialLog);
+  const [logFor, setLogFor] = useState(null);
+  const logTimer = useRef(null);
+  const latestLog = useRef(initialLog);
+  const logDirty = useRef(false);
+  const spendOpen = canLogSpend(trip);
+  const reviewOpen = canReview(trip);
+  const totals = useMemo(() => logTotals(log, days), [log, days]);
 
   const view = useMemo(() => ({ ...trip, days }), [trip, days]);
   const sum = useMemo(() => summarize(view, placeMap), [view, placeMap]);
   const rows = sum.perDay[day] || [];
   const mapData = useMemo(() => mapDays(days, placeMap, view), [days, placeMap, view]);
 
-  useEffect(() => () => clearTimeout(timer.current), []);
+  useEffect(
+    () => () => {
+      clearTimeout(timer.current);
+      clearTimeout(logTimer.current);
+    },
+    []
+  );
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 2500);
@@ -38,15 +55,49 @@ export default function RouteResult({ trip: initialTrip, placeMap, userEmail }) 
   }, [toast]);
 
   async function persist(next = latest.current) {
+    clearTimeout(timer.current);
     const res = await saveDays(trip.id, next);
     if (!res.ok) setToast(`저장 실패: ${res.message}`);
+    else daysDirty.current = false;
     return res.ok;
   }
   function update(next) {
     setDays(next);
     latest.current = next;
+    daysDirty.current = true;
     clearTimeout(timer.current);
     timer.current = setTimeout(() => persist(next), 800);
+  }
+
+  /** 기록은 일정(슬롯)을 먼저 저장한 뒤 저장한다 (서버가 저장된 슬롯 기준으로 기록을 정리하므로) */
+  async function persistLog() {
+    clearTimeout(logTimer.current);
+    if (!logDirty.current) return true;
+    if (daysDirty.current && !(await persist())) return false;
+    const res = await saveTripLog(trip.id, latestLog.current);
+    if (!res.ok) {
+      setToast(res.message);
+      return false;
+    }
+    logDirty.current = false;
+    return true;
+  }
+  function updateLog(next) {
+    setLog(next);
+    latestLog.current = next;
+    logDirty.current = true;
+    clearTimeout(logTimer.current);
+    logTimer.current = setTimeout(persistLog, 800);
+  }
+  async function persistAll() {
+    if (daysDirty.current && !(await persist())) return false;
+    return persistLog();
+  }
+  function setSlotLog(slot, entry) {
+    const slots = { ...latestLog.current.slots };
+    if (entry.cost || entry.rating || entry.note) slots[slot.id] = { placeId: slot.placeId, ...entry };
+    else delete slots[slot.id];
+    updateLog({ ...latestLog.current, slots });
   }
 
   /** 순서 바꾸기: 시간 칸은 그대로 두고 장소만 앞/뒤 칸과 맞바꾼다 */
@@ -61,6 +112,16 @@ export default function RouteResult({ trip: initialTrip, placeMap, userEmail }) 
     slots[i] = { ...a, placeId: b.placeId, memo: b.memo, aiReason: b.aiReason, stayMinutes: b.placeId ? b.stayMinutes : a.stayMinutes };
     slots[j] = { ...b, placeId: a.placeId, memo: a.memo, aiReason: a.aiReason, stayMinutes: a.stayMinutes };
     update(days.map((d, k) => (k === day ? { ...d, slots } : d)));
+    // 기록도 장소를 따라 옮긴다
+    const ls = latestLog.current.slots;
+    if (ls[a.id] || ls[b.id]) {
+      const next = { ...ls };
+      delete next[a.id];
+      delete next[b.id];
+      if (ls[b.id]) next[a.id] = ls[b.id];
+      if (ls[a.id]) next[b.id] = ls[a.id];
+      updateLog({ ...latestLog.current, slots: next });
+    }
   }
 
   function setMemo(slotId, memo) {
@@ -68,14 +129,12 @@ export default function RouteResult({ trip: initialTrip, placeMap, userEmail }) 
   }
 
   async function onSave() {
-    clearTimeout(timer.current);
-    if (await persist()) setToast('저장했어요. 내 여행에서 언제든 다시 볼 수 있어요');
+    if ((await persist()) && (await persistLog())) setToast('저장했어요. 내 여행에서 언제든 다시 볼 수 있어요');
   }
 
   function onShare() {
     startShare(async () => {
-      clearTimeout(timer.current);
-      await persist();
+      await persistAll();
       const res = await shareTrip(trip.id);
       if (!res.ok) return setToast(res.message);
       setTrip((t) => ({ ...t, share_id: res.shareId, visibility: t.visibility === 'public' ? 'public' : 'shared' }));
@@ -112,7 +171,11 @@ export default function RouteResult({ trip: initialTrip, placeMap, userEmail }) 
             {!allOk && <IconWarn size={14} />}
             {allOk ? '쉬는 날·영업시간 겹치는 곳 없어요' : `확인이 필요한 곳이 ${sum.warns}곳 있어요`}
           </div>
-          {sum.travel > 0 && <div className="text-xs text-sub">총 이동 {formatDuration(sum.travel)}</div>}
+          {(sum.travel > 0 || totals.total > 0) && (
+            <div className="text-xs text-sub">
+              {[sum.travel > 0 && `총 이동 ${formatDuration(sum.travel)}`, totals.total > 0 && `쓴 돈 ${won(totals.total)}`].filter(Boolean).join(' · ')}
+            </div>
+          )}
         </div>
         <Link href={`/trips/${trip.id}/edit?day=${day}`} aria-label="루트 고치기" className="icon-btn">
           <IconEdit />
@@ -141,7 +204,10 @@ export default function RouteResult({ trip: initialTrip, placeMap, userEmail }) 
       </nav>
 
       <main className="flex flex-1 flex-col gap-1 px-5 pt-1 pb-3">
-        <div className="pb-1 text-xs text-sub">{tripSubtitle(trip)}</div>
+        <div className="pb-1 text-xs text-sub">
+          {tripSubtitle(trip)}
+          {spendOpen && totals.perDay[day] > 0 && <b className="text-ink"> · 이날 쓴 돈 {won(totals.perDay[day])}</b>}
+        </div>
         {rows.map((r) => {
           const s = r.slot;
           if (!s.fixed && !s.placeId) return null; // 빈 칸은 결과에서 숨긴다
@@ -182,6 +248,24 @@ export default function RouteResult({ trip: initialTrip, placeMap, userEmail }) 
                       {s.memo ? '메모 고치기' : '+ 챙길 것 메모'}
                     </button>
                   )}
+                  {isPlace && spendOpen && logFor !== s.id && (
+                    <>
+                      <LogLine entry={slotLog(log, s)} />
+                      <button type="button" onClick={() => setLogFor(s.id)} className="self-start text-xs text-sub underline">
+                        {slotLog(log, s) ? '기록 고치기' : '+ 쓴 돈·한마디'}
+                      </button>
+                    </>
+                  )}
+                  {logFor === s.id && (
+                    <LogEditor
+                      entry={slotLog(log, s)}
+                      onCancel={() => setLogFor(null)}
+                      onDone={(entry) => {
+                        setSlotLog(s, entry);
+                        setLogFor(null);
+                      }}
+                    />
+                  )}
                   {memoFor === s.id && (
                     <MemoInput
                       initial={s.memo}
@@ -211,6 +295,28 @@ export default function RouteResult({ trip: initialTrip, placeMap, userEmail }) 
             아직 빈 슬롯이 {sum.empty}개 있어요 · 채우러 가기
           </Link>
         )}
+        {spendOpen ? (
+          <section className="card mt-3 flex flex-col gap-2 p-4" aria-label="그 밖에 쓴 돈">
+            <div className="flex items-baseline justify-between">
+              <span className="font-display text-base">그 밖에 쓴 돈</span>
+              {totals.total > 0 && (
+                <span className="text-sm">
+                  전체 <b>{won(totals.total)}</b>
+                </span>
+              )}
+            </div>
+            <div className="text-xs text-sub">항공권·렌터카·숙소처럼 장소에 안 붙는 돈</div>
+            <ExtrasEditor extras={log.extras} onChange={(extras) => updateLog({ ...latestLog.current, extras })} />
+          </section>
+        ) : (
+          <p className="m-0 mt-3 text-center text-xs text-sub">여행 첫날부터 장소마다 쓴 돈과 한마디를 적을 수 있어요</p>
+        )}
+        {reviewOpen && (
+          <section className="card mt-1 flex flex-col gap-2 p-4" aria-label="다녀온 뒤 한마디">
+            <div className="font-display text-base">다녀오셨나요? 어땠어요?</div>
+            <ReviewEditor rating={log.rating} comment={log.comment} onChange={(v) => updateLog({ ...latestLog.current, ...v })} />
+          </section>
+        )}
       </main>
 
       <div className="sticky bottom-0 z-10 flex gap-2 bg-bg px-5 pt-2.5 pb-6">
@@ -234,18 +340,20 @@ export default function RouteResult({ trip: initialTrip, placeMap, userEmail }) 
       {publishOpen && (
         <PublishSheet
           trip={trip}
+          log={log}
           defaultName={(userEmail || '').split('@')[0]}
           onClose={() => setPublishOpen(false)}
-          onDone={(patch, goDetail) => {
+          onDone={(patch, goDetail, logPublic) => {
             setTrip((t) => ({ ...t, ...patch }));
+            if (typeof logPublic === 'boolean') {
+              setLog((l) => ({ ...l, isPublic: logPublic }));
+              latestLog.current = { ...latestLog.current, isPublic: logPublic };
+            }
             setPublishOpen(false);
             if (goDetail) router.push(`/routes/${trip.id}`);
             else setToast('공개를 취소했어요. 가족 공유 링크는 그대로 열려요');
           }}
-          beforePublish={() => {
-            clearTimeout(timer.current);
-            return persist();
-          }}
+          beforePublish={persistAll}
         />
       )}
     </>
@@ -278,10 +386,12 @@ function MemoInput({ initial, onDone }) {
   );
 }
 
-function PublishSheet({ trip, defaultName, onClose, onDone, beforePublish }) {
+function PublishSheet({ trip, log, defaultName, onClose, onDone, beforePublish }) {
   const [title, setTitle] = useState(trip.title);
   const [authorName, setAuthorName] = useState(trip.author_name || defaultName);
   const [tip, setTip] = useState(trip.author_tip || '');
+  const [showLog, setShowLog] = useState(!!log?.isPublic);
+  const withLog = hasLog(log);
   const [err, setErr] = useState(null);
   const [pending, start] = useTransition();
   const isPublic = trip.visibility === 'public';
@@ -308,7 +418,15 @@ function PublishSheet({ trip, defaultName, onClose, onDone, beforePublish }) {
             className="resize-none font-normal"
           />
         </label>
-        <p className="m-0 text-xs leading-relaxed text-sub">공개하면 루트 이름·보여줄 이름·아이 나이·여행 달·장소 목록이 보여요. 이메일은 보이지 않아요.</p>
+        {withLog && (
+          <label className="flex min-h-11 items-center gap-2.5 rounded-2xl bg-surface px-3 py-2 text-sm">
+            <input type="checkbox" checked={showLog} onChange={(e) => setShowLog(e.target.checked)} className="h-5 w-5" />
+            쓴 돈·다녀온 한마디도 같이 보여주기
+          </label>
+        )}
+        <p className="m-0 text-xs leading-relaxed text-sub">
+          공개하면 루트 이름·보여줄 이름·아이 나이·여행 달·장소 목록이 보여요{withLog ? ' (쓴 돈·한마디는 체크했을 때만)' : ''}. 이메일은 보이지 않아요.
+        </p>
         {err && <p className="m-0 text-sm font-bold text-warn-ink">{err}</p>}
         <button
           type="button"
@@ -317,9 +435,9 @@ function PublishSheet({ trip, defaultName, onClose, onDone, beforePublish }) {
           onClick={() =>
             start(async () => {
               if (!(await beforePublish())) return;
-              const res = await publishTrip(trip.id, { title, authorName, tip });
+              const res = await publishTrip(trip.id, { title, authorName, tip, ...(withLog ? { showLog } : {}) });
               if (!res.ok) return setErr(res.message);
-              onDone({ title, author_name: authorName, author_tip: tip, visibility: 'public' }, true);
+              onDone({ title, author_name: authorName, author_tip: tip, visibility: 'public' }, true, withLog ? showLog : undefined);
             })
           }
         >

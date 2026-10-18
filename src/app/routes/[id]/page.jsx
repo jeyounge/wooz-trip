@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
-import { getTrip, loadTripBundle } from '@/lib/trips';
+import { getTrip, getTripLog, loadTripBundle } from '@/lib/trips';
+import { fromRow } from '@/lib/triplog';
 import { summarize, usedPlaceIds } from '@/lib/trip';
 import { ErrorCard, TopBar } from '@/components/ui';
 import RouteDetail from './RouteDetail';
@@ -14,10 +15,11 @@ export default async function RouteDetailPage({ params, searchParams }) {
   let trip;
   let bundle;
   let user;
+  let logRow;
   try {
     [trip, user] = await Promise.all([getTrip(id), getCurrentUser()]);
     if (!trip || (trip.visibility !== 'public' && trip.owner_id !== user?.id)) notFound();
-    bundle = await loadTripBundle(trip);
+    [bundle, logRow] = await Promise.all([loadTripBundle(trip), getTripLog(trip.id)]);
   } catch (e) {
     if (e?.digest?.startsWith?.('NEXT_')) throw e;
     return (
@@ -51,6 +53,7 @@ export default async function RouteDetailPage({ params, searchParams }) {
       isLoggedIn={!!user}
       isOwner={user?.id === trip.owner_id}
       setup={setup}
+      log={logRow?.is_public ? fromRow(logRow) : null}
     />
   );
 }

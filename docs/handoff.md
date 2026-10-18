@@ -24,6 +24,7 @@
 | `0003_wooz_trip_ai_routes.sql` AI 루트 테이블 + 샘플 루트 23 | 실행함 |
 | `0004_wooz_trip_places_import.sql` 전국 장소 자동 반영 함수 | 실행함 |
 | `0005_wooz_trip_review_facts.sql` 후기 근거 컬럼·함수 | 실행함 |
+| `0006_wooz_trip_trip_logs.sql` 쓴 돈·다녀온 한마디 | **실행 필요** (실행 전엔 기록 저장만 안 됨) |
 
 새 SQL 이 생기면 파일 경로를 정리해서 사용자에게 알려 준다 (사용자가 직접 실행).
 
@@ -58,6 +59,8 @@
 | AI 루트 | **200개** (실장소, `docs/ai-routes.md`) · 샘플 장소·루트·테스트 여행 3개는 삭제함 (2026-10-18) |
 
 ## 다음 할 일
+
+> 새 기능 순서와 설계: [`docs/next-features.md`](next-features.md) — 쓴 돈·한마디(완료) → 당일치기·차 여행 → 골프·운동시설
 
 1. **남은 444곳 승인**: 공통정보 수집이 끝나면 `npm run places:approve -- --area jeju --with-hours` 로 확인 → `--apply`
    (승인하면 매일 자동 반영이 그 장소를 더 이상 갱신하지 않으니 영업시간이 들어온 곳만 승인). 가족과 안 맞는 곳은 `/admin` 에서 제외
