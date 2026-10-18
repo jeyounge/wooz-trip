@@ -1,16 +1,33 @@
-# 인수인계 — 지금 어디까지 왔나 (2026-10-18)
+# 인수인계 — 지금 어디까지 왔나 (2026-10-18 저녁)
 
 > 새 세션은 이 파일부터 읽는다. 결정 배경은 CLAUDE.md, 세부는 docs/ 의 각 문서.
 > 새로 시작할 때: `cd C:\project\wooz-trip` → `claude` (이 폴더에서 열면 CLAUDE.md 가 자동으로 읽힌다)
 
-## 사용자가 할 일 (2026-10-18 기준)
+## 다음 세션 시작하는 법
 
-1. **SQL 실행**: Supabase SQL Editor 에 `supabase/migrations/0006_wooz_trip_trip_logs.sql` 전체를 붙여 넣고 실행 (쓴 돈·한마디 저장용)
-2. **카카오맵 도메인 등록**: developers.kakao.com → 내 애플리케이션 → (JavaScript 키를 발급한 앱) → 앱 설정 → 플랫폼 → Web → 사이트 도메인에
-   `https://trip.z-labs.kr` 와 `http://localhost:3000` 추가 → 저장. "카카오맵" 사용 설정 메뉴가 있으면 켜기.
-   Vercel 환경변수 `NEXT_PUBLIC_KAKAO_MAP_KEY` 가 그 앱의 **JavaScript 키**인지 확인. (지금은 domain mismatched 로 거절돼서 간이 지도가 뜸)
-3. **테스트**: 사이트에서 여행 만들기 → AI 초안 → 결과 화면. 오늘이 들어간 여행이면 「+ 쓴 돈·한마디」가 보임. 어색한 볼거리·문구는 알려 주기
-4. 당일치기·차 여행 만듦 (2026-10-18): S02 「언제, 어떻게 가요?」에서 차 → 출발 지역 선택. 테스트해 보고 괜찮으면 다음은 골프·운동시설 (`docs/next-features.md` ③)
+Claude 에게 이렇게 말하면 된다: **"handoff 읽고 이어서 하자"**
+- Claude 는 먼저 아래 「사용자가 할 일」이 끝났는지 묻고, 카카오맵 도메인을 확인한 뒤(아래 확인법) 「다음 할 일」 1번부터 진행한다.
+- 카카오맵 확인법 (Claude 가 실행): `.env.local` 의 키로 `https://dapi.kakao.com/v2/maps/sdk.js?appkey=…&autoload=false` 를
+  `Referer: https://trip.z-labs.kr/` 로 요청 → 401 `domain mismatched` 면 아직 등록 안 됨, 200 이면 됨.
+
+## 사용자가 할 일
+
+| 할 일 | 상태 |
+| --- | --- |
+| 0006 SQL 실행 (쓴 돈·한마디) | **완료** (2026-10-18) |
+| **카카오맵 도메인 등록**: developers.kakao.com → 내 애플리케이션 → (JavaScript 키를 발급한 앱) → 앱 설정 → 플랫폼 → Web → 사이트 도메인에 `https://trip.z-labs.kr`, `http://localhost:3000` 추가. "카카오맵" 사용 설정이 있으면 켜기. Vercel `NEXT_PUBLIC_KAKAO_MAP_KEY` 가 그 앱의 **JavaScript 키**인지 확인 | 사용자가 확인 중 (2026-10-18 저녁엔 domain mismatched → 간이 지도) |
+| **사이트 테스트**: 여행 만들기(비행기·차 둘 다) → AI 초안 → 결과. 오늘이 들어간 여행이면 「+ 쓴 돈·한마디」. 어색한 볼거리·문구는 Claude 에게 | 하는 중 |
+| **골프장 API 활용 신청**: data.go.kr → 「행정안전부_생활_골프장 조회서비스」(15154978), 「…골프연습장업 조회서비스」(15154975) 활용신청 (자동승인). 지금 TourAPI 쓰는 공공데이터포털 계정이면 같은 인증키 | 다음 작업 전에 |
+
+## 오늘(2026-10-18) 한 일
+
+- 블로그 후기 하루 3번 나눠 읽기 (한 번 300개 · 하루 900개), 작업 스케줄러 00:10·08:10·16:10, 네이버 차단은 그날 남은 실행도 쉼
+- 제주 1,028곳 일괄 승인 (`npm run places:approve`) + 소개 문장 자동 채움, Supabase 1,000행 한도 버그 수정
+- **AI 루트 200개** (실장소, `scripts/ai-routes/`), 샘플 장소·루트·테스트 여행 삭제
+- 장소 조회 서버 5분 캐시 (0.8초 → 0.01초)
+- **쓴 돈·다녀온 한마디** (`wooz_trip_trip_logs`, 0006) — 작성자가 고를 때만 공개
+- **당일치기·차 여행** (S02 「언제, 어떻게 가요?」, 출발 지역) — DB 변경 없음
+- 골프·운동시설 공공데이터 조사 → `docs/next-features.md` ③
 
 ## 한눈에
 
@@ -33,7 +50,7 @@
 | `0003_wooz_trip_ai_routes.sql` AI 루트 테이블 + 샘플 루트 23 | 실행함 |
 | `0004_wooz_trip_places_import.sql` 전국 장소 자동 반영 함수 | 실행함 |
 | `0005_wooz_trip_review_facts.sql` 후기 근거 컬럼·함수 | 실행함 |
-| `0006_wooz_trip_trip_logs.sql` 쓴 돈·다녀온 한마디 | **실행 필요** (실행 전엔 기록 저장만 안 됨) |
+| `0006_wooz_trip_trip_logs.sql` 쓴 돈·다녀온 한마디 | 실행함 (2026-10-18) |
 
 새 SQL 이 생기면 파일 경로를 정리해서 사용자에게 알려 준다 (사용자가 직접 실행).
 
@@ -45,6 +62,8 @@
 - **장소 수집** (LLM 없음): 한국관광공사 TourAPI → 변환 → DB 후보. 전국 17개 시·도 우선순위. → `docs/data-plan.md`, `docs/real-data.md`
 - **블로그 후기 사실 수집** (LLM 없음): 카카오 블로그 검색 → robots.txt 허용 글만 3초 1건 → 규칙 사전으로
   아기의자·주차·키즈존 등 판정, 글 2개 이상 일치해야 인정, 근거 링크만 저장, 운영자가 반영. → `docs/data-plan.md` 1장
+- **쓴 돈·한마디**: S05 에서 여행 첫날부터 장소별 금액·평가·한마디, 그 밖에 쓴 돈, 마지막 날부터 여행 만족도. → `docs/next-features.md` ①
+- **당일치기·차 여행**: 비행기/차, 출발 지역(`config.js` DEPART_AREAS), 복사 시 첫 칸·끝 칸을 내 방식으로. → `docs/next-features.md` ②
 - **관리자**: 시·도 선택, 필터(확인 필요·아이 태그 없음·영업시간 없음·후기로 확인·노키즈존), 검색, 선택 승인/제외,
   TourAPI 원문·공식 홈페이지·후기 근거 보기, 승인 안내, AI 루트 켜기/끄기, 제보 처리, 지표
 
@@ -62,25 +81,33 @@
 
 | 항목 | 수 |
 | --- | --- |
-| 제주 TourAPI 장소 (DB) | 1,472곳 — **승인 1,028** (영업시간 있는 곳 전부, 2026-10-18) · 후보 444 (영업시간 기다리는 중) |
-| 영업시간 있음 / 공식 홈페이지 | 1,028 / 154 (공통정보 1,114곳 남음 → 1~2일) |
-| 블로그 후기 확인 | 22곳 (주차 13 · 키즈존 3 · 유모차 2 인정) |
-| AI 루트 | **200개** (실장소, `docs/ai-routes.md`) · 샘플 장소·루트·테스트 여행 3개는 삭제함 (2026-10-18) |
+| 제주 TourAPI 장소 (DB) | 1,472곳 — **승인 1,028** (영업시간 있는 곳 전부) · 후보 444 (아직 영업시간 0곳 → 수집 기다리는 중) |
+| 수집 진행 | 목록·상세 1,489 · 공통정보 375/1,489 · 무장애 287/394 · 공식 홈페이지 290 |
+| 블로그 후기 확인 | 22곳 (주차 13 · 키즈존 3 · 유모차 2 인정). 이제 하루 약 105곳씩 |
+| AI 루트 | **200개** (실장소, `docs/ai-routes.md`). 샘플은 전부 삭제함 |
+| 사용자 여행 / 기록 | 1개 / 0개 |
+
+> `data/raw/tourapi/daily.log` 의 "wooz_trip_upsert_places 함수가 없어요" 는 0004 실행 전(10-17 밤·10-18 00:10) 기록이다.
+> 10-18 저녁에 직접 돌려 보니 정상 ("바뀐 장소 없음").
 
 ## 다음 할 일
 
-> 새 기능 순서와 설계: [`docs/next-features.md`](next-features.md) — 쓴 돈·한마디(완료) → 당일치기·차 여행 → 골프·운동시설
+> 새 기능 순서와 설계: [`docs/next-features.md`](next-features.md) — 쓴 돈·한마디(완료) → 당일치기·차 여행(완료) → **골프·운동시설(다음)**
 
-1. **남은 444곳 승인**: 공통정보 수집이 끝나면 `npm run places:approve -- --area jeju --with-hours` 로 확인 → `--apply`
-   (승인하면 매일 자동 반영이 그 장소를 더 이상 갱신하지 않으니 영업시간이 들어온 곳만 승인). 가족과 안 맞는 곳은 `/admin` 에서 제외
-2. 장소 조회는 서버 5분 캐시 (`src/lib/places.js`, 어드민에서 고치면 바로 지움). 0.8초 → 0.01초. 승인 장소가 4,000곳쯤 넘으면 지역별 캐시나 PostGIS 로
-3. 444곳을 더 승인하면 AI 루트 다시 만들기: `places:export` → `pool.mjs` 에 볼거리 추가 → `routes:build` → `routes:sql`
-4. 도메인 등록 확인: Supabase Redirect URLs `https://trip.z-labs.kr/**`, 카카오 Web 도메인 `https://trip.z-labs.kr`
-5. 서비스명 정하기 (`NEXT_PUBLIC_SERVICE_NAME`)
-6. 제주 수집이 끝나면 TourAPI **운영계정(트래픽 증가)** 신청 → `TOURAPI_DAILY_LIMIT` 올리기
-7. 인천·경기 오픈 준비: 권역 나누기 → `config.js` REGIONS 확장 (`docs/data-plan.md` 5장)
-8. 다음 공공데이터: 어린이놀이시설(키즈존 후보), 인허가(폐업 표시)
-9. 정식 오픈 전 법률 확인 (블로그 수집·네이버 약관)
+1. **사용자 테스트 피드백 반영** (S02 비행기/차, AI 초안, 쓴 돈·한마디). 어색한 볼거리는 `scripts/ai-routes/pool.mjs` 에서 빼고 `routes:build` → `routes:sql` → 넣기
+2. **골프·운동시설** (`docs/next-features.md` ③): 사용자가 API 활용 신청을 끝냈는지 먼저 확인
+   - 행안부 인허가 API 수집 스크립트 (EPSG:5174 → 위경도 변환, 영업 중만), 장소 카테고리·슬롯 종류 「골프」(4~5시간) 추가
+   - 같은 API 계열로 인허가(폐업 표시)도 같이 설계
+3. **남은 444곳 승인**: 영업시간이 들어오면 `npm run places:approve -- --area jeju --with-hours` 로 확인 → `--apply`
+   (승인하면 매일 자동 반영이 더 이상 갱신하지 않으니 영업시간 들어온 곳만). 그 뒤 AI 루트 다시 만들기 (`places:export` → `pool.mjs` → `routes:build` → `routes:sql`)
+4. 카카오맵 도메인 확인 (위 확인법), Supabase Redirect URLs `https://trip.z-labs.kr/**`
+5. 길찾기 API 선택 (카카오모빌리티 vs T맵 요금·한도) → 도로 따라가는 선 + 실제 이동시간, `wooz_trip_travel_cache` 에 저장
+6. 서비스명 정하기 (`NEXT_PUBLIC_SERVICE_NAME`)
+7. 제주 수집이 끝나면 TourAPI **운영계정(트래픽 증가)** 신청 → `TOURAPI_DAILY_LIMIT` 올리기
+8. 인천·경기 오픈 준비: 권역 나누기 → `config.js` REGIONS + `REGION_ZONE`(capital) 확장 (`docs/data-plan.md` 5장), 수도권 당일치기 AI 루트
+9. 다음 공공데이터: 어린이놀이시설(키즈존 후보)
+10. 정식 오픈 전 법률 확인 (블로그 수집·네이버 약관·쓴 돈 통계 개인정보)
+- 장소 조회는 서버 5분 캐시 (`src/lib/places.js`). 승인 장소가 4,000곳쯤 넘으면 지역별 캐시나 PostGIS 로
 
 ## 알려진 문제
 
@@ -97,3 +124,6 @@
 - 빠르기보다 **정확하게**. 자동 수집 결과는 운영자 확인 후 반영.
 - 커밋: 영어 `feat:`/`fix:` + Co-Authored-By. `main` push = 운영 배포이므로 push 전에 `npm run build`(린트 포함)·`npm test` 통과 확인.
 - 이 PC 의 Bash 에서 따옴표가 섞인 heredoc 은 자주 깨진다 → 스크립트는 Write 도구로 파일을 만든 뒤 실행한다.
+- 일부 파일은 CRLF 줄바꿈이다 (`RouteResult.jsx`, `trip.js`, `SharedRoute.jsx` 등). 문자열 치환 스크립트는 줄바꿈을 맞춘 뒤 고친다 (Edit 도구는 괜찮음).
+- DB 데이터 작업(승인·루트 넣기·삭제)은 service_role 로 Claude 가 직접 한다. 테이블·함수를 바꾸는 SQL 만 사용자가 실행.
+- 새 기능은 CLAUDE.md 원칙대로 범위를 먼저 묻고 만든다. 사용자 결정은 CLAUDE.md·docs 에 바로 적는다.
