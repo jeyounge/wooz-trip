@@ -60,10 +60,10 @@ export function EmptyCard({ title, desc, action }) {
 }
 
 /** DB 미준비(마이그레이션 전) 등 오류 안내 */
-export function ErrorCard({ message }) {
+export function ErrorCard({ message, title = '데이터를 불러오지 못했어요' }) {
   return (
     <div className="card m-5 flex flex-col gap-2 p-5">
-      <div className="font-display text-lg">데이터를 불러오지 못했어요</div>
+      <div className="font-display text-lg">{title}</div>
       <p className="m-0 text-sm text-sub leading-relaxed">
         {message?.includes('does not exist') || message?.includes('schema cache')
           ? 'DB 테이블이 아직 없어요. supabase/migrations 의 SQL 을 먼저 실행해 주세요.'

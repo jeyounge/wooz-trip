@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { getCurrentUser, isAdmin } from '@/lib/auth';
+import { adminEmails, getCurrentUser, isAdmin } from '@/lib/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { TABLES } from '@/lib/tables';
 import { EVENTS } from '@/lib/events';
@@ -15,7 +15,24 @@ export default async function AdminPage({ searchParams }) {
   const area = areaByCode(sp?.area)?.code || AREAS[0].code; // 장소는 시·도 하나씩 본다 (전국 수만 곳)
   const user = await getCurrentUser();
   if (!user) redirect('/login?next=/admin');
-  if (!isAdmin(user)) redirect('/my');
+  if (!isAdmin(user)) {
+    // 조용히 넘기지 않고 이유를 보여준다 (운영자 이메일은 일부만)
+    const mask = (e) => e.replace(/^(.{2}).*(@.*)$/, '$1***$2');
+    const list = adminEmails();
+    return (
+      <>
+        <TopBar back="/my" title="운영자 화면" />
+        <ErrorCard
+          title="운영자 계정이 아니에요"
+          message={
+            list.length
+              ? `지금 로그인한 계정(${user.email})은 운영자가 아니에요. 운영자 계정(${list.map(mask).join(', ')})으로 로그인해 주세요.`
+              : '운영자 이메일(ADMIN_EMAIL)이 서버에 설정되지 않았어요. Vercel → Settings → Environment Variables 에 ADMIN_EMAIL 을 넣고 다시 배포해 주세요.'
+          }
+        />
+      </>
+    );
+  }
 
   try {
     const db = createAdminClient();

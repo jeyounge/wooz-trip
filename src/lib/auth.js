@@ -8,9 +8,17 @@ export async function getCurrentUser() {
   return user;
 }
 
-/** 관리자 여부: ADMIN_EMAIL 과 일치 */
+/** ADMIN_EMAIL (쉼표로 여러 명 가능, 대소문자·공백 무시) */
+export function adminEmails() {
+  return String(process.env.ADMIN_EMAIL || '')
+    .split(',')
+    .map((e) => e.trim().replace(/^["']|["']$/g, '').toLowerCase())
+    .filter(Boolean);
+}
+
+/** 관리자 여부: 로그인 이메일이 ADMIN_EMAIL 중 하나와 같음 */
 export function isAdmin(user) {
-  return !!user && !!process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL;
+  return !!user?.email && adminEmails().includes(user.email.toLowerCase());
 }
 
 /** 로그인이 필요한 페이지에서 호출. 비로그인이면 /login 으로 보낸다. */

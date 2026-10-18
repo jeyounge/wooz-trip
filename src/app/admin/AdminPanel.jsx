@@ -179,6 +179,24 @@ function PlacesTab({ area, places, setPlaces, tags }) {
   const sel = 'rounded-xl bg-surface px-2 py-2 text-xs';
   return (
     <>
+      <details className="card px-4 py-3 text-xs text-sub" open={filter === 'candidate' && places.every((p) => p.status !== 'approved' || p.is_sample)}>
+        <summary className="cursor-pointer font-bold text-ink">승인이 뭔가요? (처음이면 읽어 주세요)</summary>
+        <ol className="m-0 mt-2 flex flex-col gap-1 pl-4 leading-relaxed">
+          <li>
+            <b className="text-ink">후보</b> = 관광공사 자료로 매일 자동으로 모은 장소예요. 사용자 화면에는 아직 안 나와요.
+          </li>
+          <li>
+            <b className="text-ink">승인</b>하면 장소 고르기·AI 초안에 나와요. 가족 여행에 맞고 정보가 맞는 곳만 승인해요. 목표는 제주 300곳 (볼거리 120 · 식당 120 · 카페 60).
+          </li>
+          <li>
+            장소를 열면 <b className="text-ink">관광공사 원문·공식 홈페이지·후기 근거</b>가 보여요. 영업시간·휴무를 확인하고, 후기 근거가 있으면 "태그 넣기"로 아이 태그를 채운 뒤 저장 → 승인.
+          </li>
+          <li>
+            빠르게 하려면: 확인 필터 "후기로 확인된 정보" → 근거가 맞는 곳을 체크 → <b className="text-ink">선택 승인</b>. 가족과 안 맞는 곳은 <b className="text-ink">제외</b>.
+          </li>
+          <li>샘플 장소([샘플])는 개발용이에요. 실제 장소를 300곳쯤 승인하면 지워요.</li>
+        </ol>
+      </details>
       <div className="flex gap-1.5 overflow-x-auto">
         {[['candidate', '후보'], ['approved', '승인'], ['excluded', '제외'], ['all', '전체']].map(([id, l]) => (
           <button
