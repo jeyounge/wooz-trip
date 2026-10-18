@@ -18,15 +18,22 @@ if (!url || !key) {
 }
 
 const db = createClient(url, key, { auth: { persistSession: false } });
-const { data, error } = await db
-  .from('wooz_trip_places')
-  .select('id, name, category, sub_category, region, lat, lng, opening_hours, regular_closed_days, kid_tags, indoor, status')
-  .eq('status', 'approved')
-  .order('region')
-  .order('id');
-if (error) {
-  console.error('조회 실패:', error.message);
-  process.exit(1);
+// Supabase 는 한 번에 1,000행까지만 준다 → 나눠서 읽는다
+const data = [];
+for (let from = 0; ; from += 1000) {
+  const { data: page, error } = await db
+    .from('wooz_trip_places')
+    .select('id, name, category, sub_category, region, lat, lng, opening_hours, regular_closed_days, kid_tags, indoor, status')
+    .eq('status', 'approved')
+    .order('region')
+    .order('id')
+    .range(from, from + 999);
+  if (error) {
+    console.error('조회 실패:', error.message);
+    process.exit(1);
+  }
+  data.push(...page);
+  if (page.length < 1000) break;
 }
 
 const out = data.map((p) => ({

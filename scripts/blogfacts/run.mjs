@@ -173,8 +173,13 @@ async function targetPlaces() {
   if (process.env.SUPABASE_SERVICE_ROLE_KEY && !args.includes('--sample')) {
     try {
       const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
-      const { data } = await db.from('wooz_trip_places').select('name, address, category, status, source_external_id').eq('status', 'approved').eq('source_provider', 'tourapi');
-      const approved = new Set((data || []).map((p) => p.source_external_id));
+      const data = [];
+      for (let from = 0; ; from += 1000) {
+        const { data: page } = await db.from('wooz_trip_places').select('source_external_id').eq('status', 'approved').eq('source_provider', 'tourapi').order('id').range(from, from + 999);
+        data.push(...(page || []));
+        if (!page || page.length < 1000) break;
+      }
+      const approved = new Set(data.map((p) => p.source_external_id));
       list = [...list.filter((p) => approved.has(p.key)).map((p) => ({ ...p, status: 'approved' })), ...list.filter((p) => !approved.has(p.key))];
     } catch {
       // DB 를 못 읽으면 후보 순서 그대로

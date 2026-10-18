@@ -15,9 +15,14 @@ export const PLACE_COLUMNS =
 /** 승인된 장소 전체 (공개 RLS: status = approved) */
 export async function getApprovedPlaces() {
   const s = await createClient();
-  const { data, error } = await s.from(TABLES.places).select(PLACE_COLUMNS).eq('status', 'approved');
-  if (error) throw new Error(error.message);
-  return data || [];
+  // Supabase 는 한 번에 1,000행까지만 준다 → 나눠서 읽는다
+  const all = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await s.from(TABLES.places).select(PLACE_COLUMNS).eq('status', 'approved').order('id').range(from, from + 999);
+    if (error) throw new Error(error.message);
+    all.push(...(data || []));
+    if (!data || data.length < 1000) return all;
+  }
 }
 
 /** 특정 ID 장소들 → { id: place } */
