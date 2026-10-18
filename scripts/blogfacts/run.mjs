@@ -9,7 +9,9 @@
 //   node scripts/blogfacts/run.mjs --area jeju --limit 10 --sample   시험: 종류를 섞어 10곳
 //   node scripts/blogfacts/run.mjs --area jeju --limit 50             승인 장소 → 후보 순으로 50곳 (DB 에서 승인 목록을 읽음)
 //   node scripts/blogfacts/run.mjs status
-// 하루 읽는 글 수 한도: BLOG_DAILY_POSTS (기본 300). 같은 장소는 90일마다 다시 확인.
+// 읽는 글 수 한도: 한 번 실행에 BLOG_RUN_POSTS (기본 300), 하루 합계 BLOG_DAILY_POSTS (기본 900).
+//   하루 3번(00:10·08:10·16:10) 나눠 돌려서 한 번에 몰리지 않게 한다. 같은 장소는 90일마다 다시 확인.
+//   네이버가 막으면 그날 남은 실행도 모두 쉰다 (usage.json 에 기록).
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
 import { AREAS, areaBySlug } from '../../src/lib/areas.js';
@@ -21,7 +23,9 @@ const UA = 'WoozTripFactBot/0.1 (family travel place facts; respects robots.txt)
 const POST_GAP_MS = 3000;
 const POSTS_PER_PLACE = 8;
 const RECHECK_DAYS = 90;
-const DAILY_POSTS = Number(process.env.BLOG_DAILY_POSTS || 300);
+const DAILY_POSTS = Number(process.env.BLOG_DAILY_POSTS || 900);
+const RUN_POSTS = Number(process.env.BLOG_RUN_POSTS || 300);
+let postsThisRun = 0;
 
 try {
   process.loadEnvFile(new URL('.env.local', ROOT));
@@ -44,7 +48,13 @@ const usageFile = new URL('usage.json', OUT);
 const usage = readJson(usageFile, {});
 const postsToday = () => usage[today]?.posts || 0;
 function countPost() {
+  postsThisRun++;
   usage[today] = { ...usage[today], posts: postsToday() + 1 };
+  writeJson(usageFile, usage);
+}
+const blockedToday = () => usage[today]?.blocked;
+function markBlocked(why) {
+  usage[today] = { ...usage[today], blocked: why };
   writeJson(usageFile, usage);
 }
 
@@ -124,7 +134,10 @@ function readableUrl(url) {
 const blockedHosts = new Set();
 const isNaver = (host) => /(^|\.)naver\.com$/.test(host);
 function onBlocked(host, why) {
-  if (isNaver(host)) throw new Blocked(`${host} ${why} — 네이버가 막아서 오늘은 멈춰요`);
+  if (isNaver(host)) {
+    markBlocked(`${host} ${why}`);
+    throw new Blocked(`${host} ${why} — 네이버가 막아서 오늘은 멈춰요`);
+  }
   blockedHosts.add(host);
   console.log(`    (${host} ${why} — 오늘은 이 블로그만 건너뜀)`);
   return { skipped: 'blocked' };
@@ -136,6 +149,7 @@ async function fetchPost(url) {
   if (blockedHosts.has(host)) return { skipped: 'blocked' };
   if (!(await allowed(target))) return { skipped: 'robots' };
   if (postsToday() >= DAILY_POSTS) throw new Blocked(`오늘 읽기 한도(${DAILY_POSTS}개) 도달`);
+  if (postsThisRun >= RUN_POSTS) throw new Blocked(`이번 실행 한도(${RUN_POSTS}개) 도달 — 다음 실행에서 이어서`);
   await sleep(POST_GAP_MS);
   const res = await fetch(target, { headers: { 'User-Agent': UA, 'Accept-Language': 'ko' }, redirect: 'follow', signal: AbortSignal.timeout(20000) });
   countPost();
@@ -196,8 +210,10 @@ async function targetPlaces() {
 
 async function run() {
   if (!KAKAO) throw new Error('.env.local 에 KAKAO_REST_API_KEY 를 넣어 주세요');
+  if (blockedToday()) return console.log(`[${area.name}] 오늘은 쉬어요 — 네이버 차단 (${blockedToday()})`);
+  if (postsToday() >= DAILY_POSTS) return console.log(`[${area.name}] 오늘 읽기 한도(${DAILY_POSTS}개) 도달`);
   const places = await targetPlaces();
-  console.log(`[${area.name}] 대상 ${places.length}곳 · 오늘 읽은 글 ${postsToday()}/${DAILY_POSTS}`);
+  console.log(`[${area.name}] 대상 ${places.length}곳 · 오늘 읽은 글 ${postsToday()}/${DAILY_POSTS} · 이번 실행 최대 ${RUN_POSTS}개`);
   for (const place of places) {
     let found;
     try {
@@ -267,7 +283,7 @@ function status() {
     const { result } = readJson(new URL(f, dir), {});
     for (const [t, v] of Object.entries(result?.tags || {})) if (v.verdict === 'yes' || v.verdict === 'no') count[`${FACT_RULES[t].label} ${v.verdict === 'yes' ? '있음' : '없음'}`] = (count[`${FACT_RULES[t].label} ${v.verdict === 'yes' ? '있음' : '없음'}`] || 0) + 1;
   }
-  console.log(`[${area.name}] 확인한 장소 ${files.length}곳 · 오늘 읽은 글 ${postsToday()}/${DAILY_POSTS}`);
+  console.log(`[${area.name}] 확인한 장소 ${files.length}곳 · 오늘 읽은 글 ${postsToday()}/${DAILY_POSTS}${blockedToday() ? ` · 오늘 차단됨 (${blockedToday()})` : ''}`);
   console.log('인정된 정보:', JSON.stringify(count));
 }
 

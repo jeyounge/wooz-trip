@@ -1,5 +1,7 @@
 @echo off
-rem Daily job at 00:10 (Windows Task Scheduler: "wooz-trip TourAPI daily")
+rem Runs 3x a day at 00:10, 08:10, 16:10 (Windows Task Scheduler: "wooz-trip TourAPI daily")
+rem  TourAPI quota resets at midnight, so later runs only catch up if 00:10 was missed.
+rem  Blog facts read up to 300 posts per run, 900 per day.
 rem  1) collect auto : TourAPI lists/details by area priority within the daily quota (changed items only)
 rem  2) build        : convert all collected areas to data/build/<area>.json
 rem  3) import       : upsert changed places into Supabase as candidates (needs 0004)

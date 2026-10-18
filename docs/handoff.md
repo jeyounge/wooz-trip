@@ -40,10 +40,11 @@
 
 ## 자동으로 돌고 있는 것
 
-- 윈도우 작업 스케줄러 **"wooz-trip TourAPI daily"** 매일 00:10 → `scripts/tourapi/daily.cmd`
+- 윈도우 작업 스케줄러 **"wooz-trip TourAPI daily"** 매일 **00:10 · 08:10 · 16:10** → `scripts/tourapi/daily.cmd`
+  (놓친 실행은 PC 켜지면 바로 돌림. TourAPI 한도는 자정에 풀려서 08:10·16:10 은 00:10 을 놓쳤을 때만 받음)
   1. TourAPI 수집 (`collect.mjs auto`, API 별 하루 950회)
   2. 변환 (`build.mjs`) → 3. DB 반영 (`import.mjs`, 바뀐 것만, 승인·제외·운영자 수정 장소는 안 덮어씀)
-  4. 블로그 후기 (`blogfacts/run.mjs --area jeju --limit 35`, 하루 글 300개) → 5. DB 반영 (`blogfacts/sync.mjs`)
+  4. 블로그 후기 (`blogfacts/run.mjs --area jeju --limit 35`, 한 번에 글 300개 · 하루 900개, 네이버가 막으면 그날 남은 실행은 쉼) → 5. DB 반영 (`blogfacts/sync.mjs`)
 - 로그: `data/raw/tourapi/daily.log` · 진행 상황: `npm run tour:collect -- status`, `npm run facts:run -- status`
 - **이 PC 가 켜져 있어야 돈다** (Vercel 아님). 수집용 키(TourAPI·카카오 REST)는 `.env.local` 에만.
 
