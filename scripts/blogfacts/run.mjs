@@ -120,17 +120,31 @@ function readableUrl(url) {
   const m = url.match(/^https?:\/\/blog\.naver\.com\/([^/?#]+)\/(\d+)/);
   return m ? `https://m.blog.naver.com/${m[1]}/${m[2]}` : url;
 }
+// 차단: 네이버가 막으면 그날 전체를 멈추고, 다른 블로그 호스트가 막으면 그 호스트만 오늘 건너뛴다
+const blockedHosts = new Set();
+const isNaver = (host) => /(^|\.)naver\.com$/.test(host);
+function onBlocked(host, why) {
+  if (isNaver(host)) throw new Blocked(`${host} ${why} — 네이버가 막아서 오늘은 멈춰요`);
+  blockedHosts.add(host);
+  console.log(`    (${host} ${why} — 오늘은 이 블로그만 건너뜀)`);
+  return { skipped: 'blocked' };
+}
+
 async function fetchPost(url) {
   const target = readableUrl(url);
+  const host = new URL(target).host;
+  if (blockedHosts.has(host)) return { skipped: 'blocked' };
   if (!(await allowed(target))) return { skipped: 'robots' };
   if (postsToday() >= DAILY_POSTS) throw new Blocked(`오늘 읽기 한도(${DAILY_POSTS}개) 도달`);
   await sleep(POST_GAP_MS);
   const res = await fetch(target, { headers: { 'User-Agent': UA, 'Accept-Language': 'ko' }, redirect: 'follow', signal: AbortSignal.timeout(20000) });
   countPost();
-  if (res.status === 403 || res.status === 429) throw new Blocked(`${new URL(target).host} 가 접근을 막았어요 (${res.status}) — 오늘은 멈춰요`);
+  if (res.status === 403 || res.status === 429) return onBlocked(host, `접근 거부(${res.status})`);
   if (!res.ok) return { skipped: `http ${res.status}` };
   const html = await res.text();
-  if (/captcha|자동입력\s*방지|비정상적인\s*(?:접근|트래픽)/i.test(html.slice(0, 50000))) throw new Blocked(`${new URL(target).host} 캡차/차단 페이지 — 오늘은 멈춰요`);
+  // 본문이 없고 차단 문구가 있을 때만 차단으로 본다 (티스토리 등은 댓글용 캡차 스크립트를 늘 싣는다)
+  const hasBody = /se-main-container|tt_article_useless_p_margin|article-view|entry-content|contents_style|<article/i.test(html);
+  if (!hasBody && /자동입력\s*방지|비정상적인\s*(?:접근|트래픽)|captcha/i.test(html.slice(0, 50000))) return onBlocked(host, '차단 페이지');
   const start = html.indexOf('se-main-container');
   const body = start > 0 ? html.slice(start, start + 300000) : html;
   const title = (html.match(/<title>([\s\S]*?)<\/title>/i)?.[1] || '').replace(/\s+/g, ' ');
@@ -162,6 +176,15 @@ async function targetPlaces() {
     return list.filter((p) => want.some((w) => p.name.includes(w))).slice(0, limit);
   }
   list = list.filter((p) => !fresh(p));
+  // 아이 정보가 후기에 많이 나오는 곳부터: 식당·카페·체험/테마/농장 → 일반 볼거리 → 오름·해변·길 같은 자연
+  const priority = (p) => {
+    if (p.status === 'approved') return 0;
+    if (p.category === 'food' || p.category === 'cafe') return 1;
+    if (/테마|체험|농장|목장|키즈|박물관|미술관|아쿠아|동물|공원|가든|파크|월드|랜드/.test(p.name)) return 1;
+    if (/오름|해변|해수욕장|해안|도로|올레|길$|봉$|산$|폭포|굴$|포구|등대|비$/.test(p.name)) return 3;
+    return 2;
+  };
+  list = list.map((p, i) => ({ p, i })).sort((a, b) => priority(a.p) - priority(b.p) || a.i - b.i).map((x) => x.p);
   if (args.includes('--sample')) {
     // 시험용: 식당·카페·볼거리를 섞어서
     const by = (c) => list.filter((p) => p.category === c);
