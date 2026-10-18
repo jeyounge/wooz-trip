@@ -2,13 +2,14 @@
 /**
  * 운영자 동작 (ADMIN_EMAIL 계정만). 장소·제보 쓰기는 service_role 로 한다.
  */
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { TABLES } from '@/lib/tables';
 import { CATEGORIES, REGIONS } from '@/lib/config';
 import { AREAS } from '@/lib/areas';
 import { introTemplate } from '@/lib/intro';
+import { PLACES_TAG } from '@/lib/places';
 
 const fail = (message) => ({ ok: false, message });
 const TIME = /^\d{2}:\d{2}$/;
@@ -80,6 +81,7 @@ export async function createPlace(input) {
     const { data, error } = await db.from(TABLES.places).insert(row).select('*').single();
     if (error) return fail(error.message);
     revalidatePath('/admin');
+    revalidateTag(PLACES_TAG);
     return { ok: true, place: data };
   } catch (e) {
     return fail(e.message);
@@ -100,6 +102,7 @@ export async function updatePlace(id, input) {
     }
     const { data, error } = await db.from(TABLES.places).update(row).eq('id', id).select('*').single();
     if (error) return fail(error.message);
+    revalidateTag(PLACES_TAG);
     return { ok: true, place: data };
   } catch (e) {
     return fail(e.message);
@@ -129,6 +132,7 @@ export async function setPlacesStatus(ids, status) {
   const { error } = await db.from(TABLES.places).update(patch).in('id', list);
   if (error) return fail(error.message);
   revalidatePath('/admin');
+  revalidateTag(PLACES_TAG);
   return { ok: true, count: list.length };
 }
 
@@ -153,6 +157,7 @@ export async function resolveReport(id, status) {
     const { data: place } = await db.from(TABLES.places).select('kid_tags').eq('id', report.place_id).single();
     const merged = [...new Set([...(place?.kid_tags || []), ...report.payload.tags])];
     await db.from(TABLES.places).update({ kid_tags: merged }).eq('id', report.place_id);
+    revalidateTag(PLACES_TAG);
   }
   const { error } = await db.from(TABLES.reports).update({ status, resolved_ts: new Date().toISOString() }).eq('id', id);
   if (error) return fail(error.message);
