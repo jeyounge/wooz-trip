@@ -3,6 +3,15 @@
 > 새 세션은 이 파일부터 읽는다. 결정 배경은 CLAUDE.md, 세부는 docs/ 의 각 문서.
 > 새로 시작할 때: `cd C:\project\wooz-trip` → `claude` (이 폴더에서 열면 CLAUDE.md 가 자동으로 읽힌다)
 
+## 사용자가 할 일 (2026-10-18 기준)
+
+1. **SQL 실행**: Supabase SQL Editor 에 `supabase/migrations/0006_wooz_trip_trip_logs.sql` 전체를 붙여 넣고 실행 (쓴 돈·한마디 저장용)
+2. **카카오맵 도메인 등록**: developers.kakao.com → 내 애플리케이션 → (JavaScript 키를 발급한 앱) → 앱 설정 → 플랫폼 → Web → 사이트 도메인에
+   `https://trip.z-labs.kr` 와 `http://localhost:3000` 추가 → 저장. "카카오맵" 사용 설정 메뉴가 있으면 켜기.
+   Vercel 환경변수 `NEXT_PUBLIC_KAKAO_MAP_KEY` 가 그 앱의 **JavaScript 키**인지 확인. (지금은 domain mismatched 로 거절돼서 간이 지도가 뜸)
+3. **테스트**: 사이트에서 여행 만들기 → AI 초안 → 결과 화면. 오늘이 들어간 여행이면 「+ 쓴 돈·한마디」가 보임. 어색한 볼거리·문구는 알려 주기
+4. 테스트가 괜찮으면 Claude 에게 **"당일치기 시작하자"** (설계: `docs/next-features.md`)
+
 ## 한눈에
 
 | 항목 | 값 |
