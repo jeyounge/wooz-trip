@@ -19,7 +19,10 @@ function today() {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 }
 
-export default function TripSetupForm({ initialCompanion }) {
+// 기본 시각: 비행기는 도착·출발, 차는 출발·집 도착
+const DEFAULT_TIMES = { fly: ['10:30', '18:40'], car: ['08:00', '20:00'] };
+
+export default function TripSetupForm({ initialCompanion, initialMode }) {
   const router = useRouter();
   const base = useMemo(() => addDays(today(), 14), []);
   const [companion, setCompanion] = useState(COMPANIONS.some((c) => c.id === initialCompanion) ? initialCompanion : 'kids');
@@ -27,10 +30,11 @@ export default function TripSetupForm({ initialCompanion }) {
   const [region, setRegion] = useState('jeju-west');
   const [startDate, setStartDate] = useState(base);
   const [endDate, setEndDate] = useState(addDays(base, 2));
-  const [mode, setMode] = useState(defaultMode('jeju-west'));
+  const firstMode = TRAVEL_MODES.some((m) => m.id === initialMode) ? initialMode : defaultMode('jeju-west');
+  const [mode, setMode] = useState(firstMode);
   const [departAreaId, setDepartAreaId] = useState(departAreasFor('jeju-west')[0]?.id || '');
-  const [arrivalTime, setArrivalTime] = useState('10:30');
-  const [departureTime, setDepartureTime] = useState('18:40');
+  const [arrivalTime, setArrivalTime] = useState(DEFAULT_TIMES[firstMode][0]);
+  const [departureTime, setDepartureTime] = useState(DEFAULT_TIMES[firstMode][1]);
   const [stayName, setStayName] = useState('');
   const areas = departAreasFor(region);
   const isCar = mode === 'car';
@@ -52,14 +56,8 @@ export default function TripSetupForm({ initialCompanion }) {
 
   function onMode(m) {
     setMode(m);
-    // 기본 시각: 비행기는 도착·출발, 차는 출발·집 도착
-    if (m === 'car') {
-      setArrivalTime('08:00');
-      setDepartureTime('20:00');
-    } else {
-      setArrivalTime('10:30');
-      setDepartureTime('18:40');
-    }
+    setArrivalTime(DEFAULT_TIMES[m][0]);
+    setDepartureTime(DEFAULT_TIMES[m][1]);
   }
 
   function onStartDate(v) {

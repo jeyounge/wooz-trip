@@ -5,5 +5,5 @@ import TripSetupForm from './TripSetupForm';
 export default async function NewTripPage({ searchParams }) {
   await requireUser('/trips/new');
   const sp = await searchParams;
-  return <TripSetupForm initialCompanion={sp?.c} />;
+  return <TripSetupForm initialCompanion={sp?.c} initialMode={sp?.m} />;
 }

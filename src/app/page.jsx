@@ -3,7 +3,8 @@ import BottomNav from '@/components/BottomNav';
 import RouteCard from '@/components/RouteCard';
 import { IconSearch } from '@/components/Icons';
 import { EmptyCard, ErrorCard } from '@/components/ui';
-import { COMPANIONS, SERVICE_NAME } from '@/lib/config';
+import HomeQuickStart from '@/components/HomeQuickStart';
+import { COMPANIONS, SERVICE_NAME, TRAVEL_MODES } from '@/lib/config';
 import { getPublicRoutes } from '@/lib/trips';
 import { usedPlaceIds } from '@/lib/trip';
 
@@ -13,6 +14,8 @@ export const dynamic = 'force-dynamic';
 export default async function HomePage({ searchParams }) {
   const sp = await searchParams;
   const kind = COMPANIONS.some((c) => c.id === sp?.c) ? sp.c : 'kids';
+  const mode = TRAVEL_MODES.some((m) => m.id === sp?.m) ? sp.m : 'fly';
+  const who = COMPANIONS.find((c) => c.id === kind);
   let routes = [];
   let error = null;
   try {
@@ -39,40 +42,11 @@ export default async function HomePage({ searchParams }) {
           <svg width="100%" height="60" viewBox="0 0 390 60" preserveAspectRatio="none" aria-hidden="true" className="absolute bottom-0 left-0">
             <path d="M0 30 Q 40 10 80 30 T 160 30 T 240 30 T 320 30 T 400 30 V60 H0 Z" fill="#F7B92A" />
           </svg>
-          <h1 className="relative m-0 h-display text-[30px] leading-tight">
-            아이랑 제주,
-            <br />
-            어디부터 가볼까?
-          </h1>
-          <p className="relative m-0 text-[15px] leading-normal text-[#4E3A2C]">
-            가고 싶은 곳만 골라 두면 낮잠·밥 시간에 맞춰 동선을 그려 줄게요.
-          </p>
-          <Link href="/trips/new" className="btn-cta relative">
-            우리 가족 여행 짜기
-          </Link>
+          <HomeQuickStart companion={kind} mode={mode} />
         </section>
 
         <section className="flex flex-col gap-3">
-          <h2 className="m-0 h-display text-xl">이런 가족이 다녀왔어요</h2>
-          <div className="grid grid-cols-4 gap-2">
-            {COMPANIONS.map((k) => {
-              const on = k.id === kind;
-              return (
-                <Link
-                  key={k.id}
-                  href={k.id === 'kids' ? '/' : `/?c=${k.id}`}
-                  scroll={false}
-                  aria-current={on ? 'true' : undefined}
-                  className={`flex h-[76px] flex-col items-center justify-center gap-1.5 rounded-[20px] bg-surface ${
-                    on ? 'border-2 border-ink' : 'border-2 border-transparent shadow-soft'
-                  }`}
-                >
-                  <span className="h-[26px] w-[26px] rounded-full" style={{ background: k.color }} />
-                  <span className="text-[13px]">{k.label}</span>
-                </Link>
-              );
-            })}
-          </div>
+          <h2 className="m-0 h-display text-xl">{who.label} 다녀온 루트</h2>
 
           {error ? (
             <ErrorCard message={error} />

@@ -7,6 +7,16 @@
 // 서비스명은 미정. 정해지면 .env 의 NEXT_PUBLIC_SERVICE_NAME 한 곳만 바꾼다.
 export const SERVICE_NAME = process.env.NEXT_PUBLIC_SERVICE_NAME || '우즈트립';
 
+/**
+ * 홈 「어디 가요?」 여행지. open: false 는 「준비 중」으로 보여만 준다 (다음 예정 지역 알림용).
+ * 지역을 열 때 open: true 로 바꾸고 REGIONS·REGION_ZONE 에 그 지역 권역을 추가한다.
+ */
+export const DESTINATIONS = [
+  { id: 'jeju', label: '제주', open: true },
+  { id: 'yongin', label: '용인', open: false },
+  { id: 'incheon', label: '인천', open: false },
+];
+
 export const REGIONS = [
   { id: 'jeju-west', label: '서쪽 (애월·협재)', short: '서쪽' },
   { id: 'jeju-east', label: '동쪽', short: '동쪽' },
@@ -15,10 +25,10 @@ export const REGIONS = [
 ];
 
 export const COMPANIONS = [
-  { id: 'kids', label: '아이들과', color: '#FFC93C' },
-  { id: 'parents', label: '부모님과', color: '#BFE6D5' },
-  { id: 'couple', label: '연인과', color: '#FFC6B8' },
-  { id: 'friends', label: '친구끼리', color: '#D9E4FF' },
+  { id: 'kids', label: '아이들과', with: '아이랑', color: '#FFC93C' },
+  { id: 'parents', label: '부모님과', with: '부모님이랑', color: '#BFE6D5' },
+  { id: 'couple', label: '연인과', with: '연인이랑', color: '#FFC6B8' },
+  { id: 'friends', label: '친구끼리', with: '친구랑', color: '#D9E4FF' },
 ];
 
 export const CATEGORIES = {
