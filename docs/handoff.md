@@ -15,7 +15,7 @@ Claude 에게 이렇게 말하면 된다: **"handoff 읽고 이어서 하자"**
 | 할 일 | 상태 |
 | --- | --- |
 | 0006 SQL 실행 (쓴 돈·한마디) | **완료** (2026-10-18) |
-| **카카오맵 도메인 등록**: developers.kakao.com → 내 애플리케이션 → (JavaScript 키를 발급한 앱) → 앱 설정 → 플랫폼 → Web → 사이트 도메인에 `https://trip.z-labs.kr`, `http://localhost:3000` 추가. "카카오맵" 사용 설정이 있으면 켜기. Vercel `NEXT_PUBLIC_KAKAO_MAP_KEY` 가 그 앱의 **JavaScript 키**인지 확인 | 사용자가 확인 중 (2026-10-18 저녁엔 domain mismatched → 간이 지도) |
+| **카카오맵 도메인 등록**: developers.kakao.com → 내 애플리케이션 → (JavaScript 키를 발급한 앱) → 앱 설정 → 플랫폼 → Web → 사이트 도메인에 `https://trip.z-labs.kr`, `http://localhost:3000` 추가. "카카오맵" 사용 설정이 있으면 켜기. Vercel `NEXT_PUBLIC_KAKAO_MAP_KEY` 가 그 앱의 **JavaScript 키**인지 확인 | **완료** (2026-10-19, JavaScript SDK 도메인 + 카카오맵 사용 설정 ON. 로컬 주소 검색도 열림) |
 | **사이트 테스트**: 여행 만들기(비행기·차 둘 다) → AI 초안 → 결과. 오늘이 들어간 여행이면 「+ 쓴 돈·한마디」. 어색한 볼거리·문구는 Claude 에게 | 하는 중 |
 | 골프장 API 활용 신청 (15154978) | **완료** (2026-10-19, 연습장은 안 함) |
 | **0007 SQL 실행** (골프장) → 그 뒤 `npm run golf:collect` → 관리자 화면에서 제주 골프장 승인 | 할 일 |

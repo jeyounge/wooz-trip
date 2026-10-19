@@ -237,4 +237,4 @@ MVP 검증 지표 수집도 미리 계획한다. 이벤트 로깅은 참고 프�
 - [ ] 길찾기 API 선택과 요금
 - [x] 로그인 방식 → 공용 Supabase Auth 이메일·비밀번호 (lotto·goat·toto와 같은 계정). 카카오 로그인은 나중에
 - [x] 배포 환경 → Vercel, 도메인 **https://trip.z-labs.kr**, GitHub `jeyounge/wooz-trip` main 자동 배포
-- [x] 카카오맵 JS 키 발급 → 넣음 (도메인 등록 필요: trip.z-labs.kr)
+- [x] 카카오맵 JS 키 발급 → 넣음, 도메인 등록·카카오맵 사용 설정 완료 (2026-10-19)
