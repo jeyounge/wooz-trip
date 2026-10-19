@@ -13,6 +13,7 @@ const TITLES = {
   cafe: '카페는 어디로?',
   dinner: '저녁, 어디서 먹을까?',
   extra: '어디 들를까?',
+  golf: '어디서 칠까?',
 };
 
 /**

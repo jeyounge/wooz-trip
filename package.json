@@ -19,7 +19,8 @@
     "facts:run": "node scripts/blogfacts/run.mjs",
     "facts:sync": "node scripts/blogfacts/sync.mjs",
     "places:approve": "node scripts/places/approve.mjs",
-    "routes:build": "node scripts/ai-routes/build.mjs"
+    "routes:build": "node scripts/ai-routes/build.mjs",
+    "golf:collect": "node scripts/golf/collect.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
@@ -34,6 +35,7 @@
     "eslint": "^9.39.1",
     "eslint-config-next": "~15.5.0",
     "postcss": "^8.4.38",
+    "proj4": "^2.12.1",
     "tailwindcss": "^3.4.17"
   }
 }

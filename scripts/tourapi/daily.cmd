@@ -7,6 +7,7 @@ rem  2) build        : convert all collected areas to data/build/<area>.json
 rem  3) import       : upsert changed places into Supabase as candidates (needs 0004)
 rem  4) blogfacts    : blog review facts for open service areas (Kakao search + robots.txt, 3s/post, stops if blocked)
 rem  5) sync         : push review facts to places.review_facts (needs 0005)
+rem  6) golf         : golf courses from MOIS license data, ~7 calls (needs 0007)
 rem No LLM calls. Log: data\raw\tourapi\daily.log  (details: docs/data-plan.md)
 cd /d "%~dp0..\.."
 set LOG=data\raw\tourapi\daily.log
@@ -17,4 +18,5 @@ node scripts\tourapi\build.mjs >> "%LOG%" 2>&1
 node scripts\tourapi\import.mjs >> "%LOG%" 2>&1
 node scripts\blogfacts\run.mjs --area jeju --limit 35 >> "%LOG%" 2>&1
 node scripts\blogfacts\sync.mjs >> "%LOG%" 2>&1
+node scripts\golf\collect.mjs >> "%LOG%" 2>&1
 echo. >> "%LOG%"

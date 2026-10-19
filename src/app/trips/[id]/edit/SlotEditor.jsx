@@ -86,6 +86,17 @@ export default function SlotEditor({ trip: initialTrip, initialPlaces, tags, fro
     update(days.map((d, i) => (i === day ? { ...d, slots: next } : d)));
   }
 
+  // 골프 칸: 비어 있는 오전·점심 칸 자리에 5시간짜리 골프 칸을 넣는다 (시각은 첫 장소 칸, 없으면 07:00)
+  function addGolf() {
+    const slots = days[day].slots;
+    const firstFree = slots.find((s) => !s.fixed);
+    const time = firstFree ? firstFree.time : '07:00';
+    const kept = slots.filter((s) => !(!s.fixed && !s.placeId && (s.slotType === 'am' || s.slotType === 'lunch')));
+    const g = { id: newSlotId(), time, slotType: 'golf', placeId: null, memo: '', stayMinutes: SLOT_TYPES.golf.stay };
+    const next = [...kept, g].sort((a, b) => toMin(a.time) - toMin(b.time));
+    update(days.map((d, i) => (i === day ? { ...d, slots: next } : d)));
+  }
+
   function removeSlot(slotId) {
     update(days.map((d, i) => (i === day ? { ...d, slots: d.slots.filter((s) => s.id !== slotId) } : d)));
   }
@@ -199,9 +210,16 @@ export default function SlotEditor({ trip: initialTrip, initialPlaces, tags, fro
             />
           ))}
         </ol>
-        <button type="button" onClick={addSlot} className="mt-3 h-11 w-full rounded-2xl text-sm font-bold text-ok">
-          + 슬롯 추가 (간식·놀이터 등)
-        </button>
+        <div className="mt-3 grid grid-cols-[1fr_auto] gap-1">
+          <button type="button" onClick={addSlot} className="h-11 rounded-2xl text-sm font-bold text-ok">
+            + 슬롯 추가 (간식·놀이터 등)
+          </button>
+          {!days[day].slots.some((s) => s.slotType === 'golf') && (
+            <button type="button" onClick={addGolf} className="h-11 rounded-2xl px-3 text-sm font-bold text-ok">
+              + 골프 칸
+            </button>
+          )}
+        </div>
       </main>
 
       <div className="sticky bottom-0 z-10 flex flex-col gap-1.5 bg-bg px-5 pt-2 pb-6">
@@ -340,8 +358,8 @@ function SlotRow({ row, tagLabels, withKids, onOpen, onClear, onRemove, onTime, 
               </span>
             </span>
           </button>
-          {s.slotType === 'extra' && (
-            <button type="button" aria-label="추가 슬롯 지우기" onClick={onRemove} className="flex h-11 w-11 items-center justify-center rounded-xl text-sub">
+          {(s.slotType === 'extra' || s.slotType === 'golf') && (
+            <button type="button" aria-label={s.slotType === 'golf' ? '골프 칸 지우기' : '추가 슬롯 지우기'} onClick={onRemove} className="flex h-11 w-11 items-center justify-center rounded-xl text-sub">
               <IconTrash />
             </button>
           )}

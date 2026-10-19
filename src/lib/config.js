@@ -36,6 +36,7 @@ export const CATEGORIES = {
   sight: '볼거리',
   cafe: '카페',
   stay: '숙소',
+  golf: '골프장',
 };
 
 /** 슬롯 종류 → 라벨, 기본 머무는 시간(분), 후보 카테고리 */
@@ -46,6 +47,8 @@ export const SLOT_TYPES = {
   cafe: { label: '카페', stay: 60, categories: ['cafe'], emptyName: '카페' },
   dinner: { label: '저녁', stay: 90, categories: ['food'], emptyName: '저녁 먹을 곳' },
   extra: { label: '추가', stay: 60, categories: ['sight', 'cafe', 'food'], emptyName: '간식·놀이터 등' },
+  // 18홀 라운드 4~5시간 + 오가는 준비. 「골프 칸 넣기」로만 생긴다
+  golf: { label: '골프', stay: 300, categories: ['golf'], emptyName: '골프장' },
   fixed: { label: '고정', stay: 0, categories: [], emptyName: '' },
 };
 
