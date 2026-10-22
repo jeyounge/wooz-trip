@@ -2,7 +2,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { BackLink } from '@/components/ui';
-import { COMPANIONS, MAX_TRIP_DAYS, REGIONS, TRAVEL_MODES, defaultMode, departAreasFor, zoneOf } from '@/lib/config';
+import { COMPANIONS, DESTINATIONS, MAX_TRIP_DAYS, REGIONS, TRAVEL_MODES, defaultMode, departAreasFor, zoneOf } from '@/lib/config';
 import { addDays, dayCount, shortDate, weekdayLabel } from '@/lib/hours';
 import { createTrip } from '@/app/actions/trips';
 import AiThinking, { waitAtLeast } from '@/components/AiThinking';
@@ -23,8 +23,9 @@ function today() {
 // 기본 시각: 비행기는 도착·출발, 차는 출발·집 도착
 const DEFAULT_TIMES = { fly: ['10:30', '18:40'], car: ['08:00', '20:00'] };
 
-export default function TripSetupForm({ initialCompanion, initialMode }) {
+export default function TripSetupForm({ initialCompanion, initialMode, fromHome = false }) {
   const router = useRouter();
+  const [editBasics, setEditBasics] = useState(!fromHome); // 홈에서 고른 동행·이동 방식을 다시 펼쳐 고칠 때
   const base = useMemo(() => addDays(today(), 14), []);
   const [companion, setCompanion] = useState(COMPANIONS.some((c) => c.id === initialCompanion) ? initialCompanion : 'kids');
   const [ages, setAges] = useState([7, 3]);
@@ -115,63 +116,81 @@ export default function TripSetupForm({ initialCompanion, initialMode }) {
       </header>
 
       <main className="flex flex-1 flex-col gap-4 px-5 pt-2 pb-6">
-        <h1 className="m-0 h-display text-[26px] leading-snug">몇 가지만 알려주세요!</h1>
+        <h1 className="m-0 h-display text-[26px] leading-snug">{editBasics ? '몇 가지만 알려주세요!' : '거의 다 왔어요!'}</h1>
 
-        <section className={card}>
-          <h2 className="m-0 h-display text-lg">누구랑 가요?</h2>
-          <div className="grid grid-cols-4 gap-1.5">
-            {COMPANIONS.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                aria-pressed={companion === c.id}
-                onClick={() => setCompanion(c.id)}
-                className={`pill px-0 ${companion === c.id ? 'pill-on' : ''}`}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
-          {companion === 'kids' && (
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              <span className="text-sm text-sub">아이 나이</span>
-              {ages.map((a, i) => (
-                <span key={i} className="flex h-10 items-center gap-1 rounded-full bg-accent pl-3 pr-1 text-[15px] font-bold">
-                  <select
-                    aria-label={`${i + 1}번째 아이 나이`}
-                    value={a}
-                    onChange={(e) => setAges(ages.map((x, j) => (j === i ? Number(e.target.value) : x)))}
-                    className="appearance-none bg-transparent font-bold outline-none"
+        {!editBasics && (
+          <section className="card flex items-center gap-3 p-4 shadow-card" aria-label="홈에서 고른 것">
+            <div className="min-w-0 flex-1">
+              <div className="text-xs text-sub">홈에서 고른 것</div>
+              <div className="truncate font-display text-base">
+                {DESTINATIONS.find((d) => d.open)?.label} · {TRAVEL_MODES.find((m) => m.id === mode)?.label} · {COMPANIONS.find((c) => c.id === companion)?.label}
+              </div>
+            </div>
+            <button type="button" onClick={() => setEditBasics(true)} className="h-11 flex-none px-2 text-sm text-sub underline">
+              바꾸기
+            </button>
+          </section>
+        )}
+
+        {(editBasics || companion === 'kids') && (
+          <section className={card}>
+            <h2 className="m-0 h-display text-lg">{editBasics ? '누구랑 가요?' : '아이가 몇 살이에요?'}</h2>
+            {editBasics && (
+              <div className="grid grid-cols-4 gap-1.5">
+                {COMPANIONS.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    aria-pressed={companion === c.id}
+                    onClick={() => setCompanion(c.id)}
+                    className={`pill px-0 ${companion === c.id ? 'pill-on' : ''}`}
                   >
-                    {Array.from({ length: 14 }, (_, k) => (
-                      <option key={k} value={k}>
-                        {k}살
-                      </option>
-                    ))}
-                  </select>
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {companion === 'kids' && (
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                {editBasics && <span className="text-sm text-sub">아이 나이</span>}
+                {ages.map((a, i) => (
+                  <span key={i} className="flex h-10 items-center gap-1 rounded-full bg-accent pl-3 pr-1 text-[15px] font-bold">
+                    <select
+                      aria-label={`${i + 1}번째 아이 나이`}
+                      value={a}
+                      onChange={(e) => setAges(ages.map((x, j) => (j === i ? Number(e.target.value) : x)))}
+                      className="appearance-none bg-transparent font-bold outline-none"
+                    >
+                      {Array.from({ length: 14 }, (_, k) => (
+                        <option key={k} value={k}>
+                          {k}살
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      aria-label={`${i + 1}번째 아이 빼기`}
+                      onClick={() => setAges(ages.filter((_, j) => j !== i))}
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-sub"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                {ages.length < 6 && (
                   <button
                     type="button"
-                    aria-label={`${i + 1}번째 아이 빼기`}
-                    onClick={() => setAges(ages.filter((_, j) => j !== i))}
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-sub"
+                    aria-label="아이 추가"
+                    onClick={() => setAges([...ages, 3])}
+                    className="h-10 w-10 rounded-full border-2 border-dashed border-line-strong text-xl text-sub"
                   >
-                    ×
+                    +
                   </button>
-                </span>
-              ))}
-              {ages.length < 6 && (
-                <button
-                  type="button"
-                  aria-label="아이 추가"
-                  onClick={() => setAges([...ages, 3])}
-                  className="h-10 w-10 rounded-full border-2 border-dashed border-line-strong text-xl text-sub"
-                >
-                  +
-                </button>
-              )}
-            </div>
-          )}
-        </section>
+                )}
+              </div>
+            )}
+          </section>
+        )}
 
         <section className={card}>
           <h2 className="m-0 h-display text-lg">제주 어느 쪽이에요?</h2>
@@ -191,14 +210,16 @@ export default function TripSetupForm({ initialCompanion, initialMode }) {
         </section>
 
         <section className={card}>
-          <h2 className="m-0 h-display text-lg">언제, 어떻게 가요?</h2>
-          <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="어떻게 가요?">
-            {TRAVEL_MODES.map((m) => (
-              <button key={m.id} type="button" aria-pressed={mode === m.id} onClick={() => onMode(m.id)} className={`pill px-0 ${mode === m.id ? 'pill-on' : ''}`}>
-                {m.label}
-              </button>
-            ))}
-          </div>
+          <h2 className="m-0 h-display text-lg">{editBasics ? '언제, 어떻게 가요?' : '언제 가요?'}</h2>
+          {editBasics && (
+            <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="어떻게 가요?">
+              {TRAVEL_MODES.map((m) => (
+                <button key={m.id} type="button" aria-pressed={mode === m.id} onClick={() => onMode(m.id)} className={`pill px-0 ${mode === m.id ? 'pill-on' : ''}`}>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          )}
           {isCar && (
             <label className="field">
               어디서 출발해요?
