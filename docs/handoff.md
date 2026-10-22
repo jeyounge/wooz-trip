@@ -121,8 +121,9 @@ Claude 에게 이렇게 말하면 된다: **"handoff 읽고 이어서 하자"**
 2. **골프·운동시설** (`docs/next-features.md` ③): 사용자가 API 활용 신청을 끝냈는지 먼저 확인
    - 행안부 인허가 API 수집 스크립트 (EPSG:5174 → 위경도 변환, 영업 중만), 장소 카테고리·슬롯 종류 「골프」(4~5시간) 추가
    - 같은 API 계열로 인허가(폐업 표시)도 같이 설계
-3. **남은 444곳 승인**: 영업시간이 들어오면 `npm run places:approve -- --area jeju --with-hours` 로 확인 → `--apply`
-   (승인하면 매일 자동 반영이 더 이상 갱신하지 않으니 영업시간 들어온 곳만). 그 뒤 AI 루트 다시 만들기 (`places:export` → `pool.mjs` → `routes:build` → `routes:sql`)
+3. **전국 후보 7,860곳 전부 승인함** (2026-10-22 사용자 요청. 제주 473 · 인천 1,277 · 경기 5,865 · 그 밖 245). 승인 장소 8,888곳 (제주 1,501).
+   주의: 승인한 장소는 매일 자동 반영이 덮어쓰지 않아서, 제주 444곳은 영업시간이 비어 있고 나중에 수집돼도 자동으로 안 채워진다
+   → 필요하면 import 가 "영업시간이 빈 승인 장소"는 채우도록 고치기. AI 루트 다시 만들기 (`places:export` → `pool.mjs` → `routes:build` → `routes:sql`)
 4. 카카오맵 도메인 확인 (위 확인법), Supabase Redirect URLs `https://trip.z-labs.kr/**`
 5. 길찾기 API 선택 (카카오모빌리티 vs T맵 요금·한도) → 도로 따라가는 선 + 실제 이동시간, `wooz_trip_travel_cache` 에 저장
 6. 서비스명 정하기 (`NEXT_PUBLIC_SERVICE_NAME`)
@@ -130,7 +131,7 @@ Claude 에게 이렇게 말하면 된다: **"handoff 읽고 이어서 하자"**
 8. 인천·경기 오픈 준비: 권역 나누기 → `config.js` REGIONS + `REGION_ZONE`(capital) 확장 (`docs/data-plan.md` 5장), 수도권 당일치기 AI 루트
 9. 다음 공공데이터: 어린이놀이시설(키즈존 후보)
 10. 정식 오픈 전 법률 확인 (블로그 수집·네이버 약관·쓴 돈 통계 개인정보)
-- 장소 조회는 서버 5분 캐시 (`src/lib/places.js`). 승인 장소가 4,000곳쯤 넘으면 지역별 캐시나 PostGIS 로
+- 장소 조회는 여행 시·도만 읽어 시·도별 서버 5분 캐시 (`src/lib/places.js`, 제주 0.9MB). 캐시 한도 2MB 라 경기(2.95MB)를 열 때는 권역별로 나누거나 PostGIS 로
 
 ## 알려진 문제
 

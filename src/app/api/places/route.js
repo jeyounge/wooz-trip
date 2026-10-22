@@ -1,11 +1,11 @@
 /**
  * GET /api/places — 슬롯 후보 조회 (S04 장소 선택 바텀시트)
  *
- * query: date, time, slotType, stay, lat, lng, tags(콤마), q, exclude(콤마), category
+ * query: region(여행 지역, 없으면 제주), date, time, slotType, stay, lat, lng, tags(콤마), q, exclude(콤마), category
  * 응답: { ok: true, data: [{ id, name, ..., travel, check }] } | { ok: false, message }
  */
 import { NextResponse } from 'next/server';
-import { getApprovedPlaces, rankCandidates } from '@/lib/places';
+import { getApprovedPlaces, rankCandidates, sidoOfRegion } from '@/lib/places';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +22,7 @@ export async function GET(request) {
   const lng = parseFloat(sp.get('lng'));
 
   try {
-    const places = await getApprovedPlaces();
+    const places = await getApprovedPlaces(sidoOfRegion(sp.get('region')));
     const data = rankCandidates(places, {
       date,
       time,

@@ -23,7 +23,7 @@ const TITLES = {
  * - 앞 장소 기준 가까운 순, 아이 태그 필터, 쉬는 날은 선택 불가, 영업시간 임박 경고
  * - 사진·리뷰·블로그는 저장하지 않고 외부 링크로만 연결
  */
-export default function PlacePicker({ date, dayLabel, slot, from, tags, companion, excludeIds, onPick, onCustom, onReport, onClose }) {
+export default function PlacePicker({ region, date, dayLabel, slot, from, tags, companion, excludeIds, onPick, onCustom, onReport, onClose }) {
   const filterTags = useMemo(() => tags.filter((t) => t.filterable), [tags]);
   const [on, setOn] = useState(() =>
     companion === 'kids' && SLOT_TYPES[slot.slotType]?.categories.includes('food') ? { baby_chair: true } : {}
@@ -34,6 +34,7 @@ export default function PlacePicker({ date, dayLabel, slot, from, tags, companio
   const active = Object.keys(on).filter((k) => on[k]);
   const query = useMemo(() => {
     const p = new URLSearchParams({
+      region: region || '',
       date,
       time: slot.time,
       slotType: slot.slotType,
@@ -48,7 +49,7 @@ export default function PlacePicker({ date, dayLabel, slot, from, tags, companio
     if (excludeIds.length) p.set('exclude', excludeIds.join(','));
     return p.toString();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date, slot.time, slot.slotType, slot.stayMinutes, from, active.join(','), q, excludeIds.join(',')]);
+  }, [region, date, slot.time, slot.slotType, slot.stayMinutes, from, active.join(','), q, excludeIds.join(',')]);
 
   useEffect(() => {
     let alive = true;

@@ -284,6 +284,7 @@ export default function SlotEditor({ trip: initialTrip, rev: initialRev, role = 
 
       {picker && pickerSlot && (
         <PlacePicker
+          region={trip.region}
           date={days[day].date}
           dayLabel={DAY_LABELS[day] || `${day + 1}일차`}
           slot={pickerSlot}

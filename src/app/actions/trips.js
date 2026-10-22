@@ -13,7 +13,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { COMPANIONS, MAX_TRIP_DAYS, REGIONS, SLOT_TYPES, TRAVEL_MODES, departArea, departAreasFor } from '@/lib/config';
 import { buildDays, redateDays, setTripEnds, tripDepartArea, tripMode, usedPlaceIds } from '@/lib/trip';
 import { addDays, dayCount } from '@/lib/hours';
-import { getApprovedPlaces, getPlaceMap } from '@/lib/places';
+import { getApprovedPlaces, getPlaceMap, sidoOfRegion } from '@/lib/places';
 import { cleanLocation } from '@/lib/location';
 import { buildFillTasks, validatePicks, applyPicks, finalCheck } from '@/lib/ai/fill';
 import { chooseRoute } from '@/lib/ai/routes';
@@ -228,7 +228,7 @@ export async function aiFill(tripId) {
   const { trip, writer } = ed;
 
   try {
-    const places = await getApprovedPlaces();
+    const places = await getApprovedPlaces(sidoOfRegion(trip.region));
     const placeMap = Object.fromEntries(places.map((p) => [p.id, p]));
     // 카카오 검색으로 넣은 후보 장소는 승인 목록에 없다 → 위치·검사용으로만 따로 읽는다
     const extraIds = usedPlaceIds(trip.days).filter((id) => !placeMap[id]);
