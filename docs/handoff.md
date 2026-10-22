@@ -58,6 +58,7 @@ Claude 에게 이렇게 말하면 된다: **"handoff 읽고 이어서 하자"**
 | 코드 | https://github.com/jeyounge/wooz-trip (`main` 에 push 하면 Vercel 자동 배포, **공개 저장소**) |
 | DB | 공용 Supabase `rncjgtyqzjewnmxycexp` (lotto·goat·toto 와 같음), 테이블은 전부 `wooz_trip_` |
 | 스택 | Next.js 15.5 App Router (JS) · React 19 · Tailwind 3.4 · Supabase · Vercel |
+| 서버 위치 | Supabase DB 는 싱가포르(ap-southeast-1) → Vercel 함수도 `vercel.json` `regions: ["sin1"]` (2026-10-22, 원래 미국 동부라 느렸음) |
 | 디자인 | 시안 B (따뜻한 가족 앨범), 토큰은 `src/app/theme.css` |
 | 운영자 | `ADMIN_EMAIL` 계정 (쉼표로 여러 명 가능) → `/admin` |
 
