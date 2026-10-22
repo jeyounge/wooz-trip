@@ -12,7 +12,8 @@ import { getCurrentUser } from '@/lib/auth';
 import { COMPANIONS, MAX_TRIP_DAYS, REGIONS, SLOT_TYPES, TRAVEL_MODES, departArea, departAreasFor } from '@/lib/config';
 import { buildDays, redateDays, setTripEnds, tripDepartArea, tripMode, usedPlaceIds } from '@/lib/trip';
 import { addDays, dayCount } from '@/lib/hours';
-import { getApprovedPlaces } from '@/lib/places';
+import { getApprovedPlaces, getPlaceMap } from '@/lib/places';
+import { cleanLocation } from '@/lib/location';
 import { buildFillTasks, validatePicks, applyPicks, finalCheck } from '@/lib/ai/fill';
 import { chooseRoute } from '@/lib/ai/routes';
 import { bumpPickCount, getActiveAiRoutes } from '@/lib/ai/store';
@@ -63,6 +64,11 @@ function sanitizeDays(days, startDate) {
         stayMinutes: Math.min(600, Math.max(0, parseInt(s.stayMinutes, 10) || 0)),
       };
       if (s.aiReason && out.placeId) out.aiReason = String(s.aiReason).slice(0, 200);
+      // 직접 넣은 일정 (해변에서 놀기, OO 근처 사진 등). 위치는 있어도 되고 없어도 된다
+      if (!s.fixed && !out.placeId && s.custom) {
+        const c = cleanLocation(s.custom);
+        if (c) out.custom = c;
+      }
       if (s.fixed) {
         out.fixed = {
           kind: FIXED_KINDS.includes(s.fixed.kind) ? s.fixed.kind : 'stay_end',
@@ -76,14 +82,23 @@ function sanitizeDays(days, startDate) {
   }));
 }
 
-/** 장소 ID 가 실제 승인된 장소인지 확인 */
-async function assertPlacesExist(db, days) {
+/** 장소 ID 가 실제 장소인지 확인 (승인 장소 + 사용자가 카카오 검색으로 넣은 후보, 제외된 장소는 안 됨) */
+async function assertPlacesExist(days) {
   const ids = usedPlaceIds(days);
   if (!ids.length) return;
-  const { data } = await db.from(TABLES.places).select('id').in('id', ids);
+  const { data } = await createAdminClient().from(TABLES.places).select('id').in('id', ids).neq('status', 'excluded');
   const found = new Set((data || []).map((p) => p.id));
   const missing = ids.filter((id) => !found.has(id));
   if (missing.length) throw new Error('없는 장소가 들어 있어요');
+}
+
+/**
+ * 숙소 입력 → 컬럼. stay = { name, address?, lat?, lng? } (카카오 검색으로 고르면 좌표가 있다).
+ * 예전 방식(stayName 글자만)도 받는다. 좌표가 있어야 숙소가 동선 기준점이 된다.
+ */
+function stayColumns({ stay, stayName } = {}) {
+  const loc = cleanLocation(stay ?? (stayName ? { name: stayName } : null), { maxName: 80 });
+  return { stay_name: loc?.name || null, stay_lat: loc?.lat ?? null, stay_lng: loc?.lng ?? null };
 }
 
 function makeTitle(region, n) {
@@ -96,7 +111,7 @@ export async function createTrip(input) {
   const { user, db } = await authed();
   if (!user) return fail('로그인이 필요해요');
 
-  const { region, startDate, endDate, arrivalTime, departureTime, companion, kidsAges = [], stayName = '', start, mode, departAreaId } = input || {};
+  const { region, startDate, endDate, arrivalTime, departureTime, companion, kidsAges = [], start, mode, departAreaId } = input || {};
   if (!REGIONS.some((r) => r.id === region)) return fail('지역을 골라 주세요');
   if (!COMPANIONS.some((c) => c.id === companion)) return fail('누구랑 가는지 골라 주세요');
   if (!DATE.test(startDate || '') || !DATE.test(endDate || '')) return fail('날짜를 확인해 주세요');
@@ -109,7 +124,8 @@ export async function createTrip(input) {
   if (n === 1 && arrivalTime >= departureTime) return fail(travel.mode === 'car' ? '돌아오는 시각이 출발보다 빨라요' : '제주 출발이 도착보다 빨라요');
 
   const ages = companion === 'kids' ? kidsAges.map((a) => parseInt(a, 10)).filter((a) => a >= 0 && a <= 13).slice(0, 6) : [];
-  const days = buildDays({ startDate, endDate, arrivalTime, departureTime, stayName, ...travel });
+  const stayCols = n === 1 ? stayColumns() : stayColumns(input);
+  const days = buildDays({ startDate, endDate, arrivalTime, departureTime, stayName: stayCols.stay_name || '', ...travel });
 
   const { data, error } = await db
     .from(TABLES.trips)
@@ -123,7 +139,7 @@ export async function createTrip(input) {
       departure_time: departureTime,
       companion_type: companion,
       kids_ages: ages,
-      stay_name: String(stayName).slice(0, 80) || null,
+      ...stayCols,
       days,
     })
     .select('id')
@@ -146,7 +162,7 @@ export async function saveDays(tripId, days) {
   if (!trip) return fail('루트를 찾을 수 없어요');
   try {
     const clean = sanitizeDays(days, trip.start_date);
-    await assertPlacesExist(db, clean);
+    await assertPlacesExist(clean);
     const { error } = await db.from(TABLES.trips).update({ days: clean }).eq('id', tripId);
     if (error) return fail(error.message);
     return { ok: true, days: clean };
@@ -155,17 +171,17 @@ export async function saveDays(tripId, days) {
   }
 }
 
-/** 제목·숙소 수정 */
-export async function updateTripMeta(tripId, { title, stayName }) {
+/** 제목·숙소 수정. stay = { name, address?, lat?, lng? } | null (null 이면 숙소 지움) */
+export async function updateTripMeta(tripId, { title, stay, stayName }) {
   const { user, db } = await authed();
   if (!user) return fail('로그인이 필요해요');
   const patch = {};
   if (typeof title === 'string' && title.trim()) patch.title = title.trim().slice(0, 60);
-  if (typeof stayName === 'string') patch.stay_name = stayName.trim().slice(0, 80) || null;
+  if (stay !== undefined || typeof stayName === 'string') Object.assign(patch, stayColumns({ stay, stayName }));
   const { error } = await db.from(TABLES.trips).update(patch).eq('id', tripId).eq('owner_id', user.id);
   if (error) return fail(error.message);
   revalidatePath(`/trips/${tripId}`);
-  return { ok: true };
+  return { ok: true, patch };
 }
 
 /**
@@ -183,6 +199,10 @@ export async function aiFill(tripId) {
   try {
     const places = await getApprovedPlaces();
     const placeMap = Object.fromEntries(places.map((p) => [p.id, p]));
+    // 카카오 검색으로 넣은 후보 장소는 승인 목록에 없다 → 위치·검사용으로만 따로 읽는다
+    const extraIds = usedPlaceIds(trip.days).filter((id) => !placeMap[id]);
+    const extraPlaces = Object.values(await getPlaceMap(extraIds));
+    for (const p of extraPlaces) placeMap[p.id] = p;
 
     // 1. 미리 만든 루트에서 꺼내기 (테이블이 비었거나 없어도 2단계로 진행)
     let chosen = null;
@@ -194,7 +214,7 @@ export async function aiFill(tripId) {
     let days = chosen ? applyPicks(trip.days, chosen.picks) : trip.days;
 
     // 2. 남은 빈칸은 코드 후보 1순위
-    const tasks = buildFillTasks({ ...trip, days }, places);
+    const tasks = buildFillTasks({ ...trip, days }, places, { extraPlaces });
     days = applyPicks(days, validatePicks(tasks, []));
 
     // 3. 다시 검사
@@ -291,7 +311,7 @@ export async function unpublishTrip(tripId) {
  * 일자 수는 원본과 같고 날짜만 내 시작일로 바꾼다.
  * 휴무·영업시간·이동시간은 화면에서 내 날짜 기준으로 다시 계산된다.
  */
-export async function copyRoute(routeId, { startDate, arrivalTime, departureTime, stayName, mode, departAreaId }) {
+export async function copyRoute(routeId, { startDate, arrivalTime, departureTime, stay: stayInput, stayName, mode, departAreaId }) {
   const { user, db } = await authed();
   if (!user) return fail('로그인이 필요해요');
   if (!isUuid(routeId)) return fail('루트를 찾을 수 없어요');
@@ -307,7 +327,8 @@ export async function copyRoute(routeId, { startDate, arrivalTime, departureTime
   const travel = travelOf(src.region, mode || tripMode(src), departAreaId || tripDepartArea(src));
   if (travel.error) return fail(travel.error);
   const days = setTripEnds(redateDays(src.days, startDate), { mode: travel.mode, arrivalTime: arr, departureTime: dep, departAreaId: travel.departAreaId });
-  const stay = String(stayName || '').trim();
+  const stayCols = n === 1 ? stayColumns() : stayColumns({ stay: stayInput, stayName });
+  const stay = stayCols.stay_name || '';
   if (stay) for (const d of days) for (const s of d.slots) if (s.fixed?.kind?.startsWith('stay')) s.fixed[s.fixed.kind === 'stay_end' ? 'name' : 'note'] = stay;
 
   const { data, error } = await db
@@ -322,7 +343,7 @@ export async function copyRoute(routeId, { startDate, arrivalTime, departureTime
       departure_time: dep,
       companion_type: src.companion_type,
       kids_ages: src.kids_ages,
-      stay_name: stay || null,
+      ...stayCols,
       days,
       copied_from: src.id,
     })

@@ -8,12 +8,14 @@ import PlacePicker from '@/components/PlacePicker';
 import ReportSheet from '@/components/ReportSheet';
 import Sheet from '@/components/Sheet';
 import { DAY_LABELS, SLOT_TYPES } from '@/lib/config';
-import { computeDay, newSlotId, rowWarning, slotPoint } from '@/lib/trip';
+import { computeDay, isEmptySlot, newSlotId, rowWarning, slotPoint, slotTitle } from '@/lib/trip';
 import { shortDate, toHHMM, toMin, weekdayLabel } from '@/lib/hours';
 import { tripSubtitle, slotLabel } from '@/lib/format';
 import { formatDuration } from '@/lib/geo';
 import { aiFill, markRouteDrawn, saveDays, updateTripMeta } from '@/app/actions/trips';
 import AiThinking, { waitAtLeast } from '@/components/AiThinking';
+import CustomSlotSheet from '@/components/CustomSlotSheet';
+import LocationSearch from '@/components/LocationSearch';
 
 export default function SlotEditor({ trip: initialTrip, initialPlaces, tags, fromAi, initialDay = 0 }) {
   const router = useRouter();
@@ -22,6 +24,7 @@ export default function SlotEditor({ trip: initialTrip, initialPlaces, tags, fro
   const [places, setPlaces] = useState(initialPlaces);
   const [day, setDay] = useState(initialDay);
   const [picker, setPicker] = useState(null); // { slotId }
+  const [custom, setCustom] = useState(null); // { slotId: string|null(새 칸), name }
   const [report, setReport] = useState(null); // place
   const [metaOpen, setMetaOpen] = useState(false);
   const [save, setSave] = useState({ state: 'idle', message: '' }); // idle | saving | saved | error
@@ -40,7 +43,7 @@ export default function SlotEditor({ trip: initialTrip, initialPlaces, tags, fro
     let warns = 0;
     days.forEach((d) => {
       computeDay(d, places, tripView).forEach((r) => {
-        if (!r.slot.fixed && !r.slot.placeId) empty++;
+        if (isEmptySlot(r.slot)) empty++;
         if (r.check.level === 'warn' || r.lateBy > 0) warns++;
       });
     });
@@ -77,11 +80,11 @@ export default function SlotEditor({ trip: initialTrip, initialPlaces, tags, fro
     update(days.map((d, i) => (i === day ? { ...d, slots } : d)));
   }
 
-  function addSlot() {
+  function addSlot(extra = {}) {
     const slots = days[day].slots;
     const lastMovable = [...slots].reverse().find((s) => !s.fixed?.kind?.endsWith('end') && s.fixed?.kind !== 'airport_depart');
     const after = lastMovable ? toMin(lastMovable.time) + (lastMovable.stayMinutes || 60) : toMin('15:00');
-    const s = { id: newSlotId(), time: toHHMM(Math.min(after, 21 * 60)), slotType: 'extra', placeId: null, memo: '', stayMinutes: 60 };
+    const s = { id: newSlotId(), time: toHHMM(Math.min(after, 21 * 60)), slotType: 'extra', placeId: null, memo: '', stayMinutes: 60, ...extra };
     const next = [...slots, s].sort((a, b) => toMin(a.time) - toMin(b.time));
     update(days.map((d, i) => (i === day ? { ...d, slots: next } : d)));
   }
@@ -91,7 +94,7 @@ export default function SlotEditor({ trip: initialTrip, initialPlaces, tags, fro
     const slots = days[day].slots;
     const firstFree = slots.find((s) => !s.fixed);
     const time = firstFree ? firstFree.time : '07:00';
-    const kept = slots.filter((s) => !(!s.fixed && !s.placeId && (s.slotType === 'am' || s.slotType === 'lunch')));
+    const kept = slots.filter((s) => !(isEmptySlot(s) && (s.slotType === 'am' || s.slotType === 'lunch')));
     const g = { id: newSlotId(), time, slotType: 'golf', placeId: null, memo: '', stayMinutes: SLOT_TYPES.golf.stay };
     const next = [...kept, g].sort((a, b) => toMin(a.time) - toMin(b.time));
     update(days.map((d, i) => (i === day ? { ...d, slots: next } : d)));
@@ -103,7 +106,15 @@ export default function SlotEditor({ trip: initialTrip, initialPlaces, tags, fro
 
   function onPick(place) {
     setPlaces((m) => ({ ...m, [place.id]: place }));
-    patchSlot(picker.slotId, { placeId: place.id, aiReason: undefined });
+    patchSlot(picker.slotId, { placeId: place.id, custom: undefined, aiReason: undefined });
+    setPicker(null);
+  }
+
+  /** 직접 넣은 일정 저장: 기존 칸이면 그 칸에, 아니면 새 칸을 만든다 */
+  function onCustom(c) {
+    if (custom?.slotId) patchSlot(custom.slotId, { placeId: null, custom: c, aiReason: undefined });
+    else addSlot({ custom: c });
+    setCustom(null);
     setPicker(null);
   }
 
@@ -138,7 +149,7 @@ export default function SlotEditor({ trip: initialTrip, initialPlaces, tags, fro
     for (let i = idx - 1; i >= 0; i--) {
       const s = days[day].slots[i];
       const pt = slotPoint(s, places, tripView);
-      if (pt) return { point: pt, name: s.placeId ? places[s.placeId]?.name : s.fixed?.name };
+      if (pt) return { point: pt, name: slotTitle(s, places) };
     }
     return null;
   }, [pickerSlot, days, day, places, tripView]);
@@ -203,7 +214,8 @@ export default function SlotEditor({ trip: initialTrip, initialPlaces, tags, fro
               tagLabels={tagLabels}
               withKids={trip.companion_type === 'kids'}
               onOpen={() => setPicker({ slotId: r.slot.id })}
-              onClear={() => patchSlot(r.slot.id, { placeId: null, aiReason: undefined })}
+              onClear={() => patchSlot(r.slot.id, { placeId: null, custom: undefined, aiReason: undefined })}
+              onEditCustom={() => setCustom({ slotId: r.slot.id })}
               onRemove={() => removeSlot(r.slot.id)}
               onTime={(t) => setSlotTime(r.slot.id, t)}
               onStay={(m) => patchSlot(r.slot.id, { stayMinutes: m })}
@@ -211,9 +223,14 @@ export default function SlotEditor({ trip: initialTrip, initialPlaces, tags, fro
           ))}
         </ol>
         <div className="mt-3 grid grid-cols-[1fr_auto] gap-1">
-          <button type="button" onClick={addSlot} className="h-11 rounded-2xl text-sm font-bold text-ok">
-            + 슬롯 추가 (간식·놀이터 등)
-          </button>
+          <div className="grid grid-cols-2 gap-1">
+            <button type="button" onClick={() => addSlot()} className="h-11 rounded-2xl text-sm font-bold text-ok">
+              + 칸 추가
+            </button>
+            <button type="button" onClick={() => setCustom({ slotId: null })} className="h-11 rounded-2xl text-sm font-bold text-ok">
+              + 직접 넣기
+            </button>
+          </div>
           {!days[day].slots.some((s) => s.slotType === 'golf') && (
             <button type="button" onClick={addGolf} className="h-11 rounded-2xl px-3 text-sm font-bold text-ok">
               + 골프 칸
@@ -249,8 +266,18 @@ export default function SlotEditor({ trip: initialTrip, initialPlaces, tags, fro
           companion={trip.companion_type}
           excludeIds={days.flatMap((d) => d.slots.map((s) => s.placeId)).filter((id) => id && id !== pickerSlot.placeId)}
           onPick={onPick}
+          onCustom={(name) => setCustom({ slotId: pickerSlot.id, name })}
           onReport={(p) => setReport(p)}
           onClose={() => setPicker(null)}
+        />
+      )}
+      {custom && (
+        <CustomSlotSheet
+          initial={custom.slotId ? days[day].slots.find((s) => s.id === custom.slotId)?.custom : null}
+          initialName={custom.name || ''}
+          near={(custom.slotId && pickerFrom?.point) || null}
+          onSave={onCustom}
+          onClose={() => setCustom(null)}
         />
       )}
       {aiPending && <AiThinking companion={trip.companion_type} />}
@@ -283,7 +310,7 @@ export default function SlotEditor({ trip: initialTrip, initialPlaces, tags, fro
   );
 }
 
-function SlotRow({ row, tagLabels, withKids, onOpen, onClear, onRemove, onTime, onStay }) {
+function SlotRow({ row, tagLabels, withKids, onOpen, onClear, onEditCustom, onRemove, onTime, onStay }) {
   const { slot: s, place, travelFromPrev: tr } = row;
   const warn = rowWarning(row);
   const isWarn = row.check.level === 'warn' || row.lateBy > 0;
@@ -291,7 +318,7 @@ function SlotRow({ row, tagLabels, withKids, onOpen, onClear, onRemove, onTime, 
 
   const pinCls = s.fixed
     ? 'bg-accent text-ink'
-    : !s.placeId
+    : !s.placeId && !s.custom
     ? 'bg-bg border-2 border-dashed border-line-strong text-sub'
     : isWarn
     ? 'bg-cta text-cta-ink'
@@ -343,6 +370,24 @@ function SlotRow({ row, tagLabels, withKids, onOpen, onClear, onRemove, onTime, 
               <div className="rounded-[14px] bg-bg px-2.5 py-2 text-[13px] text-sub">{warn}</div>
             ))}
         </div>
+      ) : s.custom ? (
+        <div className="card flex min-w-0 flex-1 flex-col gap-1.5 p-3.5">
+          <div className="flex items-center gap-1.5">
+            <span className="rounded-[10px] bg-bg px-2 py-0.5 text-xs text-sub">직접 넣음</span>
+            {travelText && <span className="text-xs text-sub">{travelText}</span>}
+            <div className="ml-auto flex gap-1">
+              <button type="button" aria-label="직접 넣은 일정 고치기" onClick={onEditCustom} className="flex h-9 w-9 items-center justify-center rounded-xl bg-bg">
+                <IconEdit size={16} />
+              </button>
+              <button type="button" aria-label="이 칸 비우기" onClick={onClear} className="flex h-9 w-9 items-center justify-center rounded-xl bg-bg text-sub">
+                <IconTrash />
+              </button>
+            </div>
+          </div>
+          <div className="font-display text-[17px] leading-snug">{s.custom.name}</div>
+          <div className="text-xs text-sub">{s.custom.address || '위치 없이 시간만 잡아 둬요'}</div>
+          <StayControl value={s.stayMinutes} onChange={onStay} />
+        </div>
       ) : (
         <div className="flex flex-1 items-center gap-1">
           <button
@@ -387,7 +432,7 @@ function StayControl({ value, onChange }) {
 
 function MetaSheet({ trip, onClose, onSaved }) {
   const [title, setTitle] = useState(trip.title);
-  const [stayName, setStayName] = useState(trip.stay_name || '');
+  const [stay, setStay] = useState(trip.stay_name ? { name: trip.stay_name, ...(Number.isFinite(trip.stay_lat) ? { lat: trip.stay_lat, lng: trip.stay_lng } : {}) } : null);
   const [pending, start] = useTransition();
   const [err, setErr] = useState(null);
   return (
@@ -397,10 +442,14 @@ function MetaSheet({ trip, onClose, onSaved }) {
           루트 이름
           <input value={title} maxLength={60} onChange={(e) => setTitle(e.target.value)} />
         </label>
-        <label className="field bg-surface">
-          숙소
-          <input value={stayName} maxLength={80} placeholder="숙소 이름이나 주소" onChange={(e) => setStayName(e.target.value)} />
-        </label>
+        <LocationSearch
+          label="숙소 (찾아서 고르면 숙소에서 출발해요)"
+          placeholder="숙소 이름이나 주소"
+          value={stay}
+          onChange={setStay}
+          fieldClass="bg-surface"
+          hint="목록에서 골라야 숙소 위치가 동선에 들어가요"
+        />
         <p className="m-0 text-xs text-sub">날짜·비행기 시각을 바꾸려면 새 루트를 만들어 주세요.</p>
         {err && <p className="m-0 text-sm font-bold text-warn-ink">{err}</p>}
         <button
@@ -409,9 +458,9 @@ function MetaSheet({ trip, onClose, onSaved }) {
           className="btn-cta"
           onClick={() =>
             start(async () => {
-              const res = await updateTripMeta(trip.id, { title, stayName });
+              const res = await updateTripMeta(trip.id, { title, stay });
               if (!res.ok) return setErr(res.message);
-              onSaved({ title, stay_name: stayName });
+              onSaved({ title, ...res.patch });
             })
           }
         >

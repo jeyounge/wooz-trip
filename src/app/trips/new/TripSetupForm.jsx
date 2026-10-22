@@ -6,6 +6,7 @@ import { COMPANIONS, MAX_TRIP_DAYS, REGIONS, TRAVEL_MODES, defaultMode, departAr
 import { addDays, dayCount, shortDate, weekdayLabel } from '@/lib/hours';
 import { createTrip } from '@/app/actions/trips';
 import AiThinking, { waitAtLeast } from '@/components/AiThinking';
+import LocationSearch from '@/components/LocationSearch';
 
 const STARTS = [
   { id: 'self', title: '직접 짜기', desc: '빈 칸부터', color: '#BFE6D5' },
@@ -35,7 +36,7 @@ export default function TripSetupForm({ initialCompanion, initialMode }) {
   const [departAreaId, setDepartAreaId] = useState(departAreasFor('jeju-west')[0]?.id || '');
   const [arrivalTime, setArrivalTime] = useState(DEFAULT_TIMES[firstMode][0]);
   const [departureTime, setDepartureTime] = useState(DEFAULT_TIMES[firstMode][1]);
-  const [stayName, setStayName] = useState('');
+  const [stay, setStay] = useState(null); // { name, address?, lat?, lng? }
   const areas = departAreasFor(region);
   const isCar = mode === 'car';
   const [start, setStart] = useState('self');
@@ -73,7 +74,11 @@ export default function TripSetupForm({ initialCompanion, initialMode }) {
     if (start === 'browse') {
       const q = new URLSearchParams({ c: companion, start: startDate, arr: arrivalTime, dep: departureTime, mode });
       if (isCar) q.set('area', departAreaId);
-      if (stayName) q.set('stay', stayName);
+      if (stay?.name) q.set('stay', stay.name);
+      if (Number.isFinite(stay?.lat)) {
+        q.set('slat', String(stay.lat));
+        q.set('slng', String(stay.lng));
+      }
       router.push(`/routes?${q}`);
       return;
     }
@@ -86,7 +91,7 @@ export default function TripSetupForm({ initialCompanion, initialMode }) {
         departureTime,
         companion,
         kidsAges: ages,
-        stayName: n === 1 ? '' : stayName,
+        stay: n === 1 ? null : stay,
         start,
         mode,
         departAreaId: isCar ? departAreaId : null,
@@ -232,10 +237,13 @@ export default function TripSetupForm({ initialCompanion, initialMode }) {
           )}
           {dateError && <div className="text-[13px] font-bold text-warn-ink">{dateError}</div>}
           {n !== 1 && (
-            <label className="field">
-              숙소
-              <input type="text" placeholder="숙소 이름이나 주소" value={stayName} onChange={(e) => setStayName(e.target.value)} />
-            </label>
+            <LocationSearch
+              label="숙소 (찾아서 고르면 둘째 날부터 숙소에서 출발해요)"
+              placeholder="숙소 이름이나 주소"
+              value={stay}
+              onChange={setStay}
+              hint="목록에서 골라야 숙소 위치가 동선에 들어가요"
+            />
           )}
         </section>
 

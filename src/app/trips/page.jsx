@@ -5,6 +5,7 @@ import { requireUser } from '@/lib/auth';
 import { getMyTrips } from '@/lib/trips';
 import { regionShort, nightsText } from '@/lib/format';
 import { shortDate } from '@/lib/hours';
+import { isEmptySlot, isFilled } from '@/lib/trip';
 import { COMPANIONS } from '@/lib/config';
 
 export const dynamic = 'force-dynamic';
@@ -34,8 +35,8 @@ export default async function MyTripsPage() {
         ) : trips.length ? (
           trips.map((t) => {
             const slots = t.days.flatMap((d) => d.slots);
-            const filled = slots.filter((s) => s.placeId).length;
-            const empty = slots.filter((s) => !s.fixed && !s.placeId).length;
+            const filled = slots.filter(isFilled).length;
+            const empty = slots.filter(isEmptySlot).length;
             return (
               <Link key={t.id} href={empty ? `/trips/${t.id}/edit` : `/trips/${t.id}`} className="card flex flex-col gap-1 p-4">
                 <div className="flex items-center gap-2">

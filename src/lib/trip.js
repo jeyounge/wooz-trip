@@ -34,6 +34,17 @@ const slot = (time, slotType, extra = {}) => ({
 const fixedSlot = (time, kind, name, note = '', extra = {}) =>
   slot(time, 'fixed', { stayMinutes: 0, fixed: { kind, name, note, ...extra } });
 
+/** 칸이 채워졌는지: 우리 DB 장소(placeId) 또는 직접 넣은 일정(custom: { name, address?, lat?, lng? }) */
+export const isFilled = (s) => !!(s.placeId || s.custom);
+/** 고정 칸이 아니고 아무것도 안 들어간 칸 */
+export const isEmptySlot = (s) => !s.fixed && !isFilled(s);
+/** 칸 이름: 장소 이름 / 직접 넣은 일정 이름 / 고정 칸 이름 */
+export function slotTitle(s, placeMap) {
+  if (s.placeId) return placeMap?.[s.placeId]?.name || '삭제된 장소';
+  if (s.custom) return s.custom.name;
+  return s.fixed?.name || '';
+}
+
 /** 이 여행이 차로 가는 여행인지 (첫 고정 칸으로 판단, DB 컬럼 없음) */
 export function tripMode(trip) {
   const first = trip?.days?.[0]?.slots?.find((s) => s.fixed);
@@ -84,14 +95,14 @@ export function setTripEnds(days, { mode = 'fly', arrivalTime, departureTime, de
       slots = slots.map((s) => (isStart(s) ? { ...st.slot, id: s.id } : s));
       // 도착 전 슬롯: 빈 칸은 빼고, 장소가 든 칸은 도착 뒤로 민다
       const from = roundUp(st.from, 30);
-      slots = slots.filter((s) => s.fixed || s.placeId || toMin(s.time) >= from);
+      slots = slots.filter((s) => s.fixed || isFilled(s) || toMin(s.time) >= from);
       for (const s of slots) if (!s.fixed && toMin(s.time) < from) s.time = toHHMM(from);
     }
     if (i === n - 1) {
       const end = endSlot(mode, dep, departAreaId);
       slots = slots.map((s) => (isEnd(s) ? { ...end.slot, id: s.id } : s));
       // 끝난 뒤 빈 칸은 뺀다 (장소가 든 칸은 남겨서 타임라인이 늦는다고 알려 준다)
-      slots = slots.filter((s) => s.fixed || s.placeId || toMin(s.time) + (s.stayMinutes || 0) <= end.until + 30);
+      slots = slots.filter((s) => s.fixed || isFilled(s) || toMin(s.time) + (s.stayMinutes || 0) <= end.until + 30);
     }
     slots.sort((a, b) => toMin(a.time) - toMin(b.time) || (a.fixed ? -1 : 1));
     dedupeTimes(slots);
@@ -179,12 +190,13 @@ export function redateDays(days, newStartDate) {
   }));
 }
 
-/** 슬롯의 위치 (장소 / 공항 / 숙소) */
+/** 슬롯의 위치 (장소 / 직접 넣은 일정 / 공항 / 출발지 / 숙소) */
 export function slotPoint(s, placeMap, trip) {
   if (s.placeId && placeMap[s.placeId]) {
     const p = placeMap[s.placeId];
     return { lat: p.lat, lng: p.lng };
   }
+  if (s.custom) return hasCoord(s.custom) ? { lat: s.custom.lat, lng: s.custom.lng } : null;
   if (s.fixed?.kind === 'airport_arrive' || s.fixed?.kind === 'airport_depart') {
     return { lat: AIRPORT.lat, lng: AIRPORT.lng };
   }
@@ -223,7 +235,8 @@ export function computeDay(day, placeMap, trip, travelFn = estimateCarMinutes) {
     if (point && prev?.point) {
       const minutes = travelFn(prev.point, point);
       if (minutes !== null) {
-        travel = { minutes, nap: withKids && overlapsNap(prev.endMin, minutes) };
+        // from: 길찾기 링크용 출발 위치·이름
+        travel = { minutes, nap: withKids && overlapsNap(prev.endMin, minutes), from: { ...prev.point, name: prev.name } };
         const arrive = prev.endMin + minutes;
         if (start !== null && arrive > start + 10) lateBy = arrive - start;
       }
@@ -233,10 +246,11 @@ export function computeDay(day, placeMap, trip, travelFn = estimateCarMinutes) {
     out.push({ slot: s, place, point, travelFromPrev: travel, check, lateBy });
 
     if (point) {
-      prev = { point, endMin: (start ?? 0) + (s.stayMinutes || 0) };
-    } else if (s.placeId === null && !s.fixed) {
-      // 빈 슬롯은 위치가 없으므로 이동 계산을 이어가지 않는다
-      prev = prev ? { ...prev, endMin: Math.max(prev.endMin, start ?? 0) } : null;
+      prev = { point, endMin: (start ?? 0) + (s.stayMinutes || 0), name: slotTitle(s, placeMap) };
+    } else if (!s.fixed && !s.placeId) {
+      // 빈 슬롯·위치 없는 직접 일정: 앞 위치에서 이어서 계산하고, 직접 일정은 머무는 시간만큼 뒤로 민다
+      const end = s.custom ? (start ?? 0) + (s.stayMinutes || 0) : start ?? 0;
+      prev = prev ? { ...prev, endMin: Math.max(prev.endMin, end) } : null;
     }
   }
   return out;
@@ -251,9 +265,9 @@ export function summarize(trip, placeMap, travelFn) {
   const perDay = (trip.days || []).map((d) => {
     const rows = computeDay(d, placeMap, trip, travelFn);
     for (const r of rows) {
-      if (r.place) places++;
+      if (r.place || r.slot.custom) places++;
       if (r.travelFromPrev) travel += r.travelFromPrev.minutes;
-      if (!r.slot.fixed && !r.slot.placeId) empty++;
+      if (isEmptySlot(r.slot)) empty++;
       if (r.check.level === 'warn' || r.lateBy > 0) warns++;
     }
     return rows;
@@ -271,9 +285,19 @@ export function rowWarning(r) {
 
 /** 하루 요약 문구: "공항 → 협재 모래놀이 → 카페 → 저녁" */
 export function daySummary(day, placeMap) {
-  if (!day.slots.some((s) => s.placeId && placeMap[s.placeId])) return '';
+  if (!day.slots.some((s) => s.custom || (s.placeId && placeMap[s.placeId]))) return '';
   return day.slots
-    .map((s) => (s.placeId ? placeMap[s.placeId]?.name : s.fixed?.kind?.startsWith('airport') ? '공항' : s.fixed?.kind?.startsWith('home') ? departArea(s.fixed.area)?.label || '집' : null))
+    .map((s) =>
+      s.placeId
+        ? placeMap[s.placeId]?.name
+        : s.custom
+        ? s.custom.name
+        : s.fixed?.kind?.startsWith('airport')
+        ? '공항'
+        : s.fixed?.kind?.startsWith('home')
+        ? departArea(s.fixed.area)?.label || '집'
+        : null
+    )
     .filter(Boolean)
     .join(' → ');
 }
@@ -285,8 +309,10 @@ export function mapDays(days, placeMap, trip) {
     const points = [];
     for (const s of d.slots) {
       const pt = slotPoint(s, placeMap, trip);
+      // 번호는 목록과 맞추려고 위치 없는 직접 일정에도 매긴다 (지도에는 안 찍힘)
+      const num = (s.placeId && placeMap[s.placeId]) || s.custom ? ++n : null;
       if (!pt) continue;
-      if (s.placeId) points.push({ ...pt, n: ++n, kind: 'place', label: placeMap[s.placeId]?.name });
+      if (num) points.push({ ...pt, n: num, kind: 'place', label: slotTitle(s, placeMap) });
       else points.push({ ...pt, kind: s.fixed?.kind?.startsWith('airport') ? 'airport' : s.fixed?.kind?.startsWith('home') ? 'home' : 'stay', label: s.fixed?.name });
     }
     return { date: d.date, points };

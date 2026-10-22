@@ -4,12 +4,12 @@ import Link from 'next/link';
 import RouteMap from '@/components/RouteMap';
 import { IconHome } from '@/components/Icons';
 import { DAY_LABELS, SERVICE_NAME, dayStyle } from '@/lib/config';
-import { mapDays, rowWarning, summarize } from '@/lib/trip';
+import { isEmptySlot, mapDays, rowWarning, slotTitle, summarize } from '@/lib/trip';
 import { formatDuration } from '@/lib/geo';
-import { mapLink, tripSubtitle } from '@/lib/format';
-import { shortDate, weekdayLabel } from '@/lib/hours';
+import { mapLink, routeLink, tripSubtitle } from '@/lib/format';
+import { shortDate, toHHMM, toMin, weekdayLabel } from '@/lib/hours';
 import { LogLine, LogSummary } from '@/components/TripLog';
-import { slotLog } from '@/lib/triplog';
+import { slotLog, logTotals, won } from '@/lib/triplog';
 
 /** 읽기 전용 루트: 지도 + 일자 탭 + 타임라인 */
 export default function SharedRoute({ trip, placeMap, log }) {
@@ -18,6 +18,10 @@ export default function SharedRoute({ trip, placeMap, log }) {
   const mapData = useMemo(() => mapDays(trip.days, placeMap, trip), [trip, placeMap]);
   const rows = sum.perDay[day] || [];
   const st = dayStyle(day);
+  const totals = useMemo(() => (log ? logTotals(log, trip.days) : null), [log, trip.days]);
+  // 이날 요약: 들르는 곳 수, 이동 합계
+  const dayStops = rows.filter((r) => r.place || r.slot.custom).length;
+  const dayTravel = rows.reduce((a, r) => a + (r.travelFromPrev?.minutes || 0), 0);
   let n = 0;
 
   return (
@@ -29,6 +33,8 @@ export default function SharedRoute({ trip, placeMap, log }) {
           {tripSubtitle(trip)}
           {sum.travel > 0 && ` · 총 이동 ${formatDuration(sum.travel)}`}
         </div>
+        {trip.stay_name && <div className="text-[13px] text-sub">숙소 · {trip.stay_name}</div>}
+        {totals?.total > 0 && <div className="text-[13px] text-sub">쓴 돈 {won(totals.total)}</div>}
       </header>
       <div className="px-5">
         <RouteMap days={mapData} active={day} />
@@ -51,39 +57,62 @@ export default function SharedRoute({ trip, placeMap, log }) {
       </nav>
       <main className="flex flex-1 flex-col gap-1 px-5 pt-1 pb-6">
         <div className="pb-1 text-xs text-sub">
-          {shortDate(trip.days[day].date)} {weekdayLabel(trip.days[day].date)}요일
+          {shortDate(trip.days[day].date)} {weekdayLabel(trip.days[day].date)}요일 · {dayStops}곳
+          {dayTravel > 0 && ` · 이동 ${formatDuration(dayTravel)}`}
+          {totals?.perDay[day] > 0 && ` · 쓴 돈 ${won(totals.perDay[day])}`}
         </div>
         {rows.map((r) => {
           const s = r.slot;
-          if (!s.fixed && !s.placeId) return null;
+          if (isEmptySlot(s)) return null;
           const place = s.placeId ? placeMap[s.placeId] : null;
           if (s.placeId && !place) return null;
-          if (place) n++;
+          const isStop = !!(place || s.custom);
+          if (isStop) n++;
           const warn = rowWarning(r);
+          const tr = r.travelFromPrev;
+          const start = toMin(s.time);
+          const timeText = isStop && s.stayMinutes > 0 && start !== null ? `${s.time}–${toHHMM(start + s.stayMinutes)}` : s.time;
+          const name = slotTitle(s, placeMap);
           return (
             <div key={s.id} className="flex flex-col gap-1">
-              {r.travelFromPrev && <div className="py-0.5 pl-14 text-xs text-sub">차로 {formatDuration(r.travelFromPrev.minutes) || '바로'}</div>}
+              {tr && (
+                <div className="flex items-center gap-2 py-0.5 pl-14 text-xs text-sub">
+                  <span>차로 약 {formatDuration(tr.minutes) || '바로'}</span>
+                  {tr.minutes > 0 && r.point && (
+                    <a href={routeLink(tr.from, { ...r.point, name })} target="_blank" rel="noopener noreferrer" className="text-ok underline">
+                      길찾기
+                    </a>
+                  )}
+                </div>
+              )}
               <div className="flex items-center gap-3 rounded-[20px] bg-surface p-3 shadow-soft">
                 <div
                   className="flex h-9 w-9 flex-none items-center justify-center font-display text-[17px]"
-                  style={place ? { background: st.hex, color: '#fff', borderRadius: '12px 18px 14px 18px' } : { background: '#FFC93C', borderRadius: 18 }}
+                  style={isStop ? { background: st.hex, color: '#fff', borderRadius: '12px 18px 14px 18px' } : { background: '#FFC93C', borderRadius: 18 }}
                   aria-hidden="true"
                 >
-                  {place ? n : <IconHome />}
+                  {isStop ? n : <IconHome />}
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-[13px] font-bold text-sub">{s.time}</span>
-                    <span className="truncate font-display text-base">{place ? place.name : s.fixed.name}</span>
-                  </div>
+                  <div className="text-[13px] font-bold text-sub">{timeText}</div>
+                  <div className="font-display text-base leading-snug">{name}</div>
+                  {s.custom?.address && <div className="text-xs text-sub">{s.custom.address}</div>}
+                  {s.fixed?.note && <div className="text-xs text-sub">{s.fixed.note}</div>}
                   {s.memo && <div className="text-xs text-warn-ink">챙길 것 · {s.memo}</div>}
                   {log && place && <LogLine entry={slotLog(log, s)} />}
                   {warn && (r.check.level === 'warn' || r.lateBy > 0) && <div className="text-xs font-bold text-warn-ink">{warn}</div>}
                 </div>
-                {place && (
-                  <a href={mapLink(place)} target="_blank" rel="noopener noreferrer" className="text-xs text-ok underline">
+                {place ? (
+                  <a href={mapLink(place)} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center text-xs text-ok underline">
                     지도
                   </a>
+                ) : (
+                  s.custom &&
+                  r.point && (
+                    <a href={routeLink(null, { ...r.point, name })} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center text-xs text-ok underline">
+                      지도
+                    </a>
+                  )
                 )}
               </div>
             </div>

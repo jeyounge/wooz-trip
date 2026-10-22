@@ -44,6 +44,15 @@ export function slotLabel(s) {
 export function mapLink(place) {
   return place.external_links?.map || `https://map.kakao.com/?q=${encodeURIComponent(place.name)}`;
 }
+/**
+ * 카카오맵 길찾기 링크 (앱이 있으면 앱, 없으면 웹). API 호출 없음.
+ * @param {{name, lat, lng}} from @param {{name, lat, lng}} to
+ */
+export function routeLink(from, to) {
+  const pt = (p) => `${encodeURIComponent(String(p.name || '여기').replace(/,/g, ' '))},${p.lat},${p.lng}`;
+  return from ? `https://map.kakao.com/link/from/${pt(from)}/to/${pt(to)}` : `https://map.kakao.com/link/to/${pt(to)}`;
+}
+
 export function blogLink(place) {
   return place.external_links?.blog || `https://search.naver.com/search.naver?where=blog&query=${encodeURIComponent(`제주 ${place.name}`)}`;
 }

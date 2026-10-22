@@ -7,9 +7,9 @@ import { IconBookmark, IconDown, IconEdit, IconHome, IconUp, IconWarn } from '@/
 import RouteMap from '@/components/RouteMap';
 import Sheet from '@/components/Sheet';
 import { DAY_LABELS, dayStyle } from '@/lib/config';
-import { computeDay, mapDays, rowWarning, summarize } from '@/lib/trip';
+import { isEmptySlot, mapDays, rowWarning, slotTitle, summarize } from '@/lib/trip';
 import { formatDuration } from '@/lib/geo';
-import { tripSubtitle } from '@/lib/format';
+import { routeLink, tripSubtitle } from '@/lib/format';
 import { publishTrip, saveDays, saveTripLog, shareTrip, unpublishTrip } from '@/app/actions/trips';
 import { ExtrasEditor, LogEditor, LogLine, ReviewEditor } from '@/components/TripLog';
 import { canLogSpend, canReview, hasLog, logTotals, slotLog, won } from '@/lib/triplog';
@@ -109,8 +109,8 @@ export default function RouteResult({ trip: initialTrip, placeMap, userEmail, lo
     if (j < 0 || j >= slots.length) return;
     const a = slots[i];
     const b = slots[j];
-    slots[i] = { ...a, placeId: b.placeId, memo: b.memo, aiReason: b.aiReason, stayMinutes: b.placeId ? b.stayMinutes : a.stayMinutes };
-    slots[j] = { ...b, placeId: a.placeId, memo: a.memo, aiReason: a.aiReason, stayMinutes: a.stayMinutes };
+    slots[i] = { ...a, placeId: b.placeId, custom: b.custom, memo: b.memo, aiReason: b.aiReason, stayMinutes: b.placeId || b.custom ? b.stayMinutes : a.stayMinutes };
+    slots[j] = { ...b, placeId: a.placeId, custom: a.custom, memo: a.memo, aiReason: a.aiReason, stayMinutes: a.stayMinutes };
     update(days.map((d, k) => (k === day ? { ...d, slots } : d)));
     // 기록도 장소를 따라 옮긴다
     const ls = latestLog.current.slots;
@@ -210,40 +210,49 @@ export default function RouteResult({ trip: initialTrip, placeMap, userEmail, lo
         </div>
         {rows.map((r) => {
           const s = r.slot;
-          if (!s.fixed && !s.placeId) return null; // 빈 칸은 결과에서 숨긴다
-          const isPlace = !!s.placeId;
-          if (isPlace) n++;
+          if (isEmptySlot(s)) return null; // 빈 칸은 결과에서 숨긴다
+          const isPlace = !!s.placeId; // 쓴 돈 기록은 DB 장소에만
+          const isStop = isPlace || !!s.custom;
+          if (isStop) n++;
           const warn = rowWarning(r);
           const tr = r.travelFromPrev;
           return (
             <div key={s.id} className="flex flex-col gap-1">
               {tr && (
-                <div className="py-0.5 pl-14 text-xs text-sub">
-                  차로 {formatDuration(tr.minutes) || '바로'}
-                  {tr.nap && ' · 아이들 낮잠'}
+                <div className="flex items-center gap-2 py-0.5 pl-14 text-xs text-sub">
+                  <span>
+                    차로 약 {formatDuration(tr.minutes) || '바로'}
+                    {tr.nap && ' · 아이들 낮잠'}
+                  </span>
+                  {tr.minutes > 0 && r.point && (
+                    <a href={routeLink(tr.from, { ...r.point, name: slotTitle(s, placeMap) })} target="_blank" rel="noopener noreferrer" className="text-ok underline">
+                      길찾기
+                    </a>
+                  )}
                 </div>
               )}
               <div className="flex items-center gap-3 rounded-[20px] bg-surface p-3 shadow-soft">
                 <div
                   className="flex h-9 w-9 flex-none items-center justify-center font-display text-[17px]"
                   style={
-                    isPlace
+                    isStop
                       ? { background: st.hex, color: '#fff', borderRadius: '12px 18px 14px 18px' }
                       : { background: '#FFC93C', color: '#3A2A20', borderRadius: 18 }
                   }
                   aria-hidden="true"
                 >
-                  {isPlace ? n : <IconHome />}
+                  {isStop ? n : <IconHome />}
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <div className="flex items-baseline gap-2">
                     <span className="text-[13px] font-bold text-sub">{s.time}</span>
-                    <span className="truncate font-display text-base">{isPlace ? placeMap[s.placeId]?.name || '삭제된 장소' : s.fixed.name}</span>
+                    <span className="truncate font-display text-base">{slotTitle(s, placeMap)}</span>
                   </div>
-                  {isPlace && s.stayMinutes > 0 && <div className="text-xs text-sub">머무는 시간 {formatDuration(s.stayMinutes)}</div>}
+                  {s.custom?.address && <div className="truncate text-xs text-sub">{s.custom.address}</div>}
+                  {isStop && s.stayMinutes > 0 && <div className="text-xs text-sub">머무는 시간 {formatDuration(s.stayMinutes)}</div>}
                   {s.memo && memoFor !== s.id && <div className="text-xs text-warn-ink">챙길 것 · {s.memo}</div>}
                   {warn && (r.check.level === 'warn' || r.lateBy > 0) && <div className="text-xs font-bold text-warn-ink">{warn}</div>}
-                  {isPlace && memoFor !== s.id && (
+                  {isStop && memoFor !== s.id && (
                     <button type="button" onClick={() => setMemoFor(s.id)} className="self-start text-xs text-sub underline">
                       {s.memo ? '메모 고치기' : '+ 챙길 것 메모'}
                     </button>
@@ -276,7 +285,7 @@ export default function RouteResult({ trip: initialTrip, placeMap, userEmail, lo
                     />
                   )}
                 </div>
-                {isPlace && (
+                {isStop && (
                   <div className="flex flex-none flex-col gap-1">
                     <button type="button" aria-label="앞으로" onClick={() => move(s.id, -1)} className="flex h-8 w-9 items-center justify-center rounded-xl bg-bg text-sub">
                       <IconUp />

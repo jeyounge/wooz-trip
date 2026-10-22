@@ -9,10 +9,11 @@ import { DAY_LABELS, FEATURES, TRAVEL_MODES, dayStyle, departAreasFor } from '@/
 import { formatHM } from '@/lib/geo';
 import { companionText, mapLink } from '@/lib/format';
 import { addDays } from '@/lib/hours';
-import { daySummary, tripDepartArea, tripMode } from '@/lib/trip';
+import { daySummary, slotTitle, tripDepartArea, tripMode } from '@/lib/trip';
 import { copyRoute, logRouteView } from '@/app/actions/trips';
 import { LogLine, LogSummary } from '@/components/TripLog';
 import { slotLog } from '@/lib/triplog';
+import LocationSearch from '@/components/LocationSearch';
 
 function today() {
   const d = new Date();
@@ -109,7 +110,7 @@ export default function RouteDetail({ trip, placeMap, tags, stats, places, isLog
         <div className="flex flex-col gap-2.5">
           {trip.days.map((d, i) => {
             const isOpen = open === i;
-            const stops = d.slots.filter((s) => s.placeId && placeMap[s.placeId]);
+            const stops = d.slots.filter((s) => (s.placeId && placeMap[s.placeId]) || s.custom);
             return (
               <div key={d.date} className="card flex flex-col gap-2 p-4">
                 <button
@@ -135,10 +136,10 @@ export default function RouteDetail({ trip, placeMap, tags, stats, places, isLog
                       <div key={s.id} className="flex flex-col gap-0.5 rounded-[14px] bg-bg px-2.5 py-2 text-sm">
                         <div className="flex items-center gap-2.5">
                           <span className="font-bold text-sub">{s.time}</span>
-                          <span className="min-w-0 flex-1 truncate">{placeMap[s.placeId].name}</span>
-                          <a href={mapLink(placeMap[s.placeId])} target="_blank" rel="noopener noreferrer" className="text-xs text-ok underline">
+                          <span className="min-w-0 flex-1 truncate">{slotTitle(s, placeMap)}</span>
+                          {s.placeId && <a href={mapLink(placeMap[s.placeId])} target="_blank" rel="noopener noreferrer" className="text-xs text-ok underline">
                             지도
-                          </a>
+                          </a>}
                         </div>
                         {log && <LogLine entry={slotLog(log, s)} />}
                       </div>
@@ -207,7 +208,7 @@ function CopySheet({ trip, setup, onClose }) {
   const [startDate, setStartDate] = useState(setup.start || addDays(today(), 14));
   const [arrivalTime, setArrivalTime] = useState(setup.arr || (sameMode && trip.arrival_time) || (initMode === 'car' ? '08:00' : '10:30'));
   const [departureTime, setDepartureTime] = useState(setup.dep || (sameMode && trip.departure_time) || (initMode === 'car' ? '20:00' : '18:40'));
-  const [stayName, setStayName] = useState(setup.stay || '');
+  const [stay, setStay] = useState(setup.stay ? { name: setup.stay, ...(setup.slat && setup.slng ? { lat: Number(setup.slat), lng: Number(setup.slng) } : {}) } : null);
   const isCar = mode === 'car';
   function onMode(m) {
     setMode(m);
@@ -254,10 +255,7 @@ function CopySheet({ trip, setup, onClose }) {
           </label>
         </div>
         {n > 1 && (
-          <label className="field bg-surface">
-            숙소 (선택)
-            <input value={stayName} placeholder="숙소 이름이나 주소" onChange={(e) => setStayName(e.target.value)} />
-          </label>
+          <LocationSearch label="숙소 (선택, 고르면 숙소에서 출발해요)" placeholder="숙소 이름이나 주소" value={stay} onChange={setStay} fieldClass="bg-surface" />
         )}
         <p className="m-0 text-xs leading-relaxed text-sub">가져온 뒤 내 날짜에 쉬는 곳이 있으면 루트 짜기 화면에서 빨간 경고로 알려 드려요.</p>
         {err && <p className="m-0 text-sm font-bold text-warn-ink">{err}</p>}
@@ -267,7 +265,7 @@ function CopySheet({ trip, setup, onClose }) {
           className="btn-cta"
           onClick={() =>
             start(async () => {
-              const res = await copyRoute(trip.id, { startDate, arrivalTime, departureTime, stayName, mode, departAreaId: isCar ? departAreaId : null });
+              const res = await copyRoute(trip.id, { startDate, arrivalTime, departureTime, stay, mode, departAreaId: isCar ? departAreaId : null });
               if (!res.ok) return setErr(res.message);
               router.push(`/trips/${res.id}/edit`);
             })

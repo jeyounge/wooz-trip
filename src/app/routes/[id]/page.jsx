@@ -43,6 +43,8 @@ export default async function RouteDetailPage({ params, searchParams }) {
     stay: typeof sp?.stay === 'string' ? sp.stay : '',
     mode: typeof sp?.mode === 'string' ? sp.mode : '',
     area: typeof sp?.area === 'string' ? sp.area : '',
+    slat: typeof sp?.slat === 'string' ? sp.slat : '',
+    slng: typeof sp?.slng === 'string' ? sp.slng : '',
   };
 
   return (

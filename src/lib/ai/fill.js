@@ -8,7 +8,7 @@
  */
 import { SLOT_TYPES, WEEKDAYS } from '../config.js';
 import { rankCandidates } from '../candidates.js';
-import { computeDay, slotPoint, usedPlaceIds } from '../trip.js';
+import { computeDay, isFilled, slotPoint, usedPlaceIds } from '../trip.js';
 import { dowOf } from '../hours.js';
 
 const PER_SLOT = 5;
@@ -31,15 +31,16 @@ function score(c, companion) {
  * 빈 슬롯마다 코드로 거른 후보 목록을 만든다.
  * 다음 슬롯의 출발점은 "1순위 후보"로 가정해 이어서 계산한다.
  */
-export function buildFillTasks(trip, places, { perSlot = PER_SLOT } = {}) {
-  const placeMap = Object.fromEntries(places.map((p) => [p.id, p]));
+export function buildFillTasks(trip, places, { perSlot = PER_SLOT, extraPlaces = [] } = {}) {
+  // extraPlaces: 사용자가 넣은 후보 장소 (위치 계산에만 쓰고 추천 후보로는 안 쓴다)
+  const placeMap = Object.fromEntries([...extraPlaces, ...places].map((p) => [p.id, p]));
   const used = new Set(usedPlaceIds(trip.days));
   const tasks = [];
 
   (trip.days || []).forEach((day, dayIndex) => {
     let from = null;
     day.slots.forEach((s) => {
-      if (s.fixed || s.placeId) {
+      if (s.fixed || isFilled(s)) {
         const pt = slotPoint(s, placeMap, trip);
         if (pt) from = pt;
         return;
@@ -124,7 +125,7 @@ export function applyPicks(days, picks) {
     ...d,
     slots: d.slots.map((s) => {
       const p = map.get(s.id);
-      if (!p || s.placeId || s.fixed) return s;
+      if (!p || isFilled(s) || s.fixed) return s;
       return { ...s, placeId: p.placeId, aiReason: p.reason };
     }),
   }));

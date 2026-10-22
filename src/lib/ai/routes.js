@@ -10,7 +10,8 @@
  */
 import { SLOT_TYPES } from '../config.js';
 import { checkVisit, dayCount, toMin } from '../hours.js';
-import { usedPlaceIds } from '../trip.js';
+import { isFilled, usedPlaceIds } from '../trip.js';
+import { hasCoord, haversineM } from '../geo.js';
 
 /** 장소 참조(숫자 id 또는 source_external_id 문자열) → 장소 */
 export function placeIndex(places) {
@@ -63,7 +64,7 @@ function matchDay(routeDay, userDay, resolve, used) {
   const out = [];
 
   for (const s of userDay.slots) {
-    if (s.fixed || s.placeId) continue;
+    if (s.fixed || isFilled(s)) continue;
     const okCats = SLOT_TYPES[s.slotType]?.categories || [];
     // 같은 슬롯 종류 우선, 없으면 카테고리가 맞는 슬롯
     const hit =
@@ -95,6 +96,19 @@ export function planFromRoute(route, trip, places) {
 }
 
 /**
+ * 숙소 기준 감점: 숙소 위치가 있으면 넣을 장소들이 숙소에서 평균 몇 km 떨어졌는지만큼 깎는다 (최대 40).
+ * 제주 한쪽 끝에서 반대쪽 끝이 약 60km 라서, 숙소 반대편 루트는 지역 점수(40)만큼 밀린다.
+ */
+export function stayPenalty(picks, byId, trip) {
+  const stay = { lat: trip?.stay_lat, lng: trip?.stay_lng };
+  if (!hasCoord(stay) || !picks.length) return 0;
+  const ds = picks.map((p) => byId.get(p.placeId)).filter(Boolean).map((p) => haversineM(stay, p) / 1000);
+  if (!ds.length) return 0;
+  const avg = ds.reduce((a, b) => a + b, 0) / ds.length;
+  return Math.min(40, Math.round(avg));
+}
+
+/**
  * 1단계: 맞는 루트 고르기.
  * 점수 + 실제로 넣을 수 있는 장소 수로 줄 세우고, 1등과 비슷한 것들 중에서 무작위로 고른다
  * (같은 조건이어도 누를 때마다 조금씩 다른 초안이 나오게).
@@ -104,10 +118,11 @@ export function chooseRoute(routes, trip, places, { excludeId = null, random = M
   const active = (routes || []).filter((r) => r.is_active !== false && Array.isArray(r.days) && r.days.length);
   if (!active.length) return null;
 
+  const byId = new Map(places.map((p) => [p.id, p]));
   const ranked = active
     .map((route) => {
       const picks = planFromRoute(route, trip, places);
-      return { route, picks, score: scoreRoute(route, trip) + 3 * picks.length };
+      return { route, picks, score: scoreRoute(route, trip) + 3 * picks.length - stayPenalty(picks, byId, trip) };
     })
     .filter((x) => x.picks.length > 0)
     .sort((a, b) => b.score - a.score);

@@ -5,6 +5,8 @@ import { IconCheck, IconSearch } from './Icons';
 import { KidTags } from './ui';
 import { SLOT_TYPES } from '@/lib/config';
 import { blogLink, mapLink, placeMeta } from '@/lib/format';
+import { estimateCarMinutes } from '@/lib/geo';
+import { addKakaoPlace, searchKakao } from '@/app/actions/places';
 
 const TITLES = {
   am: '오전에 어디 갈까?',
@@ -21,7 +23,7 @@ const TITLES = {
  * - 앞 장소 기준 가까운 순, 아이 태그 필터, 쉬는 날은 선택 불가, 영업시간 임박 경고
  * - 사진·리뷰·블로그는 저장하지 않고 외부 링크로만 연결
  */
-export default function PlacePicker({ date, dayLabel, slot, from, tags, companion, excludeIds, onPick, onReport, onClose }) {
+export default function PlacePicker({ date, dayLabel, slot, from, tags, companion, excludeIds, onPick, onCustom, onReport, onClose }) {
   const filterTags = useMemo(() => tags.filter((t) => t.filterable), [tags]);
   const [on, setOn] = useState(() =>
     companion === 'kids' && SLOT_TYPES[slot.slotType]?.categories.includes('food') ? { baby_chair: true } : {}
@@ -111,7 +113,7 @@ export default function PlacePicker({ date, dayLabel, slot, from, tags, companio
           })}
         </div>
         <div className="text-xs text-sub" aria-live="polite">
-          {state.loading ? '찾는 중…' : `조건에 맞는 곳 ${openCount}곳 · 검수된 장소만 보여요`}
+          {state.loading ? '찾는 중…' : `조건에 맞는 곳 ${openCount}곳 · 확인된 장소부터 보여요`}
         </div>
       </div>
 
@@ -168,8 +170,98 @@ export default function PlacePicker({ date, dayLabel, slot, from, tags, companio
             </article>
           );
         })}
+        <KakaoMore q={q} from={from} known={state.list} onPick={onPick} onCustom={onCustom} />
         <p className="m-0 px-1 pb-2 text-center text-[11px] text-sub">장소 기본 정보 일부 출처: 한국관광공사 TourAPI · 방문 전 영업 여부를 한 번 더 확인해 주세요</p>
       </div>
     </Sheet>
+  );
+}
+
+/**
+ * 우리 목록에 없을 때: 검색어로 카카오에서 찾아 보여주고, 고르면 우리 장소 DB 에 후보로 넣는다.
+ * 그래도 없으면 직접 넣기.
+ */
+function KakaoMore({ q, from, known, onPick, onCustom }) {
+  const [state, setState] = useState({ loading: false, error: null, list: [] });
+  const [adding, setAdding] = useState(null);
+  const query = q.trim();
+
+  useEffect(() => {
+    if (query.length < 2) {
+      setState({ loading: false, error: null, list: [] });
+      return;
+    }
+    let alive = true;
+    setState((s) => ({ ...s, loading: true, error: null }));
+    const t = setTimeout(async () => {
+      const res = await searchKakao(query, from?.point || null);
+      if (!alive) return;
+      setState({ loading: false, error: res.ok ? null : res.message, list: res.ok ? res.data.filter((x) => x.kakaoId) : [] });
+    }, 500);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, [query, from]);
+
+  // 우리 목록에 이미 나온 곳은 빼고 보여준다
+  const norm = (s) => s.replace(/\s/g, '');
+  const names = new Set(known.map((p) => norm(p.name)));
+  const list = state.list.filter((x) => !names.has(norm(x.name)));
+
+  async function pick(it) {
+    setAdding(it.kakaoId);
+    const res = await addKakaoPlace(it);
+    setAdding(null);
+    if (!res.ok) return setState((s) => ({ ...s, error: res.message }));
+    onPick(res.place);
+  }
+
+  return (
+    <section className="flex flex-col gap-2 pt-2" aria-label="카카오에서 더 찾기">
+      <div className="font-display text-base">찾는 곳이 없나요?</div>
+      {query.length < 2 ? (
+        <div className="text-xs text-sub">위에서 이름으로 찾으면 카카오에서도 찾아 드려요</div>
+      ) : (
+        <>
+          <div className="text-xs text-sub" aria-live="polite">
+            {state.loading ? '카카오에서 찾는 중…' : `카카오에서 찾은 곳 ${list.length}곳 · 영업시간은 직접 확인해 주세요`}
+          </div>
+          {state.error && <div className="warn-box">{state.error}</div>}
+          {list.map((it) => {
+            const min = from?.point ? estimateCarMinutes(from.point, it) : null;
+            return (
+              <article key={it.kakaoId} className="flex flex-col gap-1.5 rounded-card bg-surface p-4 shadow-soft">
+                <div className="flex items-baseline gap-2">
+                  <span className="font-display text-base leading-snug">{it.name}</span>
+                  {min !== null && <span className="ml-auto flex-none text-[13px] font-bold text-ok">차로 {min || 1}분</span>}
+                </div>
+                <div className="text-xs text-sub">{[it.kind, it.address].filter(Boolean).join(' · ')}</div>
+                <div className="flex items-center gap-3">
+                  {it.url && (
+                    <a href={it.url} target="_blank" rel="noopener noreferrer" className="text-[13px] text-ok underline">
+                      사진·리뷰 보기
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    disabled={!!adding}
+                    onClick={() => pick(it)}
+                    className="ml-auto flex h-11 items-center rounded-full bg-cta px-5 font-display text-base text-cta-ink"
+                  >
+                    {adding === it.kakaoId ? '넣는 중…' : '여기로!'}
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </>
+      )}
+      {onCustom && (
+        <button type="button" onClick={() => onCustom(query)} className="min-h-11 rounded-2xl border-2 border-dashed border-line-strong p-3 text-sm text-sub">
+          목록에 없으면 <b className="text-ink">직접 넣기</b> (해변에서 놀기, 사진 찍기 등)
+        </button>
+      )}
+    </section>
   );
 }

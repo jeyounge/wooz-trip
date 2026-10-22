@@ -9,6 +9,7 @@ import { unstable_cache } from 'next/cache';
 import { createClient as createPublicClient } from '@supabase/supabase-js';
 import { createClient } from './supabase/server.js';
 import { TABLES } from './tables.js';
+import { createAdminClient } from './supabase/admin.js';
 export { rankCandidates } from './candidates.js';
 
 export const PLACE_COLUMNS =
@@ -31,11 +32,15 @@ async function fetchApprovedPlaces() {
 
 export const getApprovedPlaces = unstable_cache(fetchApprovedPlaces, ['approved-places-v1'], { revalidate: 300, tags: [PLACES_TAG] });
 
-/** 특정 ID 장소들 → { id: place } */
+/**
+ * 특정 ID 장소들 → { id: place }
+ * 사용자가 카카오 검색으로 넣은 후보 장소도 그 여행에서는 보여야 해서 service_role 로 읽는다 (제외된 장소만 뺀다).
+ * 루트에 들어 있는 ID 로만 부른다.
+ */
 export async function getPlaceMap(ids) {
   if (!ids?.length) return {};
-  const s = await createClient();
-  const { data, error } = await s.from(TABLES.places).select(PLACE_COLUMNS).in('id', ids);
+  const s = createAdminClient();
+  const { data, error } = await s.from(TABLES.places).select(PLACE_COLUMNS).in('id', ids).neq('status', 'excluded');
   if (error) throw new Error(error.message);
   return Object.fromEntries((data || []).map((p) => [p.id, p]));
 }
