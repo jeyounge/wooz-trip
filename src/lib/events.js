@@ -17,6 +17,7 @@ export const EVENTS = {
   aiFill: 'ai_fill',
   tripReviewed: 'trip_reviewed', // 다녀온 뒤 만족도를 처음 남김
   placeAdded: 'place_added', // 사용자가 카카오 검색으로 장소를 DB 에 새로 넣음
+  memberAdded: 'member_added', // 같이 고칠 사람을 넣음
 };
 
 export async function logEvent(name, { userId = null, tripId = null, meta = {} } = {}) {

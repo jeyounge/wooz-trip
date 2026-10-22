@@ -1,7 +1,8 @@
 'use server';
 /**
  * 루트 관련 서버 동작 (Node.js 서버리스에서 실행).
- * 모든 쓰기는 로그인 사용자의 쿠키 세션 + RLS(owner_id = auth.uid()) 로 보호된다.
+ * 작성자 쓰기는 로그인 사용자의 쿠키 세션 + RLS(owner_id = auth.uid()) 로 보호된다.
+ * 같이 고치는 멤버(0008)의 일정·기록 쓰기는 서버가 멤버인지 확인한 뒤 service_role 로 한다.
  * 응답 형식: { ok: true, ... } | { ok: false, message }
  */
 import { revalidatePath } from 'next/cache';
@@ -20,8 +21,11 @@ import { bumpPickCount, getActiveAiRoutes } from '@/lib/ai/store';
 import { EVENTS, logEvent } from '@/lib/events';
 import { isUuid, TRIP_COLUMNS } from '@/lib/trips';
 import { sanitizeLog } from '@/lib/triplog';
+import { daysRev } from '@/lib/rev';
+import { MAX_MEMBERS, MEMBERS_MISSING, getMembers, tripRole } from '@/lib/members';
 
 const fail = (message) => ({ ok: false, message });
+const CONFLICT = { ok: false, conflict: true, message: '다른 분이 먼저 고쳤어요. 최신 일정을 다시 불러올게요' };
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME = /^\d{2}:\d{2}$/;
 
@@ -35,6 +39,19 @@ async function loadOwnTrip(db, user, id) {
   if (!isUuid(id)) return null;
   const { data } = await db.from(TABLES.trips).select(TRIP_COLUMNS).eq('id', id).eq('owner_id', user.id).maybeSingle();
   return data;
+}
+
+/**
+ * 일정을 고칠 수 있는 여행 (작성자 또는 같이 고치는 멤버).
+ * → { trip, role, writer } | null. writer 는 작성자면 RLS 세션, 멤버면 service_role.
+ */
+async function loadEditableTrip(db, user, id) {
+  if (!isUuid(id)) return null;
+  const admin = createAdminClient();
+  const { data: trip } = await admin.from(TABLES.trips).select(TRIP_COLUMNS).eq('id', id).maybeSingle();
+  const role = await tripRole(trip, user.id);
+  if (!role) return null;
+  return { trip, role, writer: role === 'owner' ? db : admin };
 }
 
 const FIXED_KINDS = ['airport_arrive', 'airport_depart', 'home_start', 'home_end', 'stay_start', 'stay_end'];
@@ -154,18 +171,31 @@ export async function createTrip(input) {
   return { ok: true, id: data.id, ai };
 }
 
-/** S03/S05 → 일자·슬롯 저장 */
-export async function saveDays(tripId, days) {
+/**
+ * S03/S05 → 일자·슬롯 저장 (작성자·멤버).
+ * baseRev: 화면이 마지막으로 받은 일정 지문. 그사이 다른 사람이 고쳤으면 저장하지 않고 conflict 를 돌려준다.
+ */
+export async function saveDays(tripId, days, baseRev) {
   const { user, db } = await authed();
   if (!user) return fail('로그인이 필요해요');
-  const trip = await loadOwnTrip(db, user, tripId);
-  if (!trip) return fail('루트를 찾을 수 없어요');
+  const ed = await loadEditableTrip(db, user, tripId);
+  if (!ed) return fail('루트를 찾을 수 없어요');
+  const { trip, writer } = ed;
+  if (baseRev && baseRev !== daysRev(trip.days)) return CONFLICT;
   try {
     const clean = sanitizeDays(days, trip.start_date);
     await assertPlacesExist(clean);
-    const { error } = await db.from(TABLES.trips).update({ days: clean }).eq('id', tripId);
+    // 읽은 뒤 저장 사이에 누가 고쳤으면 updated_ts 가 바뀌어 0줄 → 충돌
+    const { data, error } = await writer
+      .from(TABLES.trips)
+      .update({ days: clean })
+      .eq('id', tripId)
+      .eq('updated_ts', trip.updated_ts)
+      .select('days')
+      .maybeSingle();
     if (error) return fail(error.message);
-    return { ok: true, days: clean };
+    if (!data) return CONFLICT;
+    return { ok: true, days: clean, rev: daysRev(data.days) };
   } catch (e) {
     return fail(e.message);
   }
@@ -193,8 +223,9 @@ export async function updateTripMeta(tripId, { title, stay, stayName }) {
 export async function aiFill(tripId) {
   const { user, db } = await authed();
   if (!user) return fail('로그인이 필요해요');
-  const trip = await loadOwnTrip(db, user, tripId);
-  if (!trip) return fail('루트를 찾을 수 없어요');
+  const ed = await loadEditableTrip(db, user, tripId);
+  if (!ed) return fail('루트를 찾을 수 없어요');
+  const { trip, writer } = ed;
 
   try {
     const places = await getApprovedPlaces();
@@ -224,8 +255,15 @@ export async function aiFill(tripId) {
 
     const patch = { days };
     if (chosen) patch.ai_route_id = chosen.route.id;
-    const { error } = await db.from(TABLES.trips).update(patch).eq('id', tripId);
+    const { data: saved, error } = await writer
+      .from(TABLES.trips)
+      .update(patch)
+      .eq('id', tripId)
+      .eq('updated_ts', trip.updated_ts)
+      .select('days')
+      .maybeSingle();
     if (error) return fail(error.message);
+    if (!saved) return CONFLICT;
 
     if (chosen) await bumpPickCount(chosen.route.id);
     await logEvent(EVENTS.aiFill, {
@@ -234,7 +272,7 @@ export async function aiFill(tripId) {
       meta: { filled: checked.filled, route: chosen?.route.code || null, fromRoute: chosen?.picks.length || 0 },
     });
     const usedPlaces = Object.fromEntries(usedPlaceIds(days).map((id) => [id, placeMap[id]]).filter(([, p]) => p));
-    return { ok: true, filled: checked.filled, days, places: usedPlaces };
+    return { ok: true, filled: checked.filled, days, places: usedPlaces, rev: daysRev(saved.days) };
   } catch (e) {
     return fail(`AI 추천 실패: ${e.message}`);
   }
@@ -401,17 +439,21 @@ export async function createReport({ placeId, tripId, type, message, tags }) {
 
 const LOG_MISSING = '기록 기능 준비 중이에요 (운영자: 0006 SQL 실행 필요)';
 
-/** 쓴 돈·다녀온 뒤 한마디 저장 (내 여행만). 공개 여부(isPublic)는 자랑하기 시트에서만 바꾼다 */
+/**
+ * 쓴 돈·다녀온 뒤 한마디 저장 (작성자·멤버). 공개 여부(isPublic)는 작성자가 자랑하기 시트에서만 바꾼다.
+ * 기록의 owner_id 는 늘 여행 작성자다 (멤버가 적어도 작성자의 여행 기록).
+ */
 export async function saveTripLog(tripId, input) {
   const { user, db } = await authed();
   if (!user) return fail('로그인이 필요해요');
-  const trip = await loadOwnTrip(db, user, tripId);
-  if (!trip) return fail('루트를 찾을 수 없어요');
+  const ed = await loadEditableTrip(db, user, tripId);
+  if (!ed) return fail('루트를 찾을 수 없어요');
+  const { trip, writer } = ed;
   const log = sanitizeLog(input, trip.days);
-  const { data: before, error: readErr } = await db.from(TABLES.tripLogs).select('rating, is_public').eq('trip_id', tripId).maybeSingle();
+  const { data: before, error: readErr } = await writer.from(TABLES.tripLogs).select('rating, is_public').eq('trip_id', tripId).maybeSingle();
   if (readErr) return fail(LOG_MISSING);
-  const { error } = await db.from(TABLES.tripLogs).upsert(
-    { trip_id: tripId, owner_id: user.id, slots: log.slots, extras: log.extras, rating: log.rating, comment: log.comment || null, is_public: before?.is_public ?? false },
+  const { error } = await writer.from(TABLES.tripLogs).upsert(
+    { trip_id: tripId, owner_id: trip.owner_id, slots: log.slots, extras: log.extras, rating: log.rating, comment: log.comment || null, is_public: before?.is_public ?? false },
     { onConflict: 'trip_id' }
   );
   if (error) return fail(error.message);
@@ -428,4 +470,51 @@ async function setLogPublic(db, user, tripId, isPublic) {
       ? await db.from(TABLES.tripLogs).insert({ trip_id: tripId, owner_id: user.id, is_public: true })
       : { error: null };
   return error ? fail(error.message) : { ok: true };
+}
+
+/* ───────────── 같이 고치기 (0008) ───────────── */
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** 작성자 → 가입한 이메일로 같이 고칠 사람 넣기. → { ok, members } */
+export async function addTripMember(tripId, email) {
+  const { user, db } = await authed();
+  if (!user) return fail('로그인이 필요해요');
+  const trip = await loadOwnTrip(db, user, tripId);
+  if (!trip) return fail('내 여행만 같이 고칠 사람을 넣을 수 있어요');
+  const e = String(email || '').trim().toLowerCase();
+  if (!EMAIL.test(e)) return fail('이메일을 확인해 주세요');
+  if (e === String(user.email || '').toLowerCase()) return fail('내 이메일은 넣지 않아도 돼요');
+
+  const members = await getMembers(tripId);
+  if (!members) return fail(MEMBERS_MISSING);
+  if (members.some((m) => m.email.toLowerCase() === e)) return fail('이미 같이 고치는 사람이에요');
+  if (members.length >= MAX_MEMBERS) return fail(`같이 고치는 사람은 ${MAX_MEMBERS}명까지예요`);
+
+  const admin = createAdminClient();
+  const { data: memberId, error: findErr } = await admin.rpc('wooz_trip_user_id_by_email', { p_email: e });
+  if (findErr) return fail(MEMBERS_MISSING);
+  if (!memberId) return fail('그 이메일로 가입한 계정이 없어요. 먼저 가입해 달라고 해 주세요');
+  if (memberId === user.id) return fail('내 이메일은 넣지 않아도 돼요');
+
+  const { error } = await admin.from(TABLES.tripMembers).insert({ trip_id: tripId, user_id: memberId, email: e, added_by: user.id });
+  if (error) return fail(error.code === '23505' ? '이미 같이 고치는 사람이에요' : error.message);
+  await logEvent(EVENTS.memberAdded, { userId: user.id, tripId });
+  revalidatePath(`/trips/${tripId}`);
+  return { ok: true, members: (await getMembers(tripId)) || [] };
+}
+
+/** 작성자 → 멤버 빼기, 멤버 → 스스로 나가기 */
+export async function removeTripMember(tripId, memberId) {
+  const user = await getCurrentUser();
+  if (!user) return fail('로그인이 필요해요');
+  if (!isUuid(tripId) || !isUuid(memberId)) return fail('잘못된 요청이에요');
+  const admin = createAdminClient();
+  const { data: trip } = await admin.from(TABLES.trips).select('id, owner_id').eq('id', tripId).maybeSingle();
+  if (!trip) return fail('루트를 찾을 수 없어요');
+  if (trip.owner_id !== user.id && memberId !== user.id) return fail('작성자만 뺄 수 있어요');
+  const { error } = await admin.from(TABLES.tripMembers).delete().eq('trip_id', tripId).eq('user_id', memberId);
+  if (error) return fail(MEMBERS_MISSING);
+  revalidatePath('/trips');
+  return { ok: true, members: trip.owner_id === user.id ? (await getMembers(tripId)) || [] : [] };
 }

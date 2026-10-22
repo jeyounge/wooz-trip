@@ -8,6 +8,7 @@ import { createAdminClient } from './supabase/admin.js';
 import { TABLES } from './tables.js';
 import { getPlaceMap, getKidTags } from './places.js';
 import { usedPlaceIds } from './trip.js';
+import { tripRole } from './members.js';
 
 export const TRIP_COLUMNS =
   'id, owner_id, title, region, start_date, end_date, arrival_time, departure_time, companion_type, kids_ages, stay_name, stay_lat, stay_lng, days, author_name, author_tip, visibility, share_id, copied_from, copy_count, ai_route_id, published_ts, created_ts, updated_ts';
@@ -86,6 +87,28 @@ export async function getTripLog(tripId) {
   if (!isUuid(tripId)) return null;
   const s = await createClient();
   const { data, error } = await s.from(TABLES.tripLogs).select('*').eq('trip_id', tripId).maybeSingle();
+  if (error) return null;
+  return data;
+}
+
+/**
+ * 루트 결과·루트 짜기 화면용: 작성자·같이 고치는 멤버는 { trip, role }, 남의 공개 루트는 { trip, role: null }.
+ * 멤버 여부는 서버가 확인하므로 service_role 로 읽는다 (0008 실행 전에도 작성자는 그대로 열린다).
+ */
+export async function getTripForUser(id, userId) {
+  if (!isUuid(id)) return null;
+  const { data: trip, error } = await createAdminClient().from(TABLES.trips).select(TRIP_COLUMNS).eq('id', id).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!trip) return null;
+  const role = await tripRole(trip, userId);
+  if (role) return { trip, role };
+  return trip.visibility === 'public' ? { trip, role: null } : null;
+}
+
+/** 멤버가 여는 여행의 기록 (기록 RLS 는 작성자만 읽을 수 있어서) */
+export async function getTripLogAdmin(tripId) {
+  if (!isUuid(tripId)) return null;
+  const { data, error } = await createAdminClient().from(TABLES.tripLogs).select('*').eq('trip_id', tripId).maybeSingle();
   if (error) return null;
   return data;
 }

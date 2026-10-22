@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
-import { getTrip, loadTripBundle } from '@/lib/trips';
+import { getTripForUser, loadTripBundle } from '@/lib/trips';
+import { daysRev } from '@/lib/rev';
 import { ErrorCard, TopBar } from '@/components/ui';
 import SlotEditor from './SlotEditor';
 
@@ -13,10 +14,12 @@ export default async function EditTripPage({ params, searchParams }) {
   const user = await requireUser(`/trips/${id}/edit`);
 
   let trip;
+  let role;
   let bundle;
   try {
-    trip = await getTrip(id);
-    if (!trip || trip.owner_id !== user.id) notFound();
+    const found = await getTripForUser(id, user.id);
+    if (!found?.role) notFound(); // 작성자·같이 고치는 멤버만
+    ({ trip, role } = found);
     bundle = await loadTripBundle(trip);
   } catch (e) {
     if (e?.digest?.startsWith?.('NEXT_')) throw e;
@@ -31,6 +34,8 @@ export default async function EditTripPage({ params, searchParams }) {
   return (
     <SlotEditor
       trip={trip}
+      rev={daysRev(trip.days)}
+      role={role}
       initialPlaces={bundle.placeMap}
       tags={bundle.tags}
       fromAi={sp?.ai === '1'}

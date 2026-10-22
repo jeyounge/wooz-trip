@@ -13,10 +13,15 @@ import { routeLink, tripSubtitle } from '@/lib/format';
 import { publishTrip, saveDays, saveTripLog, shareTrip, unpublishTrip } from '@/app/actions/trips';
 import { ExtrasEditor, LogEditor, LogLine, ReviewEditor } from '@/components/TripLog';
 import { canLogSpend, canReview, hasLog, logTotals, slotLog, won } from '@/lib/triplog';
+import TripMembers from '@/components/TripMembers';
 
 /** S05 루트 결과: 지도 동선 + 타임라인 + 순서 바꾸기·메모 + 쓴 돈·한마디 기록 + 저장/공유/공개 */
-export default function RouteResult({ trip: initialTrip, placeMap, userEmail, log: initialLog }) {
+export default function RouteResult({ trip: initialTrip, rev: initialRev, role = 'owner', members, userId, placeMap, userEmail, log: initialLog }) {
   const router = useRouter();
+  const isOwner = role === 'owner';
+  const rev = useRef(initialRev); // 마지막으로 받은 일정 지문 (같이 고칠 때 충돌 확인)
+  const conflicted = useRef(false);
+  const queue = useRef(Promise.resolve(true));
   const [trip, setTrip] = useState(initialTrip);
   const [days, setDays] = useState(initialTrip.days);
   const [day, setDay] = useState(0);
@@ -54,12 +59,24 @@ export default function RouteResult({ trip: initialTrip, placeMap, userEmail, lo
     return () => clearTimeout(t);
   }, [toast]);
 
-  async function persist(next = latest.current) {
+  /** 저장은 한 번에 하나씩. 다른 사람이 먼저 고쳤으면 최신 일정을 다시 불러온다 */
+  function persist(next = latest.current) {
     clearTimeout(timer.current);
-    const res = await saveDays(trip.id, next);
-    if (!res.ok) setToast(`저장 실패: ${res.message}`);
-    else daysDirty.current = false;
-    return res.ok;
+    const run = queue.current.then(async () => {
+      if (conflicted.current) return false;
+      const res = await saveDays(trip.id, next, rev.current);
+      if (res.ok) {
+        rev.current = res.rev;
+        if (next === latest.current) daysDirty.current = false;
+      } else if (res.conflict) {
+        conflicted.current = true;
+        setToast(res.message);
+        setTimeout(() => window.location.reload(), 1800);
+      } else setToast(`저장 실패: ${res.message}`);
+      return res.ok;
+    });
+    queue.current = run.catch(() => false);
+    return run;
   }
   function update(next) {
     setDays(next);
@@ -326,18 +343,27 @@ export default function RouteResult({ trip: initialTrip, placeMap, userEmail, lo
             <ReviewEditor rating={log.rating} comment={log.comment} onChange={(v) => updateLog({ ...latestLog.current, ...v })} />
           </section>
         )}
+        <TripMembers tripId={trip.id} role={role} userId={userId} members={members} />
       </main>
 
       <div className="sticky bottom-0 z-10 flex gap-2 bg-bg px-5 pt-2.5 pb-6">
         <button type="button" aria-label="저장" onClick={onSave} className="flex h-14 w-14 flex-none items-center justify-center rounded-full border-2 border-line bg-surface">
           <IconBookmark />
         </button>
-        <button type="button" onClick={onShare} disabled={sharePending} className="btn-yellow flex-1">
-          {sharePending ? '링크 만드는 중…' : '가족 단톡에 공유'}
-        </button>
-        <button type="button" onClick={() => setPublishOpen(true)} className="btn-cta flex-1 text-base">
-          {trip.visibility === 'public' ? '공개 중' : '자랑하기'}
-        </button>
+        {isOwner ? (
+          <>
+            <button type="button" onClick={onShare} disabled={sharePending} className="btn-yellow flex-1">
+              {sharePending ? '링크 만드는 중…' : '가족 단톡에 공유'}
+            </button>
+            <button type="button" onClick={() => setPublishOpen(true)} className="btn-cta flex-1 text-base">
+              {trip.visibility === 'public' ? '공개 중' : '자랑하기'}
+            </button>
+          </>
+        ) : (
+          <Link href={`/trips/${trip.id}/edit?day=${day}`} className="btn-cta flex-1 text-base">
+            일정 고치기
+          </Link>
+        )}
       </div>
 
       {toast && (

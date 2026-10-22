@@ -17,7 +17,10 @@ import AiThinking, { waitAtLeast } from '@/components/AiThinking';
 import CustomSlotSheet from '@/components/CustomSlotSheet';
 import LocationSearch from '@/components/LocationSearch';
 
-export default function SlotEditor({ trip: initialTrip, initialPlaces, tags, fromAi, initialDay = 0 }) {
+export default function SlotEditor({ trip: initialTrip, rev: initialRev, role = 'owner', initialPlaces, tags, fromAi, initialDay = 0 }) {
+  const isOwner = role === 'owner';
+  const rev = useRef(initialRev); // 마지막으로 받은 일정 지문 (같이 고칠 때 충돌 확인)
+  const conflicted = useRef(false); // 충돌 뒤에는 다시 불러올 때까지 저장하지 않는다
   const router = useRouter();
   const [trip, setTrip] = useState(initialTrip);
   const [days, setDays] = useState(initialTrip.days);
@@ -51,12 +54,25 @@ export default function SlotEditor({ trip: initialTrip, initialPlaces, tags, fro
   }, [days, places, tripView]);
 
   // 자동 저장 (0.8초 묶음)
+  // 저장은 한 번에 하나씩 (앞 저장이 받은 지문으로 다음 저장을 해야 내 저장끼리 충돌로 보이지 않는다)
+  const queue = useRef(Promise.resolve(true));
   const persist = useCallback(
-    async (next) => {
-      setSave({ state: 'saving', message: '' });
-      const res = await saveDays(trip.id, next);
-      setSave(res.ok ? { state: 'saved', message: '' } : { state: 'error', message: res.message });
-      return res.ok;
+    (next) => {
+      const run = queue.current.then(async () => {
+        if (conflicted.current) return false;
+        setSave({ state: 'saving', message: '' });
+        const res = await saveDays(trip.id, next, rev.current);
+        if (res.ok) rev.current = res.rev;
+        setSave(res.ok ? { state: 'saved', message: '' } : { state: 'error', message: res.message });
+        // 다른 사람이 먼저 고쳤으면 최신 일정을 다시 불러온다 (방금 바꾼 건 다시 해야 한다)
+        if (res.conflict) {
+          conflicted.current = true;
+          setTimeout(() => window.location.reload(), 1800);
+        }
+        return res.ok;
+      });
+      queue.current = run.catch(() => false);
+      return run;
     },
     [trip.id]
   );
@@ -124,7 +140,12 @@ export default function SlotEditor({ trip: initialTrip, initialPlaces, tags, fro
       const ok = await persist(latest.current);
       if (!ok) return;
       const res = await waitAtLeast(aiFill(trip.id));
+      if (res.conflict) {
+        setAiMsg(res.message);
+        return setTimeout(() => window.location.reload(), 1800);
+      }
       if (!res.ok) return setAiMsg(res.message);
+      if (res.rev) rev.current = res.rev;
       setPlaces((m) => ({ ...m, ...(res.places || {}) }));
       setDays(res.days);
       latest.current = res.days;
@@ -162,11 +183,16 @@ export default function SlotEditor({ trip: initialTrip, initialPlaces, tags, fro
         <BackLink href="/trips" />
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="truncate font-display text-xl">{trip.title}</div>
-          <div className="truncate text-[13px] text-sub">{tripSubtitle(trip)}</div>
+          <div className="truncate text-[13px] text-sub">
+            {!isOwner && '같이 고치는 여행 · '}
+            {tripSubtitle(trip)}
+          </div>
         </div>
-        <button type="button" aria-label="여행 정보 수정" onClick={() => setMetaOpen(true)} className="icon-btn">
-          <IconEdit />
-        </button>
+        {isOwner && (
+          <button type="button" aria-label="여행 정보 수정" onClick={() => setMetaOpen(true)} className="icon-btn">
+            <IconEdit />
+          </button>
+        )}
       </header>
 
       <nav aria-label="일자" className="flex gap-2 overflow-x-auto px-5 pt-2 pb-2.5">
