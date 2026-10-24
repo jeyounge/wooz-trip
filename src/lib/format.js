@@ -1,6 +1,9 @@
 /** format.js — 화면 문구 조립 (순수 함수) */
-import { CATEGORIES, COMPANIONS, REGIONS, SLOT_TYPES } from './config.js';
+import { CATEGORIES, COMPANIONS, REGIONS, SLOT_TYPES, SERVICE_NAME } from './config.js';
 import { hoursText, isClosedOn, shortDate, weekdayLabel, WEEKDAY_NAMES } from './hours.js';
+
+/** 운영자가 후기를 참고해 짠 추천 루트인지 (작성자 이름 = 서비스명, 일반 사용자는 이 이름을 못 씀) */
+export const isEditorRoute = (trip) => trip?.author_name === SERVICE_NAME;
 
 export function companionText(trip) {
   if (trip.companion_type === 'kids' && trip.kids_ages?.length) {

@@ -7,7 +7,7 @@ import Sheet from '@/components/Sheet';
 import ReportSheet from '@/components/ReportSheet';
 import { DAY_LABELS, FEATURES, TRAVEL_MODES, dayStyle, departAreasFor } from '@/lib/config';
 import { formatHM } from '@/lib/geo';
-import { companionText, mapLink } from '@/lib/format';
+import { companionText, isEditorRoute, mapLink } from '@/lib/format';
 import { addDays } from '@/lib/hours';
 import { daySummary, slotTitle, tripDepartArea, tripMode } from '@/lib/trip';
 import { copyRoute, logRouteView } from '@/app/actions/trips';
@@ -27,6 +27,7 @@ export default function RouteDetail({ trip, placeMap, tags, stats, places, isLog
   const [copyOpen, setCopyOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [toast, setToast] = useState(null);
+  const editor = isEditorRoute(trip);
 
   useEffect(() => {
     if (!isOwner) logRouteView(trip.id);
@@ -85,9 +86,9 @@ export default function RouteDetail({ trip, placeMap, tags, stats, places, isLog
             {(trip.author_name || '익')[0]}
           </div>
           <div className="flex flex-col">
-            <span className="text-[15px] font-bold">{trip.author_name || '익명'}네 가족</span>
+            <span className="text-[15px] font-bold">{editor ? `${trip.author_name} 추천 루트` : `${trip.author_name || '익명'}네 가족`}</span>
             <span className="text-[13px] text-[#2C5546]">
-              {companionText(trip)} · {month}
+              {editor ? `여행 후기를 참고해 짰어요 · ${companionText(trip)}` : `${companionText(trip)} · ${month}`}
             </span>
           </div>
         </div>
@@ -156,7 +157,7 @@ export default function RouteDetail({ trip, placeMap, tags, stats, places, isLog
 
         {trip.author_tip && (
           <div className="rounded-card bg-accent p-4">
-            <div className="mb-1 font-display text-base">엄마아빠 꿀팁</div>
+            <div className="mb-1 font-display text-base">{editor ? '이렇게 짰어요' : '엄마아빠 꿀팁'}</div>
             <div className="whitespace-pre-line text-sm leading-relaxed">{trip.author_tip}</div>
           </div>
         )}

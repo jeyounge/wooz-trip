@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { COMPANIONS, REGIONS } from '@/lib/config';
+import { isEditorRoute } from '@/lib/format';
 import { IconMap, IconUmbrella, IconWave } from './Icons';
 
 const ICONS = [
@@ -25,6 +26,7 @@ export default function RouteCard({ route, index = 0, placeCount, query = '' }) 
           {region} · {n === 1 ? '당일' : `${n - 1}박 ${n}일`} · {placeCount}곳
         </div>
         <div className="flex flex-wrap gap-1.5">
+          {isEditorRoute(route) && <span className="rounded-xl bg-mint px-[9px] py-[3px] text-xs text-[#1E5A45]">추천</span>}
           {companion && <span className="rounded-xl bg-[#FFE9DF] px-[9px] py-[3px] text-xs text-warn-ink">{companion}</span>}
           {route.copy_count > 0 && (
             <span className="rounded-xl bg-[#FFE9DF] px-[9px] py-[3px] text-xs text-warn-ink">{route.copy_count}가족이 따라감</span>

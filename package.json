@@ -20,7 +20,8 @@
     "facts:sync": "node scripts/blogfacts/sync.mjs",
     "places:approve": "node scripts/places/approve.mjs",
     "routes:build": "node scripts/ai-routes/build.mjs",
-    "golf:collect": "node scripts/golf/collect.mjs"
+    "golf:collect": "node scripts/golf/collect.mjs",
+    "routes:samples": "node scripts/sample-routes/publish.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

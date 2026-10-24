@@ -9,8 +9,8 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { TABLES } from '@/lib/tables';
-import { getCurrentUser } from '@/lib/auth';
-import { COMPANIONS, MAX_TRIP_DAYS, REGIONS, SLOT_TYPES, TRAVEL_MODES, departArea, departAreasFor } from '@/lib/config';
+import { getCurrentUser, isAdmin } from '@/lib/auth';
+import { COMPANIONS, MAX_TRIP_DAYS, REGIONS, SERVICE_NAME, SLOT_TYPES, TRAVEL_MODES, departArea, departAreasFor } from '@/lib/config';
 import { buildDays, redateDays, setTripEnds, tripDepartArea, tripMode, usedPlaceIds } from '@/lib/trip';
 import { addDays, dayCount } from '@/lib/hours';
 import { getApprovedPlaces, getPlaceMap, sidoOfRegion } from '@/lib/places';
@@ -305,6 +305,11 @@ export async function shareTrip(tripId) {
   return { ok: true, shareId };
 }
 
+function authorNameFor(user, name) {
+  const n = String(name || '').trim().slice(0, 20) || '익명';
+  return n === SERVICE_NAME && !isAdmin(user) ? '익명' : n;
+}
+
 /** 공개 등록 ("자랑하기") */
 export async function publishTrip(tripId, { title, authorName, tip, showLog }) {
   const { user, db } = await authed();
@@ -316,7 +321,8 @@ export async function publishTrip(tripId, { title, authorName, tip, showLog }) {
     .from(TABLES.trips)
     .update({
       title: String(title || trip.title).trim().slice(0, 60) || trip.title,
-      author_name: String(authorName || '').trim().slice(0, 20) || '익명',
+      // 서비스명은 운영자 추천 루트 표시라서 일반 사용자는 못 쓴다
+      author_name: authorNameFor(user, authorName),
       author_tip: String(tip || '').trim().slice(0, 500) || null,
       visibility: 'public',
       share_id: trip.share_id || randomId(),
