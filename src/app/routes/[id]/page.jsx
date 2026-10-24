@@ -1,12 +1,38 @@
+import { cache } from 'react';
 import { notFound } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
-import { getTrip, getTripLog, loadTripBundle } from '@/lib/trips';
+import { getTrip, getTripLog, loadRainy, loadTripBundle } from '@/lib/trips';
 import { fromRow } from '@/lib/triplog';
 import { summarize, usedPlaceIds } from '@/lib/trip';
 import { ErrorCard, TopBar } from '@/components/ui';
+import { SERVICE_NAME } from '@/lib/config';
+import { isEditorRoute, routeShareText } from '@/lib/format';
 import RouteDetail from './RouteDetail';
 
 export const dynamic = 'force-dynamic';
+
+// 메타데이터와 화면이 같은 요청에서 루트를 한 번만 읽게
+const loadTrip = cache(getTrip);
+const loadBundle = cache(loadTripBundle);
+
+/** 카톡·검색 미리보기: 제목, "제주 · 2박 3일 · 아이들과 · 12곳 — 장소…", 동선 그림(opengraph-image) */
+export async function generateMetadata({ params }) {
+  const { id } = await params;
+  const trip = await loadTrip(id).catch(() => null);
+  if (!trip) return { title: `루트를 찾을 수 없어요 | ${SERVICE_NAME}`, robots: { index: false } };
+  const { placeMap } = await loadBundle(trip).catch(() => ({ placeMap: {} }));
+  const names = usedPlaceIds(trip.days).map((pid) => placeMap[pid]?.name).filter(Boolean);
+  const title = `${trip.title} | ${SERVICE_NAME}`;
+  const description = `${isEditorRoute(trip) ? `${SERVICE_NAME} 추천 루트 · ` : ''}${routeShareText(trip, names)}`;
+  return {
+    title,
+    description,
+    alternates: { canonical: `/routes/${trip.id}` },
+    openGraph: { type: 'article', title: trip.title, description, url: `/routes/${trip.id}` },
+    twitter: { card: 'summary_large_image', title: trip.title, description },
+    robots: trip.visibility === 'public' ? undefined : { index: false },
+  };
+}
 
 /** S06 공개 루트 상세 */
 export default async function RouteDetailPage({ params, searchParams }) {
@@ -16,10 +42,12 @@ export default async function RouteDetailPage({ params, searchParams }) {
   let bundle;
   let user;
   let logRow;
+  let rainy = {};
   try {
-    [trip, user] = await Promise.all([getTrip(id), getCurrentUser()]);
+    [trip, user] = await Promise.all([loadTrip(id), getCurrentUser()]);
     if (!trip || (trip.visibility !== 'public' && trip.owner_id !== user?.id)) notFound();
-    [bundle, logRow] = await Promise.all([loadTripBundle(trip), getTripLog(trip.id)]);
+    [bundle, logRow] = await Promise.all([loadBundle(trip), getTripLog(trip.id)]);
+    rainy = await loadRainy(trip, bundle.placeMap);
   } catch (e) {
     if (e?.digest?.startsWith?.('NEXT_')) throw e;
     return (
@@ -58,6 +86,7 @@ export default async function RouteDetailPage({ params, searchParams }) {
       isOwner={user?.id === trip.owner_id}
       setup={setup}
       log={logRow?.is_public ? fromRow(logRow) : null}
+      rainy={rainy}
     />
   );
 }

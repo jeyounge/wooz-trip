@@ -1,6 +1,6 @@
 /** format.js — 화면 문구 조립 (순수 함수) */
 import { CATEGORIES, COMPANIONS, REGIONS, SLOT_TYPES, SERVICE_NAME } from './config.js';
-import { hoursText, isClosedOn, shortDate, weekdayLabel, WEEKDAY_NAMES } from './hours.js';
+import { hoursText, isAlwaysOpen, isClosedOn, shortDate, weekdayLabel, WEEKDAY_NAMES } from './hours.js';
 
 /** 운영자가 후기를 참고해 짠 추천 루트인지 (작성자 이름 = 서비스명, 일반 사용자는 이 이름을 못 씀) */
 export const isEditorRoute = (trip) => trip?.author_name === SERVICE_NAME;
@@ -27,10 +27,24 @@ export function nightsText(n) {
   return n <= 1 ? '당일' : `${n - 1}박 ${n}일`;
 }
 
+/**
+ * 공유 미리보기 문구: "제주 · 2박 3일 · 7살이랑 · 12곳 — 비자림, 세화해변, …"
+ * placeNames 는 루트에 들어간 순서대로
+ */
+export function routeShareText(trip, placeNames = []) {
+  const r = regionShort(trip.region);
+  const head = [r.startsWith('제주') ? r : `제주 ${r}`, nightsText(trip.days?.length || 1), companionText(trip), placeNames.length && `${placeNames.length}곳`]
+    .filter(Boolean)
+    .join(' · ');
+  const names = placeNames.slice(0, 5).join(', ');
+  return names ? `${head} — ${names}${placeNames.length > 5 ? ' 외' : ''}` : head;
+}
+
 /** 장소 한 줄 설명: "고기국수 · 21:00까지" / "흑돼지 · 금요일 정기휴무" */
 export function placeMeta(place, date) {
   const kind = place.sub_category || CATEGORIES[place.category] || '';
   if (date && isClosedOn(place, date)) return `${kind} · ${weekdayLabel(date)}요일 정기휴무`;
+  if (isAlwaysOpen(place)) return `${kind} · 상시 개방`;
   const h = date ? hoursText(place, date) : '';
   if (h) return `${kind} · ${h.split('–')[1]}까지`;
   if ((place.regular_closed_days || []).length) {

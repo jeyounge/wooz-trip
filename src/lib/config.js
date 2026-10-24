@@ -6,6 +6,8 @@
 
 // 서비스명은 미정. 정해지면 .env 의 NEXT_PUBLIC_SERVICE_NAME 한 곳만 바꾼다.
 export const SERVICE_NAME = process.env.NEXT_PUBLIC_SERVICE_NAME || '우즈트립';
+// 공유 미리보기·사이트맵의 기준 주소
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://trip.z-labs.kr').replace(/\/$/, '');
 
 /**
  * 홈 「어디 가요?」 여행지. open: false 는 「준비 중」으로 보여만 준다 (다음 예정 지역 알림용).

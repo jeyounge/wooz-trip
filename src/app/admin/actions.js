@@ -46,7 +46,9 @@ function toPlaceRow(input, { partial = false } = {}) {
   }
   if ('hours' in input) {
     const h = input.hours || {};
-    if (h.open && h.close) {
+    if (h.always) {
+      row.opening_hours = { always: true };
+    } else if (h.open && h.close) {
       if (!TIME.test(h.open) || !TIME.test(h.close) || (h.lastOrder && !TIME.test(h.lastOrder))) throw new Error('영업시간 형식은 HH:MM');
       row.opening_hours = { all: h.lastOrder ? { open: h.open, close: h.close, lastOrder: h.lastOrder } : { open: h.open, close: h.close } };
       // 요일별 시간("0".."6")은 그대로 둔다

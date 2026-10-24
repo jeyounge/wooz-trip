@@ -6,7 +6,8 @@
 import { createClient } from './supabase/server.js';
 import { createAdminClient } from './supabase/admin.js';
 import { TABLES } from './tables.js';
-import { getPlaceMap, getKidTags } from './places.js';
+import { getApprovedPlaces, getPlaceMap, getKidTags, sidoOfRegion } from './places.js';
+import { rainyAlternatives } from './rainy.js';
 import { usedPlaceIds } from './trip.js';
 import { tripRole } from './members.js';
 
@@ -73,6 +74,32 @@ export async function loadPlaceMapAdmin(ids) {
   const admin = createAdminClient();
   const { data } = await admin.from(TABLES.places).select('*').in('id', ids).eq('status', 'approved');
   return Object.fromEntries((data || []).map((p) => [p.id, p]));
+}
+
+/** 비 오는 날 대안 (야외 볼거리 옆 가까운 실내 볼거리). 실패해도 화면은 그대로 → 빈 객체 */
+export async function loadRainy(trip, placeMap) {
+  try {
+    return rainyAlternatives(trip, placeMap, await getApprovedPlaces(sidoOfRegion(trip.region)));
+  } catch {
+    return {};
+  }
+}
+
+/** 공개 루트만 (공유 미리보기 이미지·사이트맵용, 쿠키 없이 조회) */
+export async function getPublicTripAdmin(id) {
+  if (!isUuid(id)) return null;
+  const { data } = await createAdminClient().from(TABLES.trips).select(TRIP_COLUMNS).eq('id', id).eq('visibility', 'public').maybeSingle();
+  return data || null;
+}
+
+export async function listPublicTripIds() {
+  const { data } = await createAdminClient()
+    .from(TABLES.trips)
+    .select('id, updated_ts')
+    .eq('visibility', 'public')
+    .order('published_ts', { ascending: false })
+    .limit(5000);
+  return data || [];
 }
 
 export function isUuid(v) {

@@ -4,6 +4,7 @@
  * place.opening_hours 형식:
  *   { "all": { "open": "10:00", "close": "21:00", "lastOrder": "20:30" },
  *     "6":   { "open": "09:00", "close": "22:00" } }   // 요일(0=일~6=토)별 덮어쓰기
+ *   { "always": true } = 상시 개방 (시간 제한 없음)
  *   값이 없으면 "영업시간 정보 없음"으로 보고 경고하지 않는다.
  * place.regular_closed_days: [5]  // 정기휴무 요일 (0=일~6=토)
  */
@@ -72,6 +73,15 @@ export function hoursOn(place, dateStr) {
   if (close <= open) close += 1440; // 자정 넘김
   const lastOrder = toMin(h.lastOrder);
   return { open, close, lastOrder: lastOrder === null ? null : lastOrder < open ? lastOrder + 1440 : lastOrder };
+}
+
+/** 상시 개방 (해변·오름·공원 같은 곳) */
+export const isAlwaysOpen = (place) => !!place?.opening_hours?.always;
+
+/** 화면용 영업시간: "10:00–21:00" · "상시 개방" · '' */
+export function hoursLabel(place, dateStr) {
+  if (isAlwaysOpen(place)) return '상시 개방';
+  return dateStr ? hoursText(place, dateStr) : '';
 }
 
 /** 영업시간 표시 문구: "10:00–21:00" */

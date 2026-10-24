@@ -104,16 +104,18 @@ function lastOrderOf(text) {
  * - 평일/주말이 따로 있으면 all = 평일, "0"·"6" = 주말
  * - 하절기/동절기, 브레이크타임, 요일별로 복잡한 경우는 flag 를 남긴다
  */
+const ALWAYS = Object.freeze({ always: true }); // 상시 개방 (시간 제한 없음, "정보 없음"과 구분)
+
 export function parseHours(raw) {
   const text = cleanText(raw);
   const flags = [];
   if (!text) return { hours: null, flags: ['hours_missing'] };
-  if (/24\s*시간/.test(text)) return { hours: null, flags: [] }; // 늘 열림 (null = 시간 제한 없음)
+  if (/24\s*시간/.test(text)) return { hours: ALWAYS, flags: [] }; // 늘 열림
 
   const rs = ranges(text);
   if (!rs.length) {
     // "상시 개방", "연중 개방", "자유 관람" = 시간 제한 없음
-    if (/상시|연중\s*개방|자유\s*(?:관람|이용|입장)|제한\s*없음|항시/.test(text)) return { hours: null, flags: [] };
+    if (/상시|연중\s*개방|자유\s*(?:관람|이용|입장)|제한\s*없음|항시/.test(text)) return { hours: ALWAYS, flags: [] };
     return { hours: null, flags: ['hours_check'] };
   }
 

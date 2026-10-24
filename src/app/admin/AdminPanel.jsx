@@ -390,7 +390,7 @@ function PlaceForm({ place, tags, onSaved, selected = false, onSelect }) {
   const isNew = !place;
   const h = place?.opening_hours?.all || {};
   // 요일별 시간("0".."6")은 이 폼에서 고치지 않지만 저장할 때 지우지 않게 같이 보낸다
-  const overrides = Object.fromEntries(Object.entries(place?.opening_hours || {}).filter(([k]) => k !== 'all'));
+  const overrides = Object.fromEntries(Object.entries(place?.opening_hours || {}).filter(([k]) => /^[0-6]$/.test(k)));
   const [f, setF] = useState({
     name: place?.name || '',
     category: place?.category || 'food',
@@ -398,7 +398,7 @@ function PlaceForm({ place, tags, onSaved, selected = false, onSelect }) {
     region: place?.region || 'jeju-west',
     lat: place?.lat ?? '',
     lng: place?.lng ?? '',
-    hours: { open: h.open || '', close: h.close || '', lastOrder: h.lastOrder || '' },
+    hours: { open: h.open || '', close: h.close || '', lastOrder: h.lastOrder || '', always: !!place?.opening_hours?.always },
     hoursOverrides: overrides,
     address: place?.address || '',
     regular_closed_days: place?.regular_closed_days || [],
@@ -483,6 +483,10 @@ function PlaceForm({ place, tags, onSaved, selected = false, onSelect }) {
             <input className={input} placeholder="위도 33.xx" inputMode="decimal" value={f.lat} onChange={(e) => set('lat', e.target.value)} />
             <input className={input} placeholder="경도 126.xx" inputMode="decimal" value={f.lng} onChange={(e) => set('lng', e.target.value)} />
           </div>
+          <label className="flex min-h-[44px] items-center gap-2 text-xs text-sub">
+            <input type="checkbox" className="h-5 w-5" checked={f.hours.always} onChange={(e) => set('hours', { ...f.hours, always: e.target.checked })} />
+            상시 개방 (해변·오름처럼 시간 제한 없음)
+          </label>
           <div className="grid grid-cols-3 gap-1.5 text-xs text-sub">
             {[['open', '여는 시간'], ['close', '닫는 시간'], ['lastOrder', '라스트오더']].map(([k, l]) => (
               <label key={k} className="flex flex-col gap-0.5">

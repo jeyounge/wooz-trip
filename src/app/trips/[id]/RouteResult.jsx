@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { BackLink } from '@/components/ui';
 import { IconBookmark, IconDown, IconEdit, IconHome, IconUp, IconWarn } from '@/components/Icons';
 import RouteMap from '@/components/RouteMap';
+import RainyAlt from '@/components/RainyAlt';
+import { rainyKey } from '@/lib/rainy';
 import Sheet from '@/components/Sheet';
 import { DAY_LABELS, dayStyle } from '@/lib/config';
 import { isEmptySlot, mapDays, rowWarning, slotTitle, summarize } from '@/lib/trip';
@@ -16,7 +18,7 @@ import { canLogSpend, canReview, hasLog, logTotals, slotLog, won } from '@/lib/t
 import TripMembers from '@/components/TripMembers';
 
 /** S05 루트 결과: 지도 동선 + 타임라인 + 순서 바꾸기·메모 + 쓴 돈·한마디 기록 + 저장/공유/공개 */
-export default function RouteResult({ trip: initialTrip, rev: initialRev, role = 'owner', members, userId, placeMap, userEmail, log: initialLog }) {
+export default function RouteResult({ trip: initialTrip, rev: initialRev, role = 'owner', members, userId, placeMap, userEmail, log: initialLog, rainy = {} }) {
   const router = useRouter();
   const isOwner = role === 'owner';
   const rev = useRef(initialRev); // 마지막으로 받은 일정 지문 (같이 고칠 때 충돌 확인)
@@ -269,6 +271,7 @@ export default function RouteResult({ trip: initialTrip, rev: initialRev, role =
                   {isStop && s.stayMinutes > 0 && <div className="text-xs text-sub">머무는 시간 {formatDuration(s.stayMinutes)}</div>}
                   {s.memo && memoFor !== s.id && <div className="text-xs text-warn-ink">챙길 것 · {s.memo}</div>}
                   {warn && (r.check.level === 'warn' || r.lateBy > 0) && <div className="text-xs font-bold text-warn-ink">{warn}</div>}
+                  {s.placeId && <RainyAlt alt={rainy[rainyKey(days[day].date, s.placeId)]} />}
                   {isStop && memoFor !== s.id && (
                     <button type="button" onClick={() => setMemoFor(s.id)} className="self-start text-xs text-sub underline">
                       {s.memo ? '메모 고치기' : '+ 챙길 것 메모'}

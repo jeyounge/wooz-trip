@@ -8,8 +8,10 @@ import ReportSheet from '@/components/ReportSheet';
 import RouteMap from '@/components/RouteMap';
 import { CATEGORIES, DAY_LABELS, FEATURES, TRAVEL_MODES, dayStyle, departAreasFor } from '@/lib/config';
 import { formatDuration, formatHM } from '@/lib/geo';
+import RainyAlt from '@/components/RainyAlt';
+import { rainyKey } from '@/lib/rainy';
 import { blogLink, companionText, isEditorRoute, mapLink, routeLink } from '@/lib/format';
-import { addDays, hoursText, isClosedOn, toHHMM, toMin } from '@/lib/hours';
+import { addDays, hoursText, isAlwaysOpen, isClosedOn, toHHMM, toMin } from '@/lib/hours';
 import { isEmptySlot, mapDays, rowWarning, slotTitle, summarize, tripDepartArea, tripMode } from '@/lib/trip';
 import { copyRoute, logRouteView } from '@/app/actions/trips';
 import { LogLine, LogSummary } from '@/components/TripLog';
@@ -22,7 +24,7 @@ function today() {
 }
 
 /** S06 공개 루트 상세 (시안 B) */
-export default function RouteDetail({ trip, placeMap, tags, stats, places, isLoggedIn, isOwner, setup, log }) {
+export default function RouteDetail({ trip, placeMap, tags, stats, places, isLoggedIn, isOwner, setup, log, rainy = {} }) {
   const router = useRouter();
   const [open, setOpen] = useState(0);
   const [copyOpen, setCopyOpen] = useState(false);
@@ -141,6 +143,7 @@ export default function RouteDetail({ trip, placeMap, tags, stats, places, isLog
           rows={perDay[open] || []}
           placeMap={placeMap}
           tagLabels={tagLabels}
+          rainy={rainy}
           log={log}
         />
 
@@ -207,7 +210,7 @@ function areaOf(address) {
 }
 
 /** 고른 날의 타임라인: 이동 → 장소 카드(종류 딱지·태그·영업시간·추천 이유·링크) */
-function DayTimeline({ dayIndex, date, rows, placeMap, tagLabels, log }) {
+function DayTimeline({ dayIndex, date, rows, placeMap, tagLabels, log, rainy }) {
   const st = dayStyle(dayIndex);
   const stops = rows.filter((r) => (r.slot.placeId && r.place) || r.slot.custom);
   const travel = rows.reduce((a, r) => a + (r.travelFromPrev?.minutes || 0), 0);
@@ -260,7 +263,7 @@ function DayTimeline({ dayIndex, date, rows, placeMap, tagLabels, log }) {
               </div>
             )}
             {place ? (
-              <PlaceStop n={n} st={st} s={s} place={place} name={name} timeText={timeText} date={date} tagLabels={tagLabels} warn={warn} r={r} log={log} />
+              <PlaceStop n={n} st={st} s={s} place={place} name={name} timeText={timeText} date={date} tagLabels={tagLabels} warn={warn} r={r} log={log} alt={rainy[rainyKey(date, s.placeId)]} />
             ) : (
               <div className="flex items-center gap-3 rounded-[20px] bg-surface px-3 py-2.5 shadow-soft">
                 <div
@@ -285,14 +288,14 @@ function DayTimeline({ dayIndex, date, rows, placeMap, tagLabels, log }) {
   );
 }
 
-function PlaceStop({ n, st, s, place, name, timeText, date, tagLabels, warn, r, log }) {
+function PlaceStop({ n, st, s, place, name, timeText, date, tagLabels, warn, r, log, alt }) {
   const look = KIND_LOOK[place.category] || KIND_LOOK.sight;
   const sub = place.sub_category && !PLAIN_SUB.has(place.sub_category) ? place.sub_category : null;
   const tags = (place.kid_tags || []).filter((t) => !HIDDEN_TAGS.has(t) && tagLabels[t]).slice(0, 4);
   const closed = date && isClosedOn(place, date);
   const hours = date ? hoursText(place, date) : '';
   const area = areaOf(place.address);
-  const meta = [area, closed ? null : hours && `${hours} 영업`].filter(Boolean).join(' · ');
+  const meta = [area, closed ? null : isAlwaysOpen(place) ? '상시 개방' : hours && `${hours} 영업`].filter(Boolean).join(' · ');
 
   return (
     <article className="flex gap-3 rounded-[20px] bg-surface p-3 shadow-soft">
@@ -335,6 +338,7 @@ function PlaceStop({ n, st, s, place, name, timeText, date, tagLabels, warn, r, 
         {s.memo && <div className="text-xs text-warn-ink">챙길 것 · {s.memo}</div>}
         {log && <LogLine entry={slotLog(log, s)} />}
         {warn && (r.check.level === 'warn' || r.lateBy > 0) && <div className="text-xs font-bold text-warn-ink">{warn}</div>}
+        <RainyAlt alt={alt} tagLabels={tagLabels} />
         <div className="flex gap-3 text-xs">
           <a href={mapLink(place)} target="_blank" rel="noopener noreferrer" className="flex min-h-8 items-center text-ok underline">
             지도

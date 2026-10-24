@@ -54,8 +54,8 @@ test('tourapi: 영업시간 글 → 시간', () => {
   assert.ok(br.flags.includes('hours_break'));
 
   assert.ok(parseHours('하절기 09:00~19:00 / 동절기 09:00~18:00').flags.includes('hours_seasonal'));
-  assert.deepEqual(parseHours('상시 개방 (24시간)'), { hours: null, flags: [] });
-  assert.deepEqual(parseHours('상시 개방'), { hours: null, flags: [] });
+  assert.deepEqual(parseHours('상시 개방 (24시간)'), { hours: { always: true }, flags: [] });
+  assert.deepEqual(parseHours('상시 개방'), { hours: { always: true }, flags: [] });
   assert.deepEqual(parseHours('문의 바람'), { hours: null, flags: ['hours_check'] });
   assert.deepEqual(parseHours(''), { hours: null, flags: ['hours_missing'] });
 });

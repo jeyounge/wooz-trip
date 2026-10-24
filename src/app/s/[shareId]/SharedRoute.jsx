@@ -7,12 +7,14 @@ import { DAY_LABELS, SERVICE_NAME, dayStyle } from '@/lib/config';
 import { isEmptySlot, mapDays, rowWarning, slotTitle, summarize } from '@/lib/trip';
 import { formatDuration } from '@/lib/geo';
 import { mapLink, routeLink, tripSubtitle } from '@/lib/format';
+import RainyAlt from '@/components/RainyAlt';
+import { rainyKey } from '@/lib/rainy';
 import { shortDate, toHHMM, toMin, weekdayLabel } from '@/lib/hours';
 import { LogLine, LogSummary } from '@/components/TripLog';
 import { slotLog, logTotals, won } from '@/lib/triplog';
 
 /** 읽기 전용 루트: 지도 + 일자 탭 + 타임라인 */
-export default function SharedRoute({ trip, placeMap, log }) {
+export default function SharedRoute({ trip, placeMap, log, rainy = {} }) {
   const [day, setDay] = useState(0);
   const sum = useMemo(() => summarize(trip, placeMap), [trip, placeMap]);
   const mapData = useMemo(() => mapDays(trip.days, placeMap, trip), [trip, placeMap]);
@@ -101,6 +103,7 @@ export default function SharedRoute({ trip, placeMap, log }) {
                   {s.memo && <div className="text-xs text-warn-ink">챙길 것 · {s.memo}</div>}
                   {log && place && <LogLine entry={slotLog(log, s)} />}
                   {warn && (r.check.level === 'warn' || r.lateBy > 0) && <div className="text-xs font-bold text-warn-ink">{warn}</div>}
+                  {place && <RainyAlt alt={rainy[rainyKey(trip.days[day].date, s.placeId)]} />}
                 </div>
                 {place ? (
                   <a href={mapLink(place)} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center text-xs text-ok underline">

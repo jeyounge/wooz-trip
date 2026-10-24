@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
-import { getTripForUser, getTripLog, getTripLogAdmin, loadTripBundle } from '@/lib/trips';
+import { getTripForUser, getTripLog, getTripLogAdmin, loadRainy, loadTripBundle } from '@/lib/trips';
 import { getMembers } from '@/lib/members';
 import { daysRev } from '@/lib/rev';
 import { fromRow } from '@/lib/triplog';
@@ -18,6 +18,7 @@ export default async function TripResultPage({ params }) {
   let bundle;
   let logRow;
   let members = null;
+  let rainy = {};
   try {
     const found = await getTripForUser(id, user?.id);
     if (!found) notFound();
@@ -29,6 +30,7 @@ export default async function TripResultPage({ params }) {
       role === 'owner' ? getTripLog(trip.id) : getTripLogAdmin(trip.id),
       role === 'owner' ? getMembers(trip.id) : null,
     ]);
+    rainy = await loadRainy(trip, bundle.placeMap);
   } catch (e) {
     if (e?.digest?.startsWith?.('NEXT_')) throw e;
     return (
@@ -48,6 +50,7 @@ export default async function TripResultPage({ params }) {
       placeMap={bundle.placeMap}
       userEmail={user.email}
       log={fromRow(logRow)}
+      rainy={rainy}
     />
   );
 }
