@@ -2,14 +2,15 @@
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { IconBack, IconShare } from '@/components/Icons';
+import { IconBack, IconCafe, IconCar, IconFood, IconHome, IconShare, IconSight, IconSpark } from '@/components/Icons';
 import Sheet from '@/components/Sheet';
 import ReportSheet from '@/components/ReportSheet';
-import { DAY_LABELS, FEATURES, TRAVEL_MODES, dayStyle, departAreasFor } from '@/lib/config';
-import { formatHM } from '@/lib/geo';
-import { companionText, isEditorRoute, mapLink } from '@/lib/format';
-import { addDays } from '@/lib/hours';
-import { daySummary, slotTitle, tripDepartArea, tripMode } from '@/lib/trip';
+import RouteMap from '@/components/RouteMap';
+import { CATEGORIES, DAY_LABELS, FEATURES, TRAVEL_MODES, dayStyle, departAreasFor } from '@/lib/config';
+import { formatDuration, formatHM } from '@/lib/geo';
+import { blogLink, companionText, isEditorRoute, mapLink, routeLink } from '@/lib/format';
+import { addDays, hoursText, isClosedOn, toHHMM, toMin } from '@/lib/hours';
+import { isEmptySlot, mapDays, rowWarning, slotTitle, summarize, tripDepartArea, tripMode } from '@/lib/trip';
 import { copyRoute, logRouteView } from '@/app/actions/trips';
 import { LogLine, LogSummary } from '@/components/TripLog';
 import { slotLog } from '@/lib/triplog';
@@ -28,6 +29,9 @@ export default function RouteDetail({ trip, placeMap, tags, stats, places, isLog
   const [reportOpen, setReportOpen] = useState(false);
   const [toast, setToast] = useState(null);
   const editor = isEditorRoute(trip);
+  const perDay = useMemo(() => summarize(trip, placeMap).perDay, [trip, placeMap]);
+  const mapData = useMemo(() => mapDays(trip.days, placeMap, trip), [trip, placeMap]);
+  const tagLabels = useMemo(() => Object.fromEntries((tags || []).map((t) => [t.id, t.label])), [tags]);
 
   useEffect(() => {
     if (!isOwner) logRouteView(trip.id);
@@ -108,50 +112,37 @@ export default function RouteDetail({ trip, placeMap, tags, stats, places, isLog
           ))}
         </div>
 
-        <div className="flex flex-col gap-2.5">
-          {trip.days.map((d, i) => {
-            const isOpen = open === i;
-            const stops = d.slots.filter((s) => (s.placeId && placeMap[s.placeId]) || s.custom);
-            return (
-              <div key={d.date} className="card flex flex-col gap-2 p-4">
-                <button
-                  type="button"
-                  aria-expanded={isOpen}
-                  onClick={() => setOpen(isOpen ? -1 : i)}
-                  className="flex min-h-9 items-center gap-2.5 text-left"
-                >
-                  <span
-                    className="flex h-8 w-11 flex-none items-center justify-center rounded-full font-display text-sm text-white"
-                    style={{ background: dayStyle(i).hex }}
-                  >
-                    {i + 1}일
-                  </span>
-                  <span className="flex-1 text-sm">{daySummary(d, placeMap) || '장소 없음'}</span>
-                  <span className="text-lg text-sub" aria-hidden="true">
-                    {isOpen ? '−' : '+'}
-                  </span>
-                </button>
-                {isOpen && (
-                  <div className="flex flex-col gap-1.5">
-                    {stops.map((s) => (
-                      <div key={s.id} className="flex flex-col gap-0.5 rounded-[14px] bg-bg px-2.5 py-2 text-sm">
-                        <div className="flex items-center gap-2.5">
-                          <span className="font-bold text-sub">{s.time}</span>
-                          <span className="min-w-0 flex-1 truncate">{slotTitle(s, placeMap)}</span>
-                          {s.placeId && <a href={mapLink(placeMap[s.placeId])} target="_blank" rel="noopener noreferrer" className="text-xs text-ok underline">
-                            지도
-                          </a>}
-                        </div>
-                        {log && <LogLine entry={slotLog(log, s)} />}
-                      </div>
-                    ))}
-                    {!stops.length && <div className="text-sm text-sub">{DAY_LABELS[i]}은 비어 있어요</div>}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        {/* 동선 지도 + 일자 탭 (지도는 고른 날 동선을 진하게) */}
+        <div className="card flex flex-col gap-3 p-3">
+          <RouteMap days={mapData} active={open} />
+          <div className="flex gap-1.5 overflow-x-auto" role="tablist" aria-label="일자">
+            {trip.days.map((d, i) => (
+              <button
+                key={d.date}
+                type="button"
+                role="tab"
+                aria-selected={open === i}
+                onClick={() => setOpen(i)}
+                className={`flex h-11 min-w-[84px] flex-1 items-center justify-center gap-1.5 rounded-full font-display text-sm ${
+                  open === i ? 'bg-selected text-selected-ink' : 'border-2 border-line bg-surface'
+                }`}
+              >
+                <span className="h-2.5 w-2.5 rounded-full" style={{ background: dayStyle(i).hex }} aria-hidden="true" />
+                {DAY_LABELS[i] || `${i + 1}일차`}
+              </button>
+            ))}
+          </div>
         </div>
+
+        <DayTimeline
+          key={open}
+          dayIndex={open}
+          date={trip.days[open]?.date}
+          rows={perDay[open] || []}
+          placeMap={placeMap}
+          tagLabels={tagLabels}
+          log={log}
+        />
 
         {log && <LogSummary log={log} days={trip.days} />}
 
@@ -193,6 +184,167 @@ export default function RouteDetail({ trip, placeMap, tags, stats, places, isLog
       {copyOpen && <CopySheet trip={trip} setup={setup} onClose={() => setCopyOpen(false)} />}
       {reportOpen && <ReportSheet places={places} tripId={trip.id} tags={tags} onClose={() => setReportOpen(false)} />}
     </>
+  );
+}
+
+/** 장소 종류 딱지 모양 (시안 B 색: 볼거리 민트 · 식당 복숭아 · 카페 하늘) */
+const KIND_LOOK = {
+  sight: { bg: 'bg-mint', ink: 'text-[#1E5A45]', Icon: IconSight },
+  food: { bg: 'bg-[#FFE9DF]', ink: 'text-warn-ink', Icon: IconFood },
+  cafe: { bg: 'bg-sky', ink: 'text-[#2F4A8A]', Icon: IconCafe },
+};
+// 세부 종류가 큰 종류와 같은 말이면 안 보여 준다 ("음식점", "관광지")
+const PLAIN_SUB = new Set(['음식점', '관광지', '기타', '카페/전통찻집', '문화시설']);
+const HIDDEN_TAGS = new Set(['regular_closed']); // 정기휴무는 영업시간 줄에서 따로 알려 준다
+
+/** "제주특별자치도 제주시 구좌읍 비자숲길 55" → "제주시 구좌읍" */
+function areaOf(address) {
+  return String(address || '')
+    .replace(/^제주특별자치도\s*/, '')
+    .split(/\s+/)
+    .slice(0, 2)
+    .join(' ');
+}
+
+/** 고른 날의 타임라인: 이동 → 장소 카드(종류 딱지·태그·영업시간·추천 이유·링크) */
+function DayTimeline({ dayIndex, date, rows, placeMap, tagLabels, log }) {
+  const st = dayStyle(dayIndex);
+  const stops = rows.filter((r) => (r.slot.placeId && r.place) || r.slot.custom);
+  const travel = rows.reduce((a, r) => a + (r.travelFromPrev?.minutes || 0), 0);
+  const kinds = stops.reduce((a, r) => ((a[r.place?.category] = (a[r.place?.category] || 0) + 1), a), {});
+  let n = 0;
+
+  return (
+    <section className="flex flex-col gap-1" aria-label={DAY_LABELS[dayIndex]}>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pb-1">
+        <h2 className="m-0 font-display text-lg">{DAY_LABELS[dayIndex] || `${dayIndex + 1}일차`}</h2>
+        <span className="text-[13px] text-sub">
+          {stops.length}곳{travel > 0 && ` · 이동 ${formatDuration(travel)}`}
+        </span>
+        <span className="ml-auto flex gap-1">
+          {['sight', 'food', 'cafe'].map((k) =>
+            kinds[k] ? (
+              <span key={k} className={`rounded-xl px-2 py-0.5 text-[11px] font-bold ${KIND_LOOK[k].bg} ${KIND_LOOK[k].ink}`}>
+                {CATEGORIES[k]} {kinds[k]}
+              </span>
+            ) : null
+          )}
+        </span>
+      </div>
+      {!stops.length && <div className="card p-4 text-sm text-sub">이날은 비어 있어요</div>}
+
+      {rows.map((r) => {
+        const s = r.slot;
+        if (isEmptySlot(s)) return null;
+        const place = s.placeId ? placeMap[s.placeId] : null;
+        if (s.placeId && !place) return null;
+        const isStop = !!(place || s.custom);
+        if (isStop) n++;
+        const name = slotTitle(s, placeMap);
+        const tr = r.travelFromPrev;
+        const start = toMin(s.time);
+        const timeText = isStop && s.stayMinutes > 0 && start !== null ? `${s.time}–${toHHMM(start + s.stayMinutes)}` : s.time;
+        const warn = rowWarning(r);
+
+        return (
+          <div key={s.id} className="flex flex-col gap-1">
+            {tr && (
+              <div className="flex items-center gap-1.5 py-0.5 pl-[52px] text-xs text-sub">
+                <IconCar />
+                <span>차로 약 {formatDuration(tr.minutes) || '바로'}</span>
+                {tr.minutes > 0 && r.point && (
+                  <a href={routeLink(tr.from, { ...r.point, name })} target="_blank" rel="noopener noreferrer" className="flex min-h-8 items-center text-ok underline">
+                    길찾기
+                  </a>
+                )}
+              </div>
+            )}
+            {place ? (
+              <PlaceStop n={n} st={st} s={s} place={place} name={name} timeText={timeText} date={date} tagLabels={tagLabels} warn={warn} r={r} log={log} />
+            ) : (
+              <div className="flex items-center gap-3 rounded-[20px] bg-surface px-3 py-2.5 shadow-soft">
+                <div
+                  className="flex h-9 w-9 flex-none items-center justify-center font-display text-[17px]"
+                  style={isStop ? { background: st.hex, color: '#fff', borderRadius: '12px 18px 14px 18px' } : { background: '#FFC93C', borderRadius: 18 }}
+                  aria-hidden="true"
+                >
+                  {isStop ? n : <IconHome />}
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <div className="text-[13px] font-bold text-sub">{timeText}</div>
+                  <div className="font-display text-[15px] leading-snug">{name}</div>
+                  {s.custom?.address && <div className="text-xs text-sub">{s.custom.address}</div>}
+                  {s.fixed?.note && <div className="text-xs text-sub">{s.fixed.note}</div>}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
+function PlaceStop({ n, st, s, place, name, timeText, date, tagLabels, warn, r, log }) {
+  const look = KIND_LOOK[place.category] || KIND_LOOK.sight;
+  const sub = place.sub_category && !PLAIN_SUB.has(place.sub_category) ? place.sub_category : null;
+  const tags = (place.kid_tags || []).filter((t) => !HIDDEN_TAGS.has(t) && tagLabels[t]).slice(0, 4);
+  const closed = date && isClosedOn(place, date);
+  const hours = date ? hoursText(place, date) : '';
+  const area = areaOf(place.address);
+  const meta = [area, closed ? null : hours && `${hours} 영업`].filter(Boolean).join(' · ');
+
+  return (
+    <article className="flex gap-3 rounded-[20px] bg-surface p-3 shadow-soft">
+      <div
+        className="flex h-9 w-9 flex-none items-center justify-center font-display text-[17px] text-white"
+        style={{ background: st.hex, borderRadius: '12px 18px 14px 18px' }}
+        aria-hidden="true"
+      >
+        {n}
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <span className="text-[13px] font-bold text-sub">{timeText}</span>
+          <span className={`inline-flex items-center gap-1 rounded-xl px-2 py-0.5 text-[11px] font-bold ${look.bg} ${look.ink}`}>
+            <look.Icon />
+            {CATEGORIES[place.category] || '장소'}
+          </span>
+          {sub && <span className="truncate text-[11px] text-sub">{sub}</span>}
+        </div>
+        <h3 className="m-0 font-display text-[17px] font-normal leading-snug">{name}</h3>
+        {meta && <div className="text-xs text-sub">{meta}</div>}
+        {s.aiReason && (
+          <p className="m-0 flex gap-1.5 rounded-[12px] bg-bg px-2.5 py-1.5 text-[13px] leading-relaxed">
+            <span className="mt-[3px] flex-none text-ok" aria-hidden="true">
+              <IconSpark size={13} />
+            </span>
+            <span>{s.aiReason}</span>
+          </p>
+        )}
+        {(place.indoor || tags.length > 0) && (
+          <div className="flex flex-wrap gap-1">
+            {place.indoor && <span className="kid-tag">실내</span>}
+            {tags.map((t) => (
+              <span key={t} className="kid-tag">
+                {tagLabels[t]}
+              </span>
+            ))}
+          </div>
+        )}
+        {s.memo && <div className="text-xs text-warn-ink">챙길 것 · {s.memo}</div>}
+        {log && <LogLine entry={slotLog(log, s)} />}
+        {warn && (r.check.level === 'warn' || r.lateBy > 0) && <div className="text-xs font-bold text-warn-ink">{warn}</div>}
+        <div className="flex gap-3 text-xs">
+          <a href={mapLink(place)} target="_blank" rel="noopener noreferrer" className="flex min-h-8 items-center text-ok underline">
+            지도
+          </a>
+          <a href={blogLink(place)} target="_blank" rel="noopener noreferrer" className="flex min-h-8 items-center text-ok underline">
+            사진·후기 보기
+          </a>
+        </div>
+      </div>
+    </article>
   );
 }
 

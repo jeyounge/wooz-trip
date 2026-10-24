@@ -85,6 +85,22 @@ export const IconSpark = ({ size = 16 }) => (
     <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6" />
   </svg>
 );
+/** 장소 종류: 볼거리(깃발) · 식당(숟가락·포크) · 카페(컵) */
+export const IconSight = ({ size = 12 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...base} strokeWidth={2.2}>
+    <path d="M5 21V4M5 4h11l-2 4 2 4H5" />
+  </svg>
+);
+export const IconFood = ({ size = 12 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...base} strokeWidth={2.2}>
+    <path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 21V3c-2 1-3 4-3 7h3" />
+  </svg>
+);
+export const IconCafe = ({ size = 12 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...base} strokeWidth={2.2}>
+    <path d="M4 9h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM16 10h2a2 2 0 0 1 0 4h-2M8 3v3M12 3v3" />
+  </svg>
+);
 export const IconHome = ({ size = 16 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" {...base}>
     <path d="M3 11l9-7 9 7v9H3z" />
