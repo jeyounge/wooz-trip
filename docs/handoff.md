@@ -112,7 +112,7 @@ Claude 에게 이렇게 말하면 된다: **"handoff 읽고 이어서 하자"**
 | `0007_wooz_trip_golf.sql` 골프장 | 할 일 |
 | `0008_wooz_trip_members.sql` 같이 고치기 | 할 일 |
 | `0009_wooz_trip_travel_cache.sql` 이동시간 캐시 좌표 기준으로 다시 만들기 (길찾기) | 실행함 (2026-10-25), 공개 루트 218구간 채움 |
-| `0010_wooz_trip_travel_path.sql` 캐시에 도로 경로 칸 | 할 일 → 실행 뒤 `npm run travel:fill` |
+| `0010_wooz_trip_travel_path.sql` 캐시에 도로 경로 칸 | 실행함 (2026-10-25), 공개 루트 도로 경로 채움 |
 
 새 SQL 이 생기면 파일 경로를 정리해서 사용자에게 알려 준다 (사용자가 직접 실행).
 
@@ -164,7 +164,7 @@ Claude 에게 이렇게 말하면 된다: **"handoff 읽고 이어서 하자"**
    주의: 승인한 장소는 매일 자동 반영이 덮어쓰지 않아서, 제주 444곳은 영업시간이 비어 있고 나중에 수집돼도 자동으로 안 채워진다
    → 필요하면 import 가 "영업시간이 빈 승인 장소"는 채우도록 고치기. AI 루트 다시 만들기 (`places:export` → `pool.mjs` → `routes:build` → `routes:sql`)
 4. 카카오맵 도메인 확인 (위 확인법), Supabase Redirect URLs `https://trip.z-labs.kr/**`
-5. 길찾기: 이동시간·도로 선 붙임 (2026-10-25, 카카오모빌리티, 0010 실행 필요). 남은 것 → 정식 오픈 전 카카오모빌리티 제휴 확인
+5. 길찾기: 이동시간·도로 선 붙임 (2026-10-25, 카카오모빌리티). 남은 것 → 정식 오픈 전 카카오모빌리티 제휴 확인
 6. 서비스명 정하기 (`NEXT_PUBLIC_SERVICE_NAME`)
 7. 제주 수집이 끝나면 TourAPI **운영계정(트래픽 증가)** 신청 → `TOURAPI_DAILY_LIMIT` 올리기
 8. 인천·경기 오픈 준비: 권역 나누기 → `config.js` REGIONS + `REGION_ZONE`(capital) 확장 (`docs/data-plan.md` 5장), 수도권 당일치기 AI 루트
