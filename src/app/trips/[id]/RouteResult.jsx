@@ -7,6 +7,7 @@ import { IconBookmark, IconDown, IconEdit, IconHome, IconUp, IconWarn } from '@/
 import RouteMap from '@/components/RouteMap';
 import RainyAlt from '@/components/RainyAlt';
 import { rainyKey } from '@/lib/rainy';
+import { makeTravelFn } from '@/lib/travel';
 import Sheet from '@/components/Sheet';
 import { DAY_LABELS, dayStyle } from '@/lib/config';
 import { isEmptySlot, mapDays, rowWarning, slotTitle, summarize } from '@/lib/trip';
@@ -18,7 +19,7 @@ import { canLogSpend, canReview, hasLog, logTotals, slotLog, won } from '@/lib/t
 import TripMembers from '@/components/TripMembers';
 
 /** S05 루트 결과: 지도 동선 + 타임라인 + 순서 바꾸기·메모 + 쓴 돈·한마디 기록 + 저장/공유/공개 */
-export default function RouteResult({ trip: initialTrip, rev: initialRev, role = 'owner', members, userId, placeMap, userEmail, log: initialLog, rainy = {} }) {
+export default function RouteResult({ trip: initialTrip, rev: initialRev, role = 'owner', members, userId, placeMap, userEmail, log: initialLog, rainy = {}, travel: initialTravel }) {
   const router = useRouter();
   const isOwner = role === 'owner';
   const rev = useRef(initialRev); // 마지막으로 받은 일정 지문 (같이 고칠 때 충돌 확인)
@@ -44,7 +45,9 @@ export default function RouteResult({ trip: initialTrip, rev: initialRev, role =
   const totals = useMemo(() => logTotals(log, days), [log, days]);
 
   const view = useMemo(() => ({ ...trip, days }), [trip, days]);
-  const sum = useMemo(() => summarize(view, placeMap), [view, placeMap]);
+  const [travel, setTravel] = useState(initialTravel || {});
+  const travelFn = useMemo(() => makeTravelFn(travel), [travel]);
+  const sum = useMemo(() => summarize(view, placeMap, travelFn), [view, placeMap, travelFn]);
   const rows = sum.perDay[day] || [];
   const mapData = useMemo(() => mapDays(days, placeMap, view), [days, placeMap, view]);
 
@@ -69,6 +72,7 @@ export default function RouteResult({ trip: initialTrip, rev: initialRev, role =
       const res = await saveDays(trip.id, next, rev.current);
       if (res.ok) {
         rev.current = res.rev;
+        if (res.travel) setTravel((t) => ({ ...t, ...res.travel }));
         if (next === latest.current) daysDirty.current = false;
       } else if (res.conflict) {
         conflicted.current = true;

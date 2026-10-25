@@ -7,6 +7,8 @@ import { summarize, usedPlaceIds } from '@/lib/trip';
 import { ErrorCard, TopBar } from '@/components/ui';
 import { SERVICE_NAME } from '@/lib/config';
 import { isEditorRoute, routeShareText } from '@/lib/format';
+import { makeTravelFn } from '@/lib/travel';
+import { travelForPage } from '@/lib/travelPage';
 import RouteDetail from './RouteDetail';
 
 export const dynamic = 'force-dynamic';
@@ -43,11 +45,12 @@ export default async function RouteDetailPage({ params, searchParams }) {
   let user;
   let logRow;
   let rainy = {};
+  let travel = {};
   try {
     [trip, user] = await Promise.all([loadTrip(id), getCurrentUser()]);
     if (!trip || (trip.visibility !== 'public' && trip.owner_id !== user?.id)) notFound();
     [bundle, logRow] = await Promise.all([loadBundle(trip), getTripLog(trip.id)]);
-    rainy = await loadRainy(trip, bundle.placeMap);
+    [rainy, travel] = await Promise.all([loadRainy(trip, bundle.placeMap), travelForPage(trip, bundle.placeMap)]);
   } catch (e) {
     if (e?.digest?.startsWith?.('NEXT_')) throw e;
     return (
@@ -57,7 +60,7 @@ export default async function RouteDetailPage({ params, searchParams }) {
       </>
     );
   }
-  const sum = summarize(trip, bundle.placeMap);
+  const sum = summarize(trip, bundle.placeMap, makeTravelFn(travel));
   const places = usedPlaceIds(trip.days)
     .map((pid) => bundle.placeMap[pid])
     .filter(Boolean)
@@ -87,6 +90,7 @@ export default async function RouteDetailPage({ params, searchParams }) {
       setup={setup}
       log={logRow?.is_public ? fromRow(logRow) : null}
       rainy={rainy}
+      travel={travel}
     />
   );
 }

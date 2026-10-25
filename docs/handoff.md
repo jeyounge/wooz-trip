@@ -23,6 +23,17 @@ Claude 에게 이렇게 말하면 된다: **"handoff 읽고 이어서 하자"**
 | **0008 SQL 실행** (같이 고치기) → 결과 화면 아래 「같이 고치기」에서 가족 이메일 넣어 보기 | 할 일 |
 | 관리자 화면에서 사용자가 카카오로 넣은 후보 장소(`source_provider = kakao`) 승인 | 생길 때마다 |
 
+## 2026-10-25 한 일 — 카카오모빌리티 길찾기로 실제 이동시간
+
+- 키는 이미 있는 `KAKAO_REST_API_KEY` (Vercel 에도 있음) 로 자동차 길찾기 호출됨 확인. 무료 하루 10,000건, 넘으면 건당 8원.
+  **상업적 이용은 무료 한도 안이라도 사전 제휴 필요** (api.partners@kakaomobility.com) → 정식 오픈 전 확인 목록
+- 캐시 `wooz_trip_travel_cache` 를 좌표 키(소수 넷째 자리, 방향 있음)로 다시 만듦 (0009) → 공항·숙소·출발지·직접 일정 구간도 저장
+- `src/lib/travel.js` (순수): `tripLegs` 루트 구간, `makeTravelFn(known)` 캐시 있으면 길찾기 시간(5분 올림) 없으면 직선 추정치
+- `src/lib/travelCache.js` (서버): 캐시 읽기, 없는 구간만 길찾기(동시 4개, 5초 제한, 실패·섬 구간은 저장 안 함 → 추정치),
+  하루 상한 `TRAVEL_DAILY_LIMIT`(기본 9,000), 반년 지나면 다시 받음. `travelPage.js`: 화면은 캐시만 읽고 없는 구간은 응답 뒤(after) 채움
+- 편집·결과 화면은 저장할 때 새 구간을 바로 받아(3초까지) 돌려줌 → 장소 넣고 자동 저장되면 실제 시간으로 바뀜
+- 아직 추정치를 쓰는 곳: 장소 고르기 후보 거리, AI 빈칸 채우기·복사 검사, 비 오는 날 대안 (후보가 많아서). 지도 선은 아직 직선
+
 ## 2026-10-24 (오후) 한 일 — 상시 개방 · 공유 미리보기 · 비 오는 날 대안
 
 - **상시 개방 구분**: TourAPI 「상시 개방」·「24시간」을 `opening_hours = { always: true }` 로 저장 (전엔 null 이라 "정보 없음"과 같았음).
@@ -97,6 +108,7 @@ Claude 에게 이렇게 말하면 된다: **"handoff 읽고 이어서 하자"**
 | `0006_wooz_trip_trip_logs.sql` 쓴 돈·다녀온 한마디 | 실행함 (2026-10-18) |
 | `0007_wooz_trip_golf.sql` 골프장 | 할 일 |
 | `0008_wooz_trip_members.sql` 같이 고치기 | 할 일 |
+| `0009_wooz_trip_travel_cache.sql` 이동시간 캐시 좌표 기준으로 다시 만들기 (길찾기) | 할 일 → 실행 뒤 `npm run travel:fill` |
 
 새 SQL 이 생기면 파일 경로를 정리해서 사용자에게 알려 준다 (사용자가 직접 실행).
 
@@ -148,7 +160,7 @@ Claude 에게 이렇게 말하면 된다: **"handoff 읽고 이어서 하자"**
    주의: 승인한 장소는 매일 자동 반영이 덮어쓰지 않아서, 제주 444곳은 영업시간이 비어 있고 나중에 수집돼도 자동으로 안 채워진다
    → 필요하면 import 가 "영업시간이 빈 승인 장소"는 채우도록 고치기. AI 루트 다시 만들기 (`places:export` → `pool.mjs` → `routes:build` → `routes:sql`)
 4. 카카오맵 도메인 확인 (위 확인법), Supabase Redirect URLs `https://trip.z-labs.kr/**`
-5. 길찾기 API 선택 (카카오모빌리티 vs T맵 요금·한도) → 도로 따라가는 선 + 실제 이동시간, `wooz_trip_travel_cache` 에 저장
+5. 길찾기: 이동시간은 붙임 (2026-10-25, 카카오모빌리티). 남은 것 → 도로 따라가는 지도 선(경로 좌표 저장), 정식 오픈 전 카카오모빌리티 제휴 확인
 6. 서비스명 정하기 (`NEXT_PUBLIC_SERVICE_NAME`)
 7. 제주 수집이 끝나면 TourAPI **운영계정(트래픽 증가)** 신청 → `TOURAPI_DAILY_LIMIT` 올리기
 8. 인천·경기 오픈 준비: 권역 나누기 → `config.js` REGIONS + `REGION_ZONE`(capital) 확장 (`docs/data-plan.md` 5장), 수도권 당일치기 AI 루트

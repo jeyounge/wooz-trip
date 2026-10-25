@@ -8,6 +8,7 @@ import PlacePicker from '@/components/PlacePicker';
 import ReportSheet from '@/components/ReportSheet';
 import Sheet from '@/components/Sheet';
 import { DAY_LABELS, SLOT_TYPES } from '@/lib/config';
+import { makeTravelFn } from '@/lib/travel';
 import { computeDay, isEmptySlot, newSlotId, rowWarning, slotPoint, slotTitle } from '@/lib/trip';
 import { shortDate, toHHMM, toMin, weekdayLabel } from '@/lib/hours';
 import { tripSubtitle, slotLabel } from '@/lib/format';
@@ -17,7 +18,7 @@ import AiThinking, { waitAtLeast } from '@/components/AiThinking';
 import CustomSlotSheet from '@/components/CustomSlotSheet';
 import LocationSearch from '@/components/LocationSearch';
 
-export default function SlotEditor({ trip: initialTrip, rev: initialRev, role = 'owner', initialPlaces, tags, fromAi, initialDay = 0 }) {
+export default function SlotEditor({ trip: initialTrip, rev: initialRev, role = 'owner', initialPlaces, initialTravel, tags, fromAi, initialDay = 0 }) {
   const isOwner = role === 'owner';
   const rev = useRef(initialRev); // 마지막으로 받은 일정 지문 (같이 고칠 때 충돌 확인)
   const conflicted = useRef(false); // 충돌 뒤에는 다시 불러올 때까지 저장하지 않는다
@@ -39,19 +40,21 @@ export default function SlotEditor({ trip: initialTrip, rev: initialRev, role = 
 
   const tagLabels = useMemo(() => Object.fromEntries(tags.map((t) => [t.id, t.label])), [tags]);
   const tripView = useMemo(() => ({ ...trip, days }), [trip, days]);
-  const rows = useMemo(() => computeDay(days[day], places, tripView), [days, day, places, tripView]);
+  const [travel, setTravel] = useState(initialTravel || {});
+  const travelFn = useMemo(() => makeTravelFn(travel), [travel]);
+  const rows = useMemo(() => computeDay(days[day], places, tripView, travelFn), [days, day, places, tripView, travelFn]);
 
   const stats = useMemo(() => {
     let empty = 0;
     let warns = 0;
     days.forEach((d) => {
-      computeDay(d, places, tripView).forEach((r) => {
+      computeDay(d, places, tripView, travelFn).forEach((r) => {
         if (isEmptySlot(r.slot)) empty++;
         if (r.check.level === 'warn' || r.lateBy > 0) warns++;
       });
     });
     return { empty, warns };
-  }, [days, places, tripView]);
+  }, [days, places, tripView, travelFn]);
 
   // 자동 저장 (0.8초 묶음)
   // 저장은 한 번에 하나씩 (앞 저장이 받은 지문으로 다음 저장을 해야 내 저장끼리 충돌로 보이지 않는다)
@@ -63,6 +66,7 @@ export default function SlotEditor({ trip: initialTrip, rev: initialRev, role = 
         setSave({ state: 'saving', message: '' });
         const res = await saveDays(trip.id, next, rev.current);
         if (res.ok) rev.current = res.rev;
+        if (res.ok && res.travel) setTravel((t) => ({ ...t, ...res.travel }));
         setSave(res.ok ? { state: 'saved', message: '' } : { state: 'error', message: res.message });
         // 다른 사람이 먼저 고쳤으면 최신 일정을 다시 불러온다 (방금 바꾼 건 다시 해야 한다)
         if (res.conflict) {

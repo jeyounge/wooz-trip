@@ -22,6 +22,7 @@ import { EVENTS, logEvent } from '@/lib/events';
 import { isUuid, TRIP_COLUMNS } from '@/lib/trips';
 import { sanitizeLog } from '@/lib/triplog';
 import { daysRev } from '@/lib/rev';
+import { syncTripTravel } from '@/lib/travelCache';
 import { MAX_MEMBERS, MEMBERS_MISSING, getMembers, tripRole } from '@/lib/members';
 
 const fail = (message) => ({ ok: false, message });
@@ -195,7 +196,12 @@ export async function saveDays(tripId, days, baseRev) {
       .maybeSingle();
     if (error) return fail(error.message);
     if (!data) return CONFLICT;
-    return { ok: true, days: clean, rev: daysRev(data.days) };
+    // 새로 생긴 구간은 바로 길찾기로 받아서 같이 돌려준다 (늦으면 기다리지 않고 추정치로)
+    const travel = await Promise.race([
+      getPlaceMap(usedPlaceIds(clean)).then((pm) => syncTripTravel({ ...trip, days: clean }, pm)),
+      new Promise((r) => setTimeout(() => r(null), 3000)),
+    ]).catch(() => null);
+    return { ok: true, days: clean, rev: daysRev(data.days), travel };
   } catch (e) {
     return fail(e.message);
   }

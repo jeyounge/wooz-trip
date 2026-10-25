@@ -10,6 +10,7 @@ import { CATEGORIES, DAY_LABELS, FEATURES, TRAVEL_MODES, dayStyle, departAreasFo
 import { formatDuration, formatHM } from '@/lib/geo';
 import RainyAlt from '@/components/RainyAlt';
 import { rainyKey } from '@/lib/rainy';
+import { makeTravelFn } from '@/lib/travel';
 import { blogLink, companionText, isEditorRoute, mapLink, routeLink } from '@/lib/format';
 import { addDays, hoursText, isAlwaysOpen, isClosedOn, toHHMM, toMin } from '@/lib/hours';
 import { isEmptySlot, mapDays, rowWarning, slotTitle, summarize, tripDepartArea, tripMode } from '@/lib/trip';
@@ -24,14 +25,15 @@ function today() {
 }
 
 /** S06 공개 루트 상세 (시안 B) */
-export default function RouteDetail({ trip, placeMap, tags, stats, places, isLoggedIn, isOwner, setup, log, rainy = {} }) {
+export default function RouteDetail({ trip, placeMap, tags, stats, places, isLoggedIn, isOwner, setup, log, rainy = {}, travel }) {
   const router = useRouter();
   const [open, setOpen] = useState(0);
   const [copyOpen, setCopyOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [toast, setToast] = useState(null);
   const editor = isEditorRoute(trip);
-  const perDay = useMemo(() => summarize(trip, placeMap).perDay, [trip, placeMap]);
+  const travelFn = useMemo(() => makeTravelFn(travel), [travel]);
+  const perDay = useMemo(() => summarize(trip, placeMap, travelFn).perDay, [trip, placeMap, travelFn]);
   const mapData = useMemo(() => mapDays(trip.days, placeMap, trip), [trip, placeMap]);
   const tagLabels = useMemo(() => Object.fromEntries((tags || []).map((t) => [t.id, t.label])), [tags]);
 

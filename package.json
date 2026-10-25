@@ -21,7 +21,8 @@
     "places:approve": "node scripts/places/approve.mjs",
     "routes:build": "node scripts/ai-routes/build.mjs",
     "golf:collect": "node scripts/golf/collect.mjs",
-    "routes:samples": "node scripts/sample-routes/publish.mjs"
+    "routes:samples": "node scripts/sample-routes/publish.mjs",
+    "travel:fill": "node scripts/travel/fill.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

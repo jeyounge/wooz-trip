@@ -5,6 +5,7 @@ import { getMembers } from '@/lib/members';
 import { daysRev } from '@/lib/rev';
 import { fromRow } from '@/lib/triplog';
 import { ErrorCard, TopBar } from '@/components/ui';
+import { travelForPage } from '@/lib/travelPage';
 import RouteResult from './RouteResult';
 
 export const dynamic = 'force-dynamic';
@@ -19,6 +20,7 @@ export default async function TripResultPage({ params }) {
   let logRow;
   let members = null;
   let rainy = {};
+  let travel = {};
   try {
     const found = await getTripForUser(id, user?.id);
     if (!found) notFound();
@@ -30,7 +32,7 @@ export default async function TripResultPage({ params }) {
       role === 'owner' ? getTripLog(trip.id) : getTripLogAdmin(trip.id),
       role === 'owner' ? getMembers(trip.id) : null,
     ]);
-    rainy = await loadRainy(trip, bundle.placeMap);
+    [rainy, travel] = await Promise.all([loadRainy(trip, bundle.placeMap), travelForPage(trip, bundle.placeMap)]);
   } catch (e) {
     if (e?.digest?.startsWith?.('NEXT_')) throw e;
     return (
@@ -51,6 +53,7 @@ export default async function TripResultPage({ params }) {
       userEmail={user.email}
       log={fromRow(logRow)}
       rainy={rainy}
+      travel={travel}
     />
   );
 }
