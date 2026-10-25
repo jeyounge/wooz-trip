@@ -10,7 +10,7 @@ import { CATEGORIES, DAY_LABELS, FEATURES, TRAVEL_MODES, dayStyle, departAreasFo
 import { formatDuration, formatHM } from '@/lib/geo';
 import RainyAlt from '@/components/RainyAlt';
 import { rainyKey } from '@/lib/rainy';
-import { makeTravelFn } from '@/lib/travel';
+import { makeTravelFn, withRoads } from '@/lib/travel';
 import { blogLink, companionText, isEditorRoute, mapLink, routeLink } from '@/lib/format';
 import { addDays, hoursText, isAlwaysOpen, isClosedOn, toHHMM, toMin } from '@/lib/hours';
 import { isEmptySlot, mapDays, rowWarning, slotTitle, summarize, tripDepartArea, tripMode } from '@/lib/trip';
@@ -32,9 +32,9 @@ export default function RouteDetail({ trip, placeMap, tags, stats, places, isLog
   const [reportOpen, setReportOpen] = useState(false);
   const [toast, setToast] = useState(null);
   const editor = isEditorRoute(trip);
-  const travelFn = useMemo(() => makeTravelFn(travel), [travel]);
+  const travelFn = useMemo(() => makeTravelFn(travel?.minutes), [travel]);
   const perDay = useMemo(() => summarize(trip, placeMap, travelFn).perDay, [trip, placeMap, travelFn]);
-  const mapData = useMemo(() => mapDays(trip.days, placeMap, trip), [trip, placeMap]);
+  const mapData = useMemo(() => withRoads(mapDays(trip.days, placeMap, trip), travel?.paths), [trip, placeMap, travel]);
   const tagLabels = useMemo(() => Object.fromEntries((tags || []).map((t) => [t.id, t.label])), [tags]);
 
   useEffect(() => {

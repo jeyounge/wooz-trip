@@ -8,7 +8,9 @@ import { dayStyle } from '@/lib/config';
  * - 없으면 좌표를 그대로 투영한 간이 SVG 지도 (개발·키 발급 전용)
  * 일자는 색 + 선 모양(실선/점선/파선)으로 구분한다.
  *
- * @param {{ days: Array<{ points: Array<{lat,lng,label,n,kind}> }>, active: number }} props
+ * 선은 d.line(도로를 따라가는 좌표, travel.withRoads)이 있으면 그걸로, 없으면 장소 점을 곧게 잇는다.
+ *
+ * @param {{ days: Array<{ points: Array<{lat,lng,label,n,kind}>, line?: Array<{lat,lng}> }>, active: number }} props
  */
 export default function RouteMap({ days, active = 0, height = 220 }) {
   const key = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY;
@@ -47,11 +49,12 @@ function SvgMap({ days, active, height }) {
             const st = dayStyle(i);
             const on = i === active;
             const pts = d.points.map(proj);
+            const linePts = (d.line || d.points).map(proj);
             return (
               <g key={i} opacity={on ? 1 : 0.2}>
-                {pts.length > 1 && (
+                {linePts.length > 1 && (
                   <polyline
-                    points={pts.map((p) => p.join(',')).join(' ')}
+                    points={linePts.map((p) => p.join(',')).join(' ')}
                     fill="none"
                     stroke={st.hex}
                     strokeWidth="5"
@@ -131,7 +134,7 @@ function KakaoMap({ appKey, days, active, height }) {
         days.forEach((d, i) => {
           const st = dayStyle(i);
           const on = i === active;
-          const path = d.points.map((p) => new kakao.maps.LatLng(p.lat, p.lng));
+          const path = (d.line || d.points).map((p) => new kakao.maps.LatLng(p.lat, p.lng));
           if (path.length > 1) {
             const line = new kakao.maps.Polyline({
               path,

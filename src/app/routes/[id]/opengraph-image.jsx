@@ -2,6 +2,8 @@ import { ImageResponse } from 'next/og';
 import { SERVICE_NAME } from '@/lib/config';
 import { isEditorRoute, routeShareText } from '@/lib/format';
 import { mapDays, usedPlaceIds } from '@/lib/trip';
+import { tripLegs, withRoads } from '@/lib/travel';
+import { readTravel } from '@/lib/travelCache';
 import { getPublicTripAdmin, loadPlaceMapAdmin } from '@/lib/trips';
 import { loadDisplayFont } from '@/lib/og/font';
 import { OG_SIZE, RouteCardImage } from '@/lib/og/RouteCardImage';
@@ -25,7 +27,7 @@ export default async function Image({ params }) {
       title: trip.title,
       summary: routeShareText(trip, names).split(' — ')[0],
       chips: names.slice(0, 4).map((n) => (n.length > 10 ? `${n.slice(0, 10)}…` : n)),
-      days: mapDays(trip.days, placeMap, trip),
+      days: withRoads(mapDays(trip.days, placeMap, trip), (await readTravel(tripLegs(trip, placeMap))).paths),
     };
   }
   const text = [props.brand, props.title, props.summary, ...props.chips, '첫째 날둘째 날셋째 날…'].join('');

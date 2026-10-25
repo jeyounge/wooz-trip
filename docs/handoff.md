@@ -32,7 +32,10 @@ Claude 에게 이렇게 말하면 된다: **"handoff 읽고 이어서 하자"**
 - `src/lib/travelCache.js` (서버): 캐시 읽기, 없는 구간만 길찾기(동시 4개, 5초 제한, 실패·섬 구간은 저장 안 함 → 추정치),
   하루 상한 `TRAVEL_DAILY_LIMIT`(기본 9,000), 반년 지나면 다시 받음. `travelPage.js`: 화면은 캐시만 읽고 없는 구간은 응답 뒤(after) 채움
 - 편집·결과 화면은 저장할 때 새 구간을 바로 받아(3초까지) 돌려줌 → 장소 넣고 자동 저장되면 실제 시간으로 바뀜
-- 아직 추정치를 쓰는 곳: 장소 고르기 후보 거리, AI 빈칸 채우기·복사 검사, 비 오는 날 대안 (후보가 많아서). 지도 선은 아직 직선
+- 아직 추정치를 쓰는 곳: 장소 고르기 후보 거리, AI 빈칸 채우기·복사 검사, 비 오는 날 대안 (후보가 많아서)
+- **도로 선** (0010): 길찾기 응답 경로 좌표를 약 15m 오차로 줄여(Douglas–Peucker) Google polyline 으로 압축해 `path` 에 저장.
+  `travel = { minutes, paths }` 를 화면에 넘기고 `withRoads(mapDays(...), paths)` 가 `d.line` 을 붙임 → RouteMap(카카오·간이 지도)·공유 미리보기 이미지가 도로를 따라 그림.
+  경로 없는 구간(0010 전에 받은 것)은 다음에 화면을 열 때 다시 받아 채움
 
 ## 2026-10-24 (오후) 한 일 — 상시 개방 · 공유 미리보기 · 비 오는 날 대안
 
@@ -108,7 +111,8 @@ Claude 에게 이렇게 말하면 된다: **"handoff 읽고 이어서 하자"**
 | `0006_wooz_trip_trip_logs.sql` 쓴 돈·다녀온 한마디 | 실행함 (2026-10-18) |
 | `0007_wooz_trip_golf.sql` 골프장 | 할 일 |
 | `0008_wooz_trip_members.sql` 같이 고치기 | 할 일 |
-| `0009_wooz_trip_travel_cache.sql` 이동시간 캐시 좌표 기준으로 다시 만들기 (길찾기) | 할 일 → 실행 뒤 `npm run travel:fill` |
+| `0009_wooz_trip_travel_cache.sql` 이동시간 캐시 좌표 기준으로 다시 만들기 (길찾기) | 실행함 (2026-10-25), 공개 루트 218구간 채움 |
+| `0010_wooz_trip_travel_path.sql` 캐시에 도로 경로 칸 | 할 일 → 실행 뒤 `npm run travel:fill` |
 
 새 SQL 이 생기면 파일 경로를 정리해서 사용자에게 알려 준다 (사용자가 직접 실행).
 
@@ -160,7 +164,7 @@ Claude 에게 이렇게 말하면 된다: **"handoff 읽고 이어서 하자"**
    주의: 승인한 장소는 매일 자동 반영이 덮어쓰지 않아서, 제주 444곳은 영업시간이 비어 있고 나중에 수집돼도 자동으로 안 채워진다
    → 필요하면 import 가 "영업시간이 빈 승인 장소"는 채우도록 고치기. AI 루트 다시 만들기 (`places:export` → `pool.mjs` → `routes:build` → `routes:sql`)
 4. 카카오맵 도메인 확인 (위 확인법), Supabase Redirect URLs `https://trip.z-labs.kr/**`
-5. 길찾기: 이동시간은 붙임 (2026-10-25, 카카오모빌리티). 남은 것 → 도로 따라가는 지도 선(경로 좌표 저장), 정식 오픈 전 카카오모빌리티 제휴 확인
+5. 길찾기: 이동시간·도로 선 붙임 (2026-10-25, 카카오모빌리티, 0010 실행 필요). 남은 것 → 정식 오픈 전 카카오모빌리티 제휴 확인
 6. 서비스명 정하기 (`NEXT_PUBLIC_SERVICE_NAME`)
 7. 제주 수집이 끝나면 TourAPI **운영계정(트래픽 증가)** 신청 → `TOURAPI_DAILY_LIMIT` 올리기
 8. 인천·경기 오픈 준비: 권역 나누기 → `config.js` REGIONS + `REGION_ZONE`(capital) 확장 (`docs/data-plan.md` 5장), 수도권 당일치기 AI 루트

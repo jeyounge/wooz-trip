@@ -9,7 +9,7 @@ import { formatDuration } from '@/lib/geo';
 import { mapLink, routeLink, tripSubtitle } from '@/lib/format';
 import RainyAlt from '@/components/RainyAlt';
 import { rainyKey } from '@/lib/rainy';
-import { makeTravelFn } from '@/lib/travel';
+import { makeTravelFn, withRoads } from '@/lib/travel';
 import { shortDate, toHHMM, toMin, weekdayLabel } from '@/lib/hours';
 import { LogLine, LogSummary } from '@/components/TripLog';
 import { slotLog, logTotals, won } from '@/lib/triplog';
@@ -17,9 +17,9 @@ import { slotLog, logTotals, won } from '@/lib/triplog';
 /** 읽기 전용 루트: 지도 + 일자 탭 + 타임라인 */
 export default function SharedRoute({ trip, placeMap, log, rainy = {}, travel }) {
   const [day, setDay] = useState(0);
-  const travelFn = useMemo(() => makeTravelFn(travel), [travel]);
+  const travelFn = useMemo(() => makeTravelFn(travel?.minutes), [travel]);
   const sum = useMemo(() => summarize(trip, placeMap, travelFn), [trip, placeMap, travelFn]);
-  const mapData = useMemo(() => mapDays(trip.days, placeMap, trip), [trip, placeMap]);
+  const mapData = useMemo(() => withRoads(mapDays(trip.days, placeMap, trip), travel?.paths), [trip, placeMap, travel]);
   const rows = sum.perDay[day] || [];
   const st = dayStyle(day);
   const totals = useMemo(() => (log ? logTotals(log, trip.days) : null), [log, trip.days]);

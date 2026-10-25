@@ -7,7 +7,7 @@ import { IconBookmark, IconDown, IconEdit, IconHome, IconUp, IconWarn } from '@/
 import RouteMap from '@/components/RouteMap';
 import RainyAlt from '@/components/RainyAlt';
 import { rainyKey } from '@/lib/rainy';
-import { makeTravelFn } from '@/lib/travel';
+import { makeTravelFn, mergeTravel, withRoads } from '@/lib/travel';
 import Sheet from '@/components/Sheet';
 import { DAY_LABELS, dayStyle } from '@/lib/config';
 import { isEmptySlot, mapDays, rowWarning, slotTitle, summarize } from '@/lib/trip';
@@ -45,11 +45,11 @@ export default function RouteResult({ trip: initialTrip, rev: initialRev, role =
   const totals = useMemo(() => logTotals(log, days), [log, days]);
 
   const view = useMemo(() => ({ ...trip, days }), [trip, days]);
-  const [travel, setTravel] = useState(initialTravel || {});
-  const travelFn = useMemo(() => makeTravelFn(travel), [travel]);
+  const [travel, setTravel] = useState(initialTravel || { minutes: {}, paths: {} });
+  const travelFn = useMemo(() => makeTravelFn(travel.minutes), [travel]);
   const sum = useMemo(() => summarize(view, placeMap, travelFn), [view, placeMap, travelFn]);
   const rows = sum.perDay[day] || [];
-  const mapData = useMemo(() => mapDays(days, placeMap, view), [days, placeMap, view]);
+  const mapData = useMemo(() => withRoads(mapDays(days, placeMap, view), travel.paths), [days, placeMap, view, travel]);
 
   useEffect(
     () => () => {
@@ -72,7 +72,7 @@ export default function RouteResult({ trip: initialTrip, rev: initialRev, role =
       const res = await saveDays(trip.id, next, rev.current);
       if (res.ok) {
         rev.current = res.rev;
-        if (res.travel) setTravel((t) => ({ ...t, ...res.travel }));
+        if (res.travel) setTravel((t) => mergeTravel(t, res.travel));
         if (next === latest.current) daysDirty.current = false;
       } else if (res.conflict) {
         conflicted.current = true;

@@ -60,7 +60,7 @@ export default async function RouteDetailPage({ params, searchParams }) {
       </>
     );
   }
-  const sum = summarize(trip, bundle.placeMap, makeTravelFn(travel));
+  const sum = summarize(trip, bundle.placeMap, makeTravelFn(travel.minutes));
   const places = usedPlaceIds(trip.days)
     .map((pid) => bundle.placeMap[pid])
     .filter(Boolean)

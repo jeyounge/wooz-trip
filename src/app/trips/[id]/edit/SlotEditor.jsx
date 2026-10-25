@@ -8,7 +8,7 @@ import PlacePicker from '@/components/PlacePicker';
 import ReportSheet from '@/components/ReportSheet';
 import Sheet from '@/components/Sheet';
 import { DAY_LABELS, SLOT_TYPES } from '@/lib/config';
-import { makeTravelFn } from '@/lib/travel';
+import { makeTravelFn, mergeTravel } from '@/lib/travel';
 import { computeDay, isEmptySlot, newSlotId, rowWarning, slotPoint, slotTitle } from '@/lib/trip';
 import { shortDate, toHHMM, toMin, weekdayLabel } from '@/lib/hours';
 import { tripSubtitle, slotLabel } from '@/lib/format';
@@ -40,8 +40,8 @@ export default function SlotEditor({ trip: initialTrip, rev: initialRev, role = 
 
   const tagLabels = useMemo(() => Object.fromEntries(tags.map((t) => [t.id, t.label])), [tags]);
   const tripView = useMemo(() => ({ ...trip, days }), [trip, days]);
-  const [travel, setTravel] = useState(initialTravel || {});
-  const travelFn = useMemo(() => makeTravelFn(travel), [travel]);
+  const [travel, setTravel] = useState(initialTravel || { minutes: {}, paths: {} });
+  const travelFn = useMemo(() => makeTravelFn(travel.minutes), [travel]);
   const rows = useMemo(() => computeDay(days[day], places, tripView, travelFn), [days, day, places, tripView, travelFn]);
 
   const stats = useMemo(() => {
@@ -66,7 +66,7 @@ export default function SlotEditor({ trip: initialTrip, rev: initialRev, role = 
         setSave({ state: 'saving', message: '' });
         const res = await saveDays(trip.id, next, rev.current);
         if (res.ok) rev.current = res.rev;
-        if (res.ok && res.travel) setTravel((t) => ({ ...t, ...res.travel }));
+        if (res.ok && res.travel) setTravel((t) => mergeTravel(t, res.travel));
         setSave(res.ok ? { state: 'saved', message: '' } : { state: 'error', message: res.message });
         // 다른 사람이 먼저 고쳤으면 최신 일정을 다시 불러온다 (방금 바꾼 건 다시 해야 한다)
         if (res.conflict) {
