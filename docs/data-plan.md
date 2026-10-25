@@ -15,7 +15,7 @@
 **블로그 후기 사실 수집 (scripts/blogfacts)** — 사용자 결정: "정확한 정보를 위해 공공데이터에 없는 정보는 후기로 팩트체크"
 - 2026-10-18 확인한 robots.txt: `search.naver.com`·`section.blog.naver.com`·`map.naver.com` = 모든 봇 금지,
   `blog.naver.com`·`m.blog.naver.com` 글 페이지 = 일반 봇 허용(일부 경로 제외), AI 학습·RAG 봇은 금지.
-- 그래서: 글 찾기 = **카카오(다음) 블로그 검색 API**, 글 읽기 = robots.txt 허용 페이지만, 3초에 1건, 하루 300개,
+- 그래서: 글 찾기 = **카카오(다음) 블로그 검색 API**, 글 읽기 = robots.txt 허용 페이지만, 3초에 1건, 하루 2,400개 (매시간 100개, 2026-10-25 사용자 결정. 처음 300 → 900 → 2,400),
   403·429·캡차면 그날 멈춤, 판정 = `src/lib/blogfacts/rules.js` 사전(LLM 없음).
 - 인정 기준: 협찬 아닌 **서로 다른 글 2개 이상이 같은 말 + 반대 0**, 3년 넘은 글 제외. 노키즈존 언급은 따로 경고.
 - 저장: `places.review_facts` = 태그별 판정·글 수·근거 글 주소/날짜 (0005). 태그(kid_tags)는 운영자가 `/admin` 에서 "태그 넣기".
@@ -46,7 +46,7 @@
    목록의 수정일이 바뀐 장소만 다시 받는다 (한 번 다 받은 뒤에는 하루 호출이 크게 줄어든다).
 2. `build` — 받은 지역 전부를 장소 행으로 변환 (`data/build/<지역>.json`)
 3. `import` — 지난번과 달라진 장소만 DB 에 **후보**로 반영. 승인·제외했거나 운영자가 고친 장소는 내용을 덮어쓰지 않는다.
-4. `blogfacts run --area jeju --limit 35` — 후기 근거 (하루 글 300개 한도) → `blogfacts sync` 로 DB 반영
+4. `blogfacts run --area jeju --limit 35` — 후기 근거 (하루 글 2,400개 한도, 매시간 100개) → `blogfacts sync` 로 DB 반영
 
 ## 4. 호출 한도와 기간
 

@@ -131,11 +131,11 @@ Claude 에게 이렇게 말하면 된다: **"handoff 읽고 이어서 하자"**
 
 ## 자동으로 돌고 있는 것
 
-- 윈도우 작업 스케줄러 **"wooz-trip TourAPI daily"** 매일 **00:10 · 08:10 · 16:10** → `scripts/tourapi/daily.cmd`
-  (놓친 실행은 PC 켜지면 바로 돌림. TourAPI 한도는 자정에 풀려서 08:10·16:10 은 00:10 을 놓쳤을 때만 받음)
+- 윈도우 작업 스케줄러 **"wooz-trip TourAPI daily"** **매시간 :10** (2026-10-25 사용자 요청으로 하루 3번 → 매시간) → `scripts/tourapi/daily.cmd`
+  (놓친 실행은 PC 켜지면 바로 돌림. TourAPI 한도는 자정에 풀려서 첫 실행이 다 쓰면 나머지는 그냥 지나감 → 빨리 하려면 운영계정 신청. 골프장은 0시 실행에서만)
   1. TourAPI 수집 (`collect.mjs auto`, API 별 하루 950회)
   2. 변환 (`build.mjs`) → 3. DB 반영 (`import.mjs`, 바뀐 것만, 승인·제외·운영자 수정 장소는 안 덮어씀)
-  4. 블로그 후기 (`blogfacts/run.mjs --area jeju --limit 35`, 한 번에 글 300개 · 하루 900개, 네이버가 막으면 그날 남은 실행은 쉼) → 5. DB 반영 (`blogfacts/sync.mjs`)
+  4. 블로그 후기 (`blogfacts/run.mjs --area jeju --limit 35`, 한 번에 글 100개 · 하루 2,400개 (2026-10-25 900 → 2,400, 3초 간격 유지), 네이버가 막으면 그날 남은 실행은 쉼) → 5. DB 반영 (`blogfacts/sync.mjs`)
 - 로그: `data/raw/tourapi/daily.log` · 진행 상황: `npm run tour:collect -- status`, `npm run facts:run -- status`
 - **이 PC 가 켜져 있어야 돈다** (Vercel 아님). 수집용 키(TourAPI·카카오 REST)는 `.env.local` 에만.
 
