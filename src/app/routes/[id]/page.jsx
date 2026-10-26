@@ -1,7 +1,7 @@
 import { cache } from 'react';
 import { notFound } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
-import { getTrip, getTripLog, loadRainy, loadTripBundle } from '@/lib/trips';
+import { getTrip, getTripLog, loadRainy, loadTagProofs, loadTripBundle } from '@/lib/trips';
 import { fromRow } from '@/lib/triplog';
 import { summarize, usedPlaceIds } from '@/lib/trip';
 import { ErrorCard, TopBar } from '@/components/ui';
@@ -46,11 +46,16 @@ export default async function RouteDetailPage({ params, searchParams }) {
   let logRow;
   let rainy = {};
   let travel = {};
+  let proofs = {};
   try {
     [trip, user] = await Promise.all([loadTrip(id), getCurrentUser()]);
     if (!trip || (trip.visibility !== 'public' && trip.owner_id !== user?.id)) notFound();
     [bundle, logRow] = await Promise.all([loadBundle(trip), getTripLog(trip.id)]);
-    [rainy, travel] = await Promise.all([loadRainy(trip, bundle.placeMap), travelForPage(trip, bundle.placeMap)]);
+    [rainy, travel, proofs] = await Promise.all([
+      loadRainy(trip, bundle.placeMap),
+      travelForPage(trip, bundle.placeMap),
+      loadTagProofs(usedPlaceIds(trip.days)).catch(() => ({})),
+    ]);
   } catch (e) {
     if (e?.digest?.startsWith?.('NEXT_')) throw e;
     return (
@@ -91,6 +96,7 @@ export default async function RouteDetailPage({ params, searchParams }) {
       log={logRow?.is_public ? fromRow(logRow) : null}
       rainy={rainy}
       travel={travel}
+      proofs={proofs}
     />
   );
 }

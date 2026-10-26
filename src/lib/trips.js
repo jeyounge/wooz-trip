@@ -10,6 +10,7 @@ import { getApprovedPlaces, getPlaceMap, getKidTags, sidoOfRegion } from './plac
 import { rainyAlternatives } from './rainy.js';
 import { usedPlaceIds } from './trip.js';
 import { tripRole } from './members.js';
+import { tagProof } from './tagProof.js';
 
 export const TRIP_COLUMNS =
   'id, owner_id, title, region, start_date, end_date, arrival_time, departure_time, companion_type, kids_ages, stay_name, stay_lat, stay_lng, days, author_name, author_tip, visibility, share_id, copied_from, copy_count, ai_route_id, published_ts, created_ts, updated_ts';
@@ -74,6 +75,18 @@ export async function loadPlaceMapAdmin(ids) {
   const admin = createAdminClient();
   const { data } = await admin.from(TABLES.places).select('*').in('id', ids).eq('status', 'approved');
   return Object.fromEntries((data || []).map((p) => [p.id, p]));
+}
+
+/** 아이 태그 후기 근거 { placeId: tagProof } — 화면에 필요한 만큼만 (링크 3개까지). 실패하면 빈 객체 */
+export async function loadTagProofs(ids) {
+  if (!ids.length) return {};
+  const { data } = await createAdminClient().from(TABLES.places).select('id, kid_tags, review_facts').in('id', ids).eq('status', 'approved');
+  const out = {};
+  for (const p of data || []) {
+    const pr = tagProof(p);
+    if (Object.keys(pr).length) out[p.id] = pr;
+  }
+  return out;
 }
 
 /** 비 오는 날 대안 (야외 볼거리 옆 가까운 실내 볼거리). 실패해도 화면은 그대로 → 빈 객체 */

@@ -20,6 +20,7 @@ import { slotLog } from '@/lib/triplog';
 import LocationSearch from '@/components/LocationSearch';
 import { countRainy } from '@/components/CheckedBadge';
 import ShareSheet from '@/components/ShareSheet';
+import KidTagProof from '@/components/KidTagProof';
 
 function today() {
   const d = new Date();
@@ -27,7 +28,7 @@ function today() {
 }
 
 /** S06 공개 루트 상세 (시안 B) */
-export default function RouteDetail({ trip, placeMap, tags, stats, places, isLoggedIn, isOwner, setup, log, rainy = {}, travel }) {
+export default function RouteDetail({ trip, placeMap, tags, stats, places, isLoggedIn, isOwner, setup, log, rainy = {}, travel, proofs = {} }) {
   const router = useRouter();
   const [open, setOpen] = useState(0);
   const [copyOpen, setCopyOpen] = useState(false);
@@ -142,6 +143,7 @@ export default function RouteDetail({ trip, placeMap, tags, stats, places, isLog
           tagLabels={tagLabels}
           rainy={rainy}
           log={log}
+          proofs={proofs}
         />
 
         {log && <LogSummary log={log} days={trip.days} />}
@@ -214,7 +216,7 @@ function areaOf(address) {
 }
 
 /** 고른 날의 타임라인: 이동 → 장소 카드(종류 딱지·태그·영업시간·추천 이유·링크) */
-function DayTimeline({ dayIndex, date, rows, placeMap, tagLabels, log, rainy }) {
+function DayTimeline({ dayIndex, date, rows, placeMap, tagLabels, log, rainy, proofs }) {
   const st = dayStyle(dayIndex);
   const stops = rows.filter((r) => (r.slot.placeId && r.place) || r.slot.custom);
   const travel = rows.reduce((a, r) => a + (r.travelFromPrev?.minutes || 0), 0);
@@ -267,7 +269,7 @@ function DayTimeline({ dayIndex, date, rows, placeMap, tagLabels, log, rainy }) 
               </div>
             )}
             {place ? (
-              <PlaceStop n={n} st={st} s={s} place={place} name={name} timeText={timeText} date={date} tagLabels={tagLabels} warn={warn} r={r} log={log} alt={rainy[rainyKey(date, s.placeId)]} />
+              <PlaceStop n={n} st={st} s={s} place={place} name={name} timeText={timeText} date={date} tagLabels={tagLabels} warn={warn} r={r} log={log} alt={rainy[rainyKey(date, s.placeId)]} proof={proofs[s.placeId]} />
             ) : (
               <div className="flex items-center gap-3 rounded-[20px] bg-surface px-3 py-2.5 shadow-soft">
                 <div
@@ -292,7 +294,7 @@ function DayTimeline({ dayIndex, date, rows, placeMap, tagLabels, log, rainy }) 
   );
 }
 
-function PlaceStop({ n, st, s, place, name, timeText, date, tagLabels, warn, r, log, alt }) {
+function PlaceStop({ n, st, s, place, name, timeText, date, tagLabels, warn, r, log, alt, proof }) {
   const look = KIND_LOOK[place.category] || KIND_LOOK.sight;
   const sub = place.sub_category && !PLAIN_SUB.has(place.sub_category) ? place.sub_category : null;
   const tags = (place.kid_tags || []).filter((t) => !HIDDEN_TAGS.has(t) && tagLabels[t]).slice(0, 4);
@@ -329,16 +331,7 @@ function PlaceStop({ n, st, s, place, name, timeText, date, tagLabels, warn, r, 
             <span>{s.aiReason}</span>
           </p>
         )}
-        {(place.indoor || tags.length > 0) && (
-          <div className="flex flex-wrap gap-1">
-            {place.indoor && <span className="kid-tag">실내</span>}
-            {tags.map((t) => (
-              <span key={t} className="kid-tag">
-                {tagLabels[t]}
-              </span>
-            ))}
-          </div>
-        )}
+        <KidTagProof proof={proof} tags={tags} tagLabels={tagLabels} extra={place.indoor ? <span className="kid-tag">실내</span> : null} />
         {s.memo && <div className="text-xs text-warn-ink">챙길 것 · {s.memo}</div>}
         {log && <LogLine entry={slotLog(log, s)} />}
         {warn && (r.check.level === 'warn' || r.lateBy > 0) && <div className="text-xs font-bold text-warn-ink">{warn}</div>}
