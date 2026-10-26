@@ -9,7 +9,7 @@ import { createPlace, draftIntro, resolveReport, setAiRouteActive, setPlacesStat
 const STATUS = { candidate: '후보', approved: '승인', excluded: '제외' };
 const REPORT_TYPES = { closed: '휴무·폐업', info: '정보 변경', tag: '아이 태그' };
 
-export default function AdminPanel({ places: initialPlaces, area = '50', tags, reports: initialReports, aiRoutes = [], metrics }) {
+export default function AdminPanel({ places: initialPlaces, area = '50', tags, reports: initialReports, aiRoutes = [], metrics, funnel }) {
   const [tab, setTab] = useState('places');
   const [places, setPlaces] = useState(initialPlaces);
   const [reports, setReports] = useState(initialReports);
@@ -47,10 +47,42 @@ export default function AdminPanel({ places: initialPlaces, area = '50', tags, r
               </div>
             ))}
             <p className="col-span-2 m-0 text-xs text-sub">최근 90일 기준. 목표 수치는 첫 달 데이터를 보고 정해요.</p>
+            {funnel && <Funnel funnel={funnel} />}
           </div>
         )}
       </main>
     </>
+  );
+}
+
+/** 단계별 흐름: 막대 길이 = 첫 단계 대비, 오른쪽 % = 바로 앞 단계에서 넘어온 비율 */
+function Funnel({ funnel }) {
+  const top = Math.max(1, funnel.steps[0].value);
+  return (
+    <section className="card col-span-2 flex flex-col gap-2 p-4" aria-label="단계별 흐름">
+      <div className="font-display text-base">단계별 흐름</div>
+      {funnel.steps.map((st, i) => {
+        const prev = funnel.steps[i - 1]?.value;
+        return (
+          <div key={st.label} className="flex flex-col gap-0.5">
+            <div className="flex items-baseline gap-2 text-xs">
+              <span className="flex-1">{st.label}</span>
+              <b className="text-sm">
+                {st.value}
+                {st.unit}
+              </b>
+              <span className="w-10 text-right text-sub">{i === 0 ? '' : prev ? `${Math.round((st.value / prev) * 100)}%` : '-'}</span>
+            </div>
+            <div className="h-2 rounded-full bg-bg">
+              <div className="h-2 rounded-full bg-cta" style={{ width: `${Math.min(100, (st.value / top) * 100)}%` }} />
+            </div>
+          </div>
+        );
+      })}
+      <p className="m-0 text-[11px] text-sub">
+        로그인 안 한 채 여행 만들기를 눌러 로그인 화면으로 간 횟수 <b className="text-ink">{funnel.wall}번</b>. 이 숫자가 「여행 정보 화면 열림」보다 크면 로그인 벽에서 많이 빠지는 거예요.
+      </p>
+    </section>
   );
 }
 

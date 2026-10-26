@@ -59,6 +59,7 @@ export default async function AdminPage({ searchParams }) {
         reports={reports.data}
         aiRoutes={aiRoutes.data}
         metrics={computeMetrics(events.data)}
+        funnel={computeFunnel(events.data)}
       />
     );
   } catch (e) {
@@ -94,6 +95,24 @@ async function fetchAllPlaces(db, area) {
     if (data.length < 1000) break;
   }
   return { data: all, error: null };
+}
+
+/**
+ * 최근 90일 단계별 흐름: 로그인 벽 → 여행 정보 화면 → 여행 만듦 → 동선 그림 → 공유·공개
+ * 앞 두 단계는 화면 열람 수, 뒤는 루트 수(같은 루트는 한 번)
+ */
+function computeFunnel(events) {
+  const count = (name) => events.filter((e) => e.name === name).length;
+  const trips = (...names) => new Set(events.filter((e) => names.includes(e.name) && e.trip_id).map((e) => e.trip_id)).size;
+  return {
+    wall: count(EVENTS.loginWall),
+    steps: [
+      { label: '여행 정보 화면 열림', value: count(EVENTS.setupViewed), unit: '번' },
+      { label: '여행 만듦', value: count(EVENTS.tripCreated), unit: '개' },
+      { label: '동선 그림', value: trips(EVENTS.routeDrawn), unit: '개' },
+      { label: '공유·공개', value: trips(EVENTS.tripShared, EVENTS.tripPublished), unit: '개' },
+    ],
+  };
 }
 
 /** 최근 90일 지표: 루트 완성률·복사율·공유 수·제보 수 */

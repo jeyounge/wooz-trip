@@ -7,6 +7,8 @@ import { createAdminClient } from './supabase/admin.js';
 import { TABLES } from './tables.js';
 
 export const EVENTS = {
+  loginWall: 'login_wall', // 로그인 안 한 채 여행 만들기를 눌러 로그인 화면으로 감 (첫 사용 장벽)
+  setupViewed: 'setup_viewed', // 로그인한 사람이 여행 정보 입력 화면을 엶
   tripCreated: 'trip_created',
   routeDrawn: 'route_drawn', // S03 → S05 "동선 그리기" (루트 완성)
   tripShared: 'trip_shared',
