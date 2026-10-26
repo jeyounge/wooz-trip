@@ -262,17 +262,23 @@ export function summarize(trip, placeMap, travelFn) {
   let travel = 0;
   let empty = 0;
   let warns = 0;
+  let closed = 0; // 그날 쉬는 곳
+  const dayTravel = []; // 일자별 차 타는 시간 합계(분)
   const perDay = (trip.days || []).map((d) => {
     const rows = computeDay(d, placeMap, trip, travelFn);
+    let dt = 0;
     for (const r of rows) {
       if (r.place || r.slot.custom) places++;
-      if (r.travelFromPrev) travel += r.travelFromPrev.minutes;
+      if (r.travelFromPrev) dt += r.travelFromPrev.minutes;
       if (isEmptySlot(r.slot)) empty++;
       if (r.check.level === 'warn' || r.lateBy > 0) warns++;
+      if (r.check.closed) closed++;
     }
+    travel += dt;
+    dayTravel.push(dt);
     return rows;
   });
-  return { places, travel, empty, warns, perDay };
+  return { places, travel, empty, warns, closed, dayTravel, perDay };
 }
 
 /** 경고 문구 (슬롯 카드용) */

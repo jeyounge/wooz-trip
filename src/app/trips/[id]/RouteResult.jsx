@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { BackLink } from '@/components/ui';
-import { IconBookmark, IconDown, IconEdit, IconHome, IconUp, IconWarn } from '@/components/Icons';
+import { IconBookmark, IconDown, IconEdit, IconHome, IconUp } from '@/components/Icons';
 import RouteMap from '@/components/RouteMap';
 import RainyAlt from '@/components/RainyAlt';
 import { rainyKey } from '@/lib/rainy';
@@ -17,6 +17,7 @@ import { publishTrip, saveDays, saveTripLog, shareTrip, unpublishTrip } from '@/
 import { ExtrasEditor, LogEditor, LogLine, ReviewEditor } from '@/components/TripLog';
 import { canLogSpend, canReview, hasLog, logTotals, slotLog, won } from '@/lib/triplog';
 import TripMembers from '@/components/TripMembers';
+import CheckedBadge, { DayDrive, countRainy } from '@/components/CheckedBadge';
 
 /** S05 루트 결과: 지도 동선 + 타임라인 + 순서 바꾸기·메모 + 쓴 돈·한마디 기록 + 저장/공유/공개 */
 export default function RouteResult({ trip: initialTrip, rev: initialRev, role = 'owner', members, userId, placeMap, userEmail, log: initialLog, rainy = {}, travel: initialTravel }) {
@@ -180,7 +181,7 @@ export default function RouteResult({ trip: initialTrip, rev: initialRev, role =
     });
   }
 
-  const allOk = sum.warns === 0;
+  const rainyCount = useMemo(() => countRainy(days, rainy), [days, rainy]);
   const st = dayStyle(day);
   let n = 0;
 
@@ -190,10 +191,6 @@ export default function RouteResult({ trip: initialTrip, rev: initialRev, role =
         <BackLink href={`/trips/${trip.id}/edit?day=${day}`} label="편집으로 돌아가기" />
         <div className="min-w-0 flex-1">
           <div className="font-display text-xl">{sum.empty ? trip.title : '짜잔, 동선 완성!'}</div>
-          <div className={`flex items-center gap-1 text-[13px] ${allOk ? 'text-ok' : 'text-warn-ink font-bold'}`}>
-            {!allOk && <IconWarn size={14} />}
-            {allOk ? '쉬는 날·영업시간 겹치는 곳 없어요' : `확인이 필요한 곳이 ${sum.warns}곳 있어요`}
-          </div>
           {(sum.travel > 0 || totals.total > 0) && (
             <div className="text-xs text-sub">
               {[sum.travel > 0 && `총 이동 ${formatDuration(sum.travel)}`, totals.total > 0 && `쓴 돈 ${won(totals.total)}`].filter(Boolean).join(' · ')}
@@ -205,7 +202,8 @@ export default function RouteResult({ trip: initialTrip, rev: initialRev, role =
         </Link>
       </header>
 
-      <div className="px-5">
+      <div className="flex flex-col gap-2.5 px-5">
+        <CheckedBadge sum={sum} rainyCount={rainyCount} />
         <RouteMap days={mapData} active={day} />
       </div>
 
@@ -227,6 +225,7 @@ export default function RouteResult({ trip: initialTrip, rev: initialRev, role =
       </nav>
 
       <main className="flex flex-1 flex-col gap-1 px-5 pt-1 pb-3">
+        <DayDrive minutes={sum.dayTravel[day]} />
         <div className="pb-1 text-xs text-sub">
           {tripSubtitle(trip)}
           {spendOpen && totals.perDay[day] > 0 && <b className="text-ink"> · 이날 쓴 돈 {won(totals.perDay[day])}</b>}

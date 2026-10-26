@@ -18,6 +18,7 @@ import { copyRoute, logRouteView } from '@/app/actions/trips';
 import { LogLine, LogSummary } from '@/components/TripLog';
 import { slotLog } from '@/lib/triplog';
 import LocationSearch from '@/components/LocationSearch';
+import { countRainy } from '@/components/CheckedBadge';
 
 function today() {
   const d = new Date();
@@ -35,6 +36,7 @@ export default function RouteDetail({ trip, placeMap, tags, stats, places, isLog
   const travelFn = useMemo(() => makeTravelFn(travel?.minutes), [travel]);
   const perDay = useMemo(() => summarize(trip, placeMap, travelFn).perDay, [trip, placeMap, travelFn]);
   const mapData = useMemo(() => withRoads(mapDays(trip.days, placeMap, trip), travel?.paths), [trip, placeMap, travel]);
+  const rainyCount = useMemo(() => countRainy(trip.days, rainy), [trip.days, rainy]);
   const tagLabels = useMemo(() => Object.fromEntries((tags || []).map((t) => [t.id, t.label])), [tags]);
 
   useEffect(() => {
@@ -151,6 +153,12 @@ export default function RouteDetail({ trip, placeMap, tags, stats, places, isLog
 
         {log && <LogSummary log={log} days={trip.days} />}
 
+        {rainyCount > 0 && (
+          <div className="rounded-2xl bg-sky px-3.5 py-2.5 text-sm text-[#2F4A8A]">
+            비가 오면 <b>{rainyCount}곳</b>은 25분 안 실내 장소로 바꿀 수 있어요. 장소마다 「비 오면」 줄을 확인하세요
+          </div>
+        )}
+
         {trip.author_tip && (
           <div className="rounded-card bg-accent p-4">
             <div className="mb-1 font-display text-base">{editor ? '이렇게 짰어요' : '엄마아빠 꿀팁'}</div>
@@ -172,7 +180,7 @@ export default function RouteDetail({ trip, placeMap, tags, stats, places, isLog
           </Link>
         ) : (
           <button type="button" onClick={onCopyClick} className="btn-cta w-full gap-2">
-            우리 일정으로 가져오기
+            이 루트로 우리 일정 만들기
             {FEATURES.copyRequiresPremium && (
               <span className="rounded-[10px] bg-surface px-2 py-0.5 font-sans text-[11px] font-bold text-warn-ink">프리미엄</span>
             )}
@@ -224,7 +232,7 @@ function DayTimeline({ dayIndex, date, rows, placeMap, tagLabels, log, rainy }) 
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pb-1">
         <h2 className="m-0 font-display text-lg">{DAY_LABELS[dayIndex] || `${dayIndex + 1}일차`}</h2>
         <span className="text-[13px] text-sub">
-          {stops.length}곳{travel > 0 && ` · 이동 ${formatDuration(travel)}`}
+          {stops.length}곳{travel > 0 && ` · 차 타는 시간 ${formatDuration(travel)}`}
         </span>
         <span className="ml-auto flex gap-1">
           {['sight', 'food', 'cafe'].map((k) =>

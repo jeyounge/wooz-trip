@@ -13,6 +13,7 @@ import { makeTravelFn, withRoads } from '@/lib/travel';
 import { shortDate, toHHMM, toMin, weekdayLabel } from '@/lib/hours';
 import { LogLine, LogSummary } from '@/components/TripLog';
 import { slotLog, logTotals, won } from '@/lib/triplog';
+import CheckedBadge, { DayDrive, countRainy } from '@/components/CheckedBadge';
 
 /** 읽기 전용 루트: 지도 + 일자 탭 + 타임라인 */
 export default function SharedRoute({ trip, placeMap, log, rainy = {}, travel }) {
@@ -40,7 +41,8 @@ export default function SharedRoute({ trip, placeMap, log, rainy = {}, travel })
         {trip.stay_name && <div className="text-[13px] text-sub">숙소 · {trip.stay_name}</div>}
         {totals?.total > 0 && <div className="text-[13px] text-sub">쓴 돈 {won(totals.total)}</div>}
       </header>
-      <div className="px-5">
+      <div className="flex flex-col gap-2.5 px-5">
+        <CheckedBadge sum={sum} rainyCount={countRainy(trip.days, rainy)} />
         <RouteMap days={mapData} active={day} />
       </div>
       <nav aria-label="일자" className="flex gap-2 overflow-x-auto px-5 pt-3.5 pb-2">
@@ -60,9 +62,9 @@ export default function SharedRoute({ trip, placeMap, log, rainy = {}, travel })
         ))}
       </nav>
       <main className="flex flex-1 flex-col gap-1 px-5 pt-1 pb-6">
+        <DayDrive minutes={dayTravel} />
         <div className="pb-1 text-xs text-sub">
           {shortDate(trip.days[day].date)} {weekdayLabel(trip.days[day].date)}요일 · {dayStops}곳
-          {dayTravel > 0 && ` · 이동 ${formatDuration(dayTravel)}`}
           {totals?.perDay[day] > 0 && ` · 쓴 돈 ${won(totals.perDay[day])}`}
         </div>
         {rows.map((r) => {
