@@ -11,7 +11,7 @@ import { formatDuration, formatHM } from '@/lib/geo';
 import RainyAlt from '@/components/RainyAlt';
 import { rainyKey } from '@/lib/rainy';
 import { makeTravelFn, withRoads } from '@/lib/travel';
-import { blogLink, companionText, isEditorRoute, mapLink, routeLink } from '@/lib/format';
+import { blogLink, companionText, isEditorRoute, mapLink, routeLink, routeShareText } from '@/lib/format';
 import { addDays, hoursText, isAlwaysOpen, isClosedOn, toHHMM, toMin } from '@/lib/hours';
 import { isEmptySlot, mapDays, rowWarning, slotTitle, summarize, tripDepartArea, tripMode } from '@/lib/trip';
 import { copyRoute, logRouteView } from '@/app/actions/trips';
@@ -19,6 +19,7 @@ import { LogLine, LogSummary } from '@/components/TripLog';
 import { slotLog } from '@/lib/triplog';
 import LocationSearch from '@/components/LocationSearch';
 import { countRainy } from '@/components/CheckedBadge';
+import ShareSheet from '@/components/ShareSheet';
 
 function today() {
   const d = new Date();
@@ -32,6 +33,7 @@ export default function RouteDetail({ trip, placeMap, tags, stats, places, isLog
   const [copyOpen, setCopyOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [toast, setToast] = useState(null);
+  const [shareCard, setShareCard] = useState(null);
   const editor = isEditorRoute(trip);
   const travelFn = useMemo(() => makeTravelFn(travel?.minutes), [travel]);
   const perDay = useMemo(() => summarize(trip, placeMap, travelFn).perDay, [trip, placeMap, travelFn]);
@@ -53,19 +55,10 @@ export default function RouteDetail({ trip, placeMap, tags, stats, places, isLog
     return `${y}년 ${m}월`;
   }, [trip.start_date]);
 
-  async function share() {
+  function share() {
     const url = window.location.href.split('?')[0];
-    try {
-      if (navigator.share) return await navigator.share({ title: trip.title, url });
-    } catch {
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(url);
-      setToast('링크를 복사했어요');
-    } catch {
-      setToast(url);
-    }
+    const names = Object.values(placeMap).map((p) => p?.name).filter(Boolean);
+    setShareCard({ title: trip.title, description: routeShareText(trip, names), imageUrl: `${window.location.origin}/routes/${trip.id}/opengraph-image`, url, buttonTitle: '루트 보기' });
   }
 
   function onCopyClick() {
@@ -194,6 +187,7 @@ export default function RouteDetail({ trip, placeMap, tags, stats, places, isLog
           {toast}
         </div>
       )}
+      {shareCard && <ShareSheet card={shareCard} sheetTitle="이 루트 보내기" onClose={() => setShareCard(null)} onToast={setToast} />}
       {copyOpen && <CopySheet trip={trip} setup={setup} onClose={() => setCopyOpen(false)} />}
       {reportOpen && <ReportSheet places={places} tripId={trip.id} tags={tags} onClose={() => setReportOpen(false)} />}
     </>

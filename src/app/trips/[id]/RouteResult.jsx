@@ -10,9 +10,10 @@ import { rainyKey } from '@/lib/rainy';
 import { makeTravelFn, mergeTravel, withRoads } from '@/lib/travel';
 import Sheet from '@/components/Sheet';
 import { DAY_LABELS, dayStyle } from '@/lib/config';
-import { isEmptySlot, mapDays, rowWarning, slotTitle, summarize } from '@/lib/trip';
+import { isEmptySlot, mapDays, rowWarning, slotTitle, summarize, usedPlaceIds } from '@/lib/trip';
 import { formatDuration } from '@/lib/geo';
-import { routeLink, tripSubtitle } from '@/lib/format';
+import { routeLink, routeShareText, tripSubtitle } from '@/lib/format';
+import ShareSheet from '@/components/ShareSheet';
 import { publishTrip, saveDays, saveTripLog, shareTrip, unpublishTrip } from '@/app/actions/trips';
 import { ExtrasEditor, LogEditor, LogLine, ReviewEditor } from '@/components/TripLog';
 import { canLogSpend, canReview, hasLog, logTotals, slotLog, won } from '@/lib/triplog';
@@ -32,6 +33,7 @@ export default function RouteResult({ trip: initialTrip, rev: initialRev, role =
   const [memoFor, setMemoFor] = useState(null);
   const [toast, setToast] = useState(null);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [shareCard, setShareCard] = useState(null);
   const [sharePending, startShare] = useTransition();
   const timer = useRef(null);
   const latest = useRef(days);
@@ -163,21 +165,13 @@ export default function RouteResult({ trip: initialTrip, rev: initialRev, role =
       if (!res.ok) return setToast(res.message);
       setTrip((t) => ({ ...t, share_id: res.shareId, visibility: t.visibility === 'public' ? 'public' : 'shared' }));
       const url = `${window.location.origin}/s/${res.shareId}`;
-      const text = `${trip.title} 동선이에요`;
-      try {
-        if (navigator.share) {
-          await navigator.share({ title: trip.title, text, url });
-          return;
-        }
-      } catch {
-        // 공유 창을 닫은 경우 복사로 넘어간다
-      }
-      try {
-        await navigator.clipboard.writeText(url);
-        setToast('링크를 복사했어요. 가족 단톡방에 붙여 넣어 주세요');
-      } catch {
-        setToast(url);
-      }
+      const names = usedPlaceIds(days).map((pid) => placeMap[pid]?.name).filter(Boolean);
+      setShareCard({
+        title: `${trip.title} 동선이에요`,
+        description: routeShareText(trip, names),
+        imageUrl: `${window.location.origin}/s/${res.shareId}/opengraph-image`,
+        url,
+      });
     });
   }
 
@@ -377,6 +371,8 @@ export default function RouteResult({ trip: initialTrip, rev: initialRev, role =
           {toast}
         </div>
       )}
+
+      {shareCard && <ShareSheet card={shareCard} sheetTitle="가족 단톡에 보내기" onClose={() => setShareCard(null)} onToast={setToast} />}
 
       {publishOpen && (
         <PublishSheet
