@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
@@ -9,10 +10,15 @@ export default function LoginForm({ next }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
+  const [agree, setAgree] = useState(false);
   const [msg, setMsg] = useState(null);
 
   async function submit(e) {
     e.preventDefault();
+    if (mode === 'signup' && !agree) {
+      setMsg({ ok: false, text: '이용약관과 개인정보처리방침에 동의해 주세요' });
+      return;
+    }
     setBusy(true);
     setMsg(null);
     const supabase = createClient();
@@ -78,6 +84,21 @@ export default function LoginForm({ next }) {
           onChange={(e) => setPassword(e.target.value)}
         />
       </label>
+      {mode === 'signup' && (
+        <label className="flex min-h-11 items-start gap-2.5 text-sm">
+          <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 h-5 w-5 flex-none" />
+          <span>
+            <Link href="/terms" target="_blank" className="underline">
+              이용약관
+            </Link>
+            과{' '}
+            <Link href="/privacy" target="_blank" className="underline">
+              개인정보처리방침
+            </Link>
+            에 동의해요 (만 14세 이상)
+          </span>
+        </label>
+      )}
       {msg && (
         <p role="status" className={`m-0 text-sm ${msg.ok ? 'text-ok' : 'text-warn-ink'}`}>
           {msg.text}

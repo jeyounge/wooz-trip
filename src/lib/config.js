@@ -8,6 +8,11 @@
 export const SERVICE_NAME = process.env.NEXT_PUBLIC_SERVICE_NAME || '우즈트립';
 // 공유 미리보기·사이트맵의 기준 주소
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://trip.z-labs.kr').replace(/\/$/, '');
+// 약관·개인정보처리방침에 쓰는 운영자 정보 (정식 오픈 전에 .env 로 채운다)
+export const OPERATOR_NAME = process.env.NEXT_PUBLIC_OPERATOR_NAME || '';
+export const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || '';
+// 약관·방침 시행일. 비어 있으면 「정식 오픈 전 초안」으로 보여 준다
+export const POLICY_DATE = process.env.NEXT_PUBLIC_POLICY_DATE || '';
 
 /**
  * 홈 「어디 가요?」 여행지. open: false 는 「준비 중」으로 보여만 준다 (다음 예정 지역 알림용).

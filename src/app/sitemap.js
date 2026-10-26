@@ -9,6 +9,8 @@ export default async function sitemap() {
   return [
     { url: `${SITE_URL}/`, changeFrequency: 'daily', priority: 1 },
     { url: `${SITE_URL}/routes`, changeFrequency: 'daily', priority: 0.8 },
+    { url: `${SITE_URL}/terms`, changeFrequency: 'monthly', priority: 0.1 },
+    { url: `${SITE_URL}/privacy`, changeFrequency: 'monthly', priority: 0.1 },
     ...routes.map((r) => ({ url: `${SITE_URL}/routes/${r.id}`, lastModified: r.updated_ts ? new Date(r.updated_ts) : undefined, changeFrequency: 'weekly', priority: 0.6 })),
   ];
 }

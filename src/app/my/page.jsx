@@ -45,6 +45,14 @@ export default async function MyPage() {
         <p className="m-0 mt-2 text-xs leading-relaxed text-sub">
           {SERVICE_NAME}는 공식 API·공공데이터와 운영자 검수로 장소 정보를 모아요. 리뷰·사진은 저장하지 않고 원본 링크로만 연결해요. 장소 정보는 실제와 다를 수 있으니 방문 전에 한 번 더 확인해 주세요. 장소 기본 정보 일부는 한국관광공사 TourAPI(공공데이터)를 이용해요.
         </p>
+        <div className="flex gap-3 text-xs text-sub">
+          <Link href="/terms" className="underline">
+            이용약관
+          </Link>
+          <Link href="/privacy" className="font-bold underline">
+            개인정보처리방침
+          </Link>
+        </div>
       </main>
       <BottomNav />
     </>
