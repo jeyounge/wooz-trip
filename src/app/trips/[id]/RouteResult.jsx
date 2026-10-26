@@ -19,6 +19,7 @@ import { ExtrasEditor, LogEditor, LogLine, ReviewEditor } from '@/components/Tri
 import { canLogSpend, canReview, hasLog, logTotals, slotLog, won } from '@/lib/triplog';
 import TripMembers from '@/components/TripMembers';
 import CheckedBadge, { DayDrive, countRainy } from '@/components/CheckedBadge';
+import NowNext, { localToday, todayIndex } from '@/components/NowNext';
 
 /** S05 루트 결과: 지도 동선 + 타임라인 + 순서 바꾸기·메모 + 쓴 돈·한마디 기록 + 저장/공유/공개 */
 export default function RouteResult({ trip: initialTrip, rev: initialRev, role = 'owner', members, userId, placeMap, userEmail, log: initialLog, rainy = {}, travel: initialTravel }) {
@@ -30,6 +31,11 @@ export default function RouteResult({ trip: initialTrip, rev: initialRev, role =
   const [trip, setTrip] = useState(initialTrip);
   const [days, setDays] = useState(initialTrip.days);
   const [day, setDay] = useState(0);
+  useEffect(() => {
+    const i = todayIndex(days);
+    if (i > 0) setDay(i); // 여행 중이면 오늘 탭부터
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [memoFor, setMemoFor] = useState(null);
   const [toast, setToast] = useState(null);
   const [publishOpen, setPublishOpen] = useState(false);
@@ -197,6 +203,7 @@ export default function RouteResult({ trip: initialTrip, rev: initialRev, role =
       </header>
 
       <div className="flex flex-col gap-2.5 px-5">
+        <NowNext rows={rows} placeMap={placeMap} isToday={days[day]?.date === localToday()} />
         <CheckedBadge sum={sum} rainyCount={rainyCount} />
         <RouteMap days={mapData} active={day} />
       </div>

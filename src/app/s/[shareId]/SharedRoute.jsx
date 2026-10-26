@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import RouteMap from '@/components/RouteMap';
 import { IconHome } from '@/components/Icons';
@@ -14,10 +14,16 @@ import { shortDate, toHHMM, toMin, weekdayLabel } from '@/lib/hours';
 import { LogLine, LogSummary } from '@/components/TripLog';
 import { slotLog, logTotals, won } from '@/lib/triplog';
 import CheckedBadge, { DayDrive, countRainy } from '@/components/CheckedBadge';
+import NowNext, { localToday, todayIndex } from '@/components/NowNext';
 
 /** 읽기 전용 루트: 지도 + 일자 탭 + 타임라인 */
 export default function SharedRoute({ trip, placeMap, log, rainy = {}, travel }) {
   const [day, setDay] = useState(0);
+  useEffect(() => {
+    const i = todayIndex(trip.days);
+    if (i > 0) setDay(i); // 여행 중이면 오늘 탭부터
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const travelFn = useMemo(() => makeTravelFn(travel?.minutes), [travel]);
   const sum = useMemo(() => summarize(trip, placeMap, travelFn), [trip, placeMap, travelFn]);
   const mapData = useMemo(() => withRoads(mapDays(trip.days, placeMap, trip), travel?.paths), [trip, placeMap, travel]);
@@ -42,6 +48,7 @@ export default function SharedRoute({ trip, placeMap, log, rainy = {}, travel })
         {totals?.total > 0 && <div className="text-[13px] text-sub">쓴 돈 {won(totals.total)}</div>}
       </header>
       <div className="flex flex-col gap-2.5 px-5">
+        <NowNext rows={rows} placeMap={placeMap} isToday={trip.days[day]?.date === localToday()} />
         <CheckedBadge sum={sum} rainyCount={countRainy(trip.days, rainy)} />
         <RouteMap days={mapData} active={day} />
       </div>

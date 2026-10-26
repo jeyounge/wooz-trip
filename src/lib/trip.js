@@ -281,6 +281,18 @@ export function summarize(trip, placeMap, travelFn) {
   return { places, travel, empty, warns, closed, dayTravel, perDay };
 }
 
+/**
+ * 여행 중 모드: 지금 머무는 칸과 다음 칸 (now = 자정부터 분)
+ * rows = computeDay() 결과. 위치가 있고 시각이 있는 칸만 본다.
+ */
+export function nowNext(rows, now) {
+  const stops = rows.filter((r) => r.point && !isEmptySlot(r.slot) && toMin(r.slot.time) !== null);
+  const end = (r) => toMin(r.slot.time) + (r.slot.stayMinutes || 0);
+  const current = stops.find((r) => toMin(r.slot.time) <= now && now < end(r)) || null;
+  const next = stops.find((r) => toMin(r.slot.time) > now) || null;
+  return { current, next, currentEnd: current ? end(current) : null, any: stops.length > 0 };
+}
+
 /** 경고 문구 (슬롯 카드용) */
 export function rowWarning(r) {
   if (r.check.level === 'warn') return r.check.message + (r.check.closed ? '. 바꿀까요?' : '');
