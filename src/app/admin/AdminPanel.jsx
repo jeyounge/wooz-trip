@@ -157,7 +157,7 @@ const KID_ONLY = ['baby_chair', 'kids_menu', 'stroller', 'nursing', 'floor_seat'
 
 function PlacesTab({ area, places, setPlaces, tags }) {
   const router = useRouter();
-  // 서비스 권역이 있는 시·도 (제주 4권역, 경기 남부 4권역 + 그 밖 경기)
+  // 서비스 권역이 있는 시·도 (제주 4권역, 경기 남부 4권역 + 그 밖 경기, 인천 4권역 + 배로 가는 섬)
   const areaRegions = REGIONS.filter((r) => areaBySlug(r.id.split('-')[0])?.code === area);
   const hasRegions = areaRegions.length > 0;
   const [filter, setFilter] = useState('candidate');

@@ -8,7 +8,7 @@ import PageFrame from '@/components/PageFrame';
 const jua = Jua({ weight: '400', subsets: ['latin'], variable: '--font-display', display: 'swap', preload: false });
 const gowun = Gowun_Dodum({ weight: '400', subsets: ['latin'], variable: '--font-body', display: 'swap', preload: false });
 
-const DESCRIPTION = '검증된 제주·경기 남부 장소를 시간대에 넣으면 이동 동선과 타임라인이 자동으로 그려지는 가족 여행 루트 서비스.';
+const DESCRIPTION = '검증된 제주·경기 남부·인천 장소를 시간대에 넣으면 이동 동선과 타임라인이 자동으로 그려지는 가족 여행 루트 서비스.';
 
 export const metadata = {
   metadataBase: new URL(SITE_URL),

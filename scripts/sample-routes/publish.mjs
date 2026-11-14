@@ -99,6 +99,7 @@ function pickEat({ category, from, date, time, stay, comp, taken, maxMin = 25 })
   let bestScore = Infinity;
   for (const p of places) {
     if (p.category !== category || taken.has(p.id)) continue;
+    if (/펫|애견|반려/.test(p.name)) continue; // 반려동물 카페는 추천 루트에 안 넣음
     if (comp === 'kids' && p.review_facts?.nokids?.count > 0) continue;
     if (!p.opening_hours) continue; // 영업시간 모르는 식당은 안 씀
     const m = mins(from, p);

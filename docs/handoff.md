@@ -23,7 +23,20 @@ Claude 에게 이렇게 말하면 된다: **"handoff 읽고 이어서 하자"**
 | **0008 SQL 실행** (같이 고치기) → 결과 화면 아래 「같이 고치기」에서 가족 이메일 넣어 보기 | 할 일 |
 | 관리자 화면에서 사용자가 카카오로 넣은 후보 장소(`source_provider = kakao`) 승인 | 생길 때마다 |
 
-## 2026-11-14 한 일 — 경기 남부 오픈 + PC 화면 1·2단계
+## 2026-11-14 한 일 — 경기 남부·인천 오픈 + PC 화면
+
+**인천 오픈** (경기 남부와 같은 순서)
+- 권역 4개 (`config.js` REGIONS `dest: 'incheon'`): 송도·원도심(연수·제물포·미추홀·남동) · 영종·영흥(영종구 + 옹진군 영흥면·선재도) ·
+  강화 · 부평·계양(부평·계양·서해·검단). 구 이름 → 권역은 `tourapi/transform.js` `incheonRegionOf` (2026 개편 전 이름 중구·동구·서구·남구도 받음,
+  중구는 경도로 영종/원도심 나눔). 배로 가는 옹진 섬은 그대로 `region = incheon` (서비스에 안 보임)
+- DB 장소 region 을 권역으로 바꿈 (인천 1,281곳 중 1,215곳, 이미 승인 1,277곳). 장소 조회는 `placeScope` 가 연 권역만 읽음
+- **AI 루트 87개** (`data/ai-routes/incheon.json`): 볼거리 631곳 중 108곳을 골라 `scripts/ai-routes/pool-incheon.mjs`
+  → `node scripts/ai-routes/build.mjs --dest incheon` → `npm run routes:sql -- --apply` (전체 378개)
+- 블로그 후기 수집에 인천 추가 (`daily.cmd` 에 `--area incheon`)
+- **추천 루트 20개** (아이 8 · 부모님 4 · 연인 4 · 친구 4): `research.mjs --dest incheon` (글 6,569개) → `data/sample-routes/incheon-research.json`
+  → `routes-incheon.mjs` → `node scripts/sample-routes/publish.mjs --dest incheon --apply`. 식당·카페 고를 때 반려동물 카페는 뺌
+- 관광공사 목록 다시 받기: 연 지역(제주·경기·인천)은 7일, 나머지는 30일
+
 
 **경기 남부 오픈**
 - 권역 4개 (`config.js` REGIONS `dest: 'gyeonggi-south'`): 수원·화성(수원·화성·오산·평택) · 용인·이천(용인·이천·여주·안성·광주) ·

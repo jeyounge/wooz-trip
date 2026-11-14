@@ -5,7 +5,7 @@
  * 숙소 위치와 직접 넣은 일정 위치는 여행(trips) 안에만 저장한다.
  */
 import { AREAS } from './areas.js';
-import { gyeonggiRegionOf, regionOf } from './tourapi/transform.js';
+import { gyeonggiRegionOf, incheonRegionOf, regionOf } from './tourapi/transform.js';
 
 /** 한국 안 좌표인지 (대충의 경계 상자) */
 export function inKorea(lat, lng) {
@@ -104,6 +104,7 @@ export function regionForAddress(address, lat, lng) {
   const area = AREAS.find((a) => a.name === short) || null;
   if (area?.slug === 'jeju') return { region: regionOf(address, lat, lng) || 'jeju-city', sido_code: area.code };
   if (area?.slug === 'gyeonggi') return { region: gyeonggiRegionOf(address), sido_code: area.code };
+  if (area?.slug === 'incheon') return { region: incheonRegionOf(address, lng), sido_code: area.code };
   if (area) return { region: area.slug, sido_code: area.code };
   return { region: 'etc', sido_code: null };
 }

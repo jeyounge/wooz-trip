@@ -57,6 +57,10 @@ const REGION_CODE = {
   'gyeonggi-yongin': 'gg-yongin',
   'gyeonggi-seongnam': 'gg-seongnam',
   'gyeonggi-ansan': 'gg-ansan',
+  'incheon-songdo': 'ic-songdo',
+  'incheon-yeongjong': 'ic-yeongjong',
+  'incheon-ganghwa': 'ic-ganghwa',
+  'incheon-bupyeong': 'ic-bupyeong',
 };
 const THEME_WORD = { sea: '바다', nature: '숲·정원', animal: '동물', exp: '체험', museum: '전시', park: '테마파크', history: '역사' };
 const THEME_TAG = { sea: 'beach', nature: 'nature', animal: 'animal', exp: 'experience', museum: 'museum', park: 'themepark', history: 'history' };

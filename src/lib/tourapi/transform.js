@@ -79,6 +79,24 @@ export function gyeonggiRegionOf(address) {
   return Object.keys(GYEONGGI_SOUTH).find((r) => GYEONGGI_SOUTH[r].includes(city)) || 'gyeonggi';
 }
 
+// 인천 (2026-11-14 오픈): 구·군으로 4권역 (2026 행정개편 뒤 이름 + 예전 이름).
+// 옹진군은 다리로 가는 영흥면(선재도 포함)만 영종·영흥에 넣고, 배로 가는 섬은 시·도 단위(incheon)로 둔다
+const INCHEON = {
+  'incheon-ganghwa': ['강화군'],
+  'incheon-yeongjong': ['영종구'],
+  'incheon-songdo': ['연수구', '제물포구', '미추홀구', '남동구', '동구', '남구'],
+  'incheon-bupyeong': ['부평구', '계양구', '서해구', '검단구', '서구'],
+};
+
+export function incheonRegionOf(address, lng) {
+  const t = String(address || '').trim().split(/\s+/);
+  const gu = t[1] || '';
+  if (gu === '옹진군') return /영흥|선재/.test(t.slice(2, 4).join(' ')) ? 'incheon-yeongjong' : 'incheon';
+  // 예전 중구는 영종도(섬)와 내항 쪽 원도심으로 나뉘었다
+  if (gu === '중구') return Number(lng) < 126.58 ? 'incheon-yeongjong' : 'incheon-songdo';
+  return Object.keys(INCHEON).find((r) => INCHEON[r].includes(gu)) || 'incheon';
+}
+
 // ─────────────────────────────────────────────
 // 영업시간
 // ─────────────────────────────────────────────
@@ -324,8 +342,14 @@ export function toPlace(item, intro = {}, withTour = {}, codeNames = {}, { commo
   flags.push(...h.flags, ...c.flags);
   if (!Object.keys(intro).length) flags.push('no_detail');
 
-  // 제주·경기 남부는 서비스 권역으로, 다른 시·도는 우선 시·도 단위로 둔다
-  const region = isJeju ? regionOf(address, lat, lng) : area.slug === 'gyeonggi' ? gyeonggiRegionOf(address) : area.slug;
+  // 제주·경기 남부·인천은 서비스 권역으로, 다른 시·도는 우선 시·도 단위로 둔다
+  const region = isJeju
+    ? regionOf(address, lat, lng)
+    : area.slug === 'gyeonggi'
+      ? gyeonggiRegionOf(address)
+      : area.slug === 'incheon'
+        ? incheonRegionOf(address, lng)
+        : area.slug;
   if (!region) flags.push('region_check');
   const homepage = homepageOf(pick(common, 'homepage'));
   const kid = kidTagsOf(intro, withTour);

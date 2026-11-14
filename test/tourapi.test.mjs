@@ -4,15 +4,18 @@ import { cleanText, homepageOf, kidTagsOf, parseClosedDays, parseHours, regionOf
 
 test('tourapi: 전국 — 다른 시·도는 시·도 단위 지역, 홈페이지 링크', () => {
   const item = {
-    contentid: 'i1', contenttypeid: '12', title: '[테스트] 인천 공원', addr1: '인천광역시 연수구', mapx: '126.64', mapy: '37.39',
-    lDongRegnCd: '28', lDongSignguCd: '185',
+    contentid: 'i1', contenttypeid: '12', title: '[테스트] 부산 공원', addr1: '부산광역시 해운대구', mapx: '129.16', mapy: '35.16',
+    lDongRegnCd: '26', lDongSignguCd: '185',
   };
   const { row } = toPlace(item, { usetime: '09:00~18:00' }, {}, {}, {
     common: { homepage: '<a href="https://example.com/park" target="_blank">https://example.com/park</a>', overview: '<p>소개</p>' },
-    area: { code: '28', slug: 'incheon' },
+    area: { code: '26', slug: 'busan' },
   });
-  assert.equal(row.region, 'incheon');
-  assert.equal(row.sido_code, '28');
+  assert.equal(row.region, 'busan');
+  assert.equal(row.sido_code, '26');
+  // 연 시·도(인천)는 서비스 권역으로
+  const ic = { ...item, addr1: '인천광역시 연수구', mapx: '126.64', mapy: '37.39', lDongRegnCd: '28' };
+  assert.equal(toPlace(ic, {}, {}, {}, { area: { code: '28', slug: 'incheon' } }).row.region, 'incheon-songdo');
   assert.equal(row.sigungu_code, '185');
   assert.equal(row.external_links.home, 'https://example.com/park');
   assert.equal(row.source_data.overview, '소개');

@@ -26,7 +26,7 @@ export function sidoOfRegion(region) {
 
 /**
  * 여행 지역 id → 장소를 읽을 범위 [시·도 코드, 권역 목록|null].
- * 제주는 시·도 전체, 경기는 연 권역(경기 남부)만 읽는다 (경기 전체는 캐시 한도 2MB 를 넘는다)
+ * 제주는 시·도 전체, 경기·인천은 연 권역만 읽는다 (경기 전체는 캐시 한도 2MB 를 넘는다. 인천은 배로 가는 섬을 뺀다)
  */
 export function placeScope(region) {
   const sido = sidoOfRegion(region);

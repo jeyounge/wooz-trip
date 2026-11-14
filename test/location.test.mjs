@@ -63,6 +63,11 @@ test('location: 카카오 결과 정리와 지역', () => {
   assert.deepEqual(regionForAddress('경기도 용인시 처인구', 37.2, 127.2), { region: 'gyeonggi-yongin', sido_code: '41' });
   assert.deepEqual(regionForAddress('경기도 안산시 단원구 대부북동', 37.2, 126.6), { region: 'gyeonggi-ansan', sido_code: '41' });
   assert.deepEqual(regionForAddress('경기도 파주시 탄현면', 37.7, 126.7), { region: 'gyeonggi', sido_code: '41' });
+  assert.deepEqual(regionForAddress('인천광역시 강화군 강화읍', 37.7, 126.4), { region: 'incheon-ganghwa', sido_code: '28' });
+  assert.deepEqual(regionForAddress('인천 연수구 송도동', 37.4, 126.6), { region: 'incheon-songdo', sido_code: '28' });
+  assert.deepEqual(regionForAddress('인천광역시 옹진군 영흥면 영흥로', 37.25, 126.47), { region: 'incheon-yeongjong', sido_code: '28' });
+  assert.deepEqual(regionForAddress('인천광역시 옹진군 백령면', 37.95, 124.7), { region: 'incheon', sido_code: '28' });
+  assert.deepEqual(regionForAddress('인천 중구 운서동', 37.49, 126.49), { region: 'incheon-yeongjong', sido_code: '28' });
 
   const row = kakaoPlaceRow(it, 'user-1');
   assert.equal(row.status, 'candidate');

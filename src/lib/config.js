@@ -21,7 +21,7 @@ export const POLICY_DATE = process.env.NEXT_PUBLIC_POLICY_DATE || '';
 export const DESTINATIONS = [
   { id: 'jeju', label: '제주', open: true },
   { id: 'gyeonggi-south', label: '경기 남부', open: true }, // 2026-11-14 오픈
-  { id: 'incheon', label: '인천', open: false },
+  { id: 'incheon', label: '인천', open: true }, // 2026-11-14 오픈
 ];
 
 /** 여행 권역. dest = DESTINATIONS.id. 장소의 region 값과 같다 (경기 남부 시 묶음은 tourapi/transform.js GYEONGGI_SOUTH) */
@@ -34,6 +34,10 @@ export const REGIONS = [
   { id: 'gyeonggi-yongin', label: '용인·이천·여주·안성·광주', short: '용인·이천', dest: 'gyeonggi-south' },
   { id: 'gyeonggi-seongnam', label: '성남·하남·과천·안양·군포·의왕', short: '성남·안양', dest: 'gyeonggi-south' },
   { id: 'gyeonggi-ansan', label: '안산·시흥·부천·광명', short: '안산·시흥', dest: 'gyeonggi-south' },
+  { id: 'incheon-songdo', label: '송도·원도심 (연수·제물포·미추홀·남동)', short: '송도·원도심', dest: 'incheon' },
+  { id: 'incheon-yeongjong', label: '영종·영흥', short: '영종·영흥', dest: 'incheon' },
+  { id: 'incheon-ganghwa', label: '강화', short: '강화', dest: 'incheon' },
+  { id: 'incheon-bupyeong', label: '부평·계양·서해·검단', short: '부평·계양', dest: 'incheon' },
 ];
 export const destinationOf = (region) => DESTINATIONS.find((d) => d.id === REGIONS.find((r) => r.id === region)?.dest) || DESTINATIONS[0];
 export const regionsOf = (destId) => REGIONS.filter((r) => r.dest === destId);
@@ -94,6 +98,10 @@ export const REGION_ZONE = {
   'gyeonggi-yongin': 'capital',
   'gyeonggi-seongnam': 'capital',
   'gyeonggi-ansan': 'capital',
+  'incheon-songdo': 'capital',
+  'incheon-yeongjong': 'capital',
+  'incheon-ganghwa': 'capital',
+  'incheon-bupyeong': 'capital',
 };
 /** 비행기로 가는 권역 묶음 (그 밖은 차만) */
 export const modesFor = (region) => (zoneOf(region) === 'jeju' ? TRAVEL_MODES : TRAVEL_MODES.filter((m) => m.id === 'car'));
