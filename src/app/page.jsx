@@ -4,7 +4,7 @@ import RouteCard from '@/components/RouteCard';
 import { IconSearch } from '@/components/Icons';
 import { EmptyCard, ErrorCard } from '@/components/ui';
 import HomeQuickStart from '@/components/HomeQuickStart';
-import { COMPANIONS, SERVICE_NAME, TRAVEL_MODES } from '@/lib/config';
+import { COMPANIONS, DESTINATIONS, SERVICE_NAME, TRAVEL_MODES, regionsOf } from '@/lib/config';
 import { getPublicRoutes } from '@/lib/trips';
 import { usedPlaceIds } from '@/lib/trip';
 
@@ -14,12 +14,14 @@ export const dynamic = 'force-dynamic';
 export default async function HomePage({ searchParams }) {
   const sp = await searchParams;
   const kind = COMPANIONS.some((c) => c.id === sp?.c) ? sp.c : 'kids';
-  const mode = TRAVEL_MODES.some((m) => m.id === sp?.m) ? sp.m : 'fly';
+  const dest = DESTINATIONS.find((d) => d.open && d.id === sp?.to) || DESTINATIONS.find((d) => d.open);
+  // 제주 밖은 차로만 간다
+  const mode = dest.id !== 'jeju' ? 'car' : TRAVEL_MODES.some((m) => m.id === sp?.m) ? sp.m : 'fly';
   const who = COMPANIONS.find((c) => c.id === kind);
   let routes = [];
   let error = null;
   try {
-    routes = await getPublicRoutes({ companion: kind, limit: 6 });
+    routes = await getPublicRoutes({ companion: kind, regions: regionsOf(dest.id).map((r) => r.id), limit: 6 });
   } catch (e) {
     error = e.message;
   }
@@ -42,11 +44,11 @@ export default async function HomePage({ searchParams }) {
           <svg width="100%" height="60" viewBox="0 0 390 60" preserveAspectRatio="none" aria-hidden="true" className="absolute bottom-0 left-0">
             <path d="M0 30 Q 40 10 80 30 T 160 30 T 240 30 T 320 30 T 400 30 V60 H0 Z" fill="#F7B92A" />
           </svg>
-          <HomeQuickStart companion={kind} mode={mode} />
+          <HomeQuickStart dest={dest.id} companion={kind} mode={mode} />
         </section>
 
         <section className="flex flex-col gap-3">
-          <h2 className="m-0 h-display text-xl">{who.label} 다녀온 루트</h2>
+          <h2 className="m-0 h-display text-xl">{dest.label} · {who.label} 다녀온 루트</h2>
 
           {error ? (
             <ErrorCard message={error} />

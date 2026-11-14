@@ -10,10 +10,10 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { TABLES } from '@/lib/tables';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
-import { COMPANIONS, MAX_TRIP_DAYS, REGIONS, SERVICE_NAME, SLOT_TYPES, TRAVEL_MODES, departArea, departAreasFor } from '@/lib/config';
+import { COMPANIONS, MAX_TRIP_DAYS, REGIONS, SERVICE_NAME, SLOT_TYPES, departArea, departAreasFor, modesFor } from '@/lib/config';
 import { buildDays, redateDays, setTripEnds, tripDepartArea, tripMode, usedPlaceIds } from '@/lib/trip';
 import { addDays, dayCount } from '@/lib/hours';
-import { getApprovedPlaces, getPlaceMap, sidoOfRegion } from '@/lib/places';
+import { getApprovedPlaces, getPlaceMap, placeScope } from '@/lib/places';
 import { cleanLocation } from '@/lib/location';
 import { buildFillTasks, validatePicks, applyPicks, finalCheck } from '@/lib/ai/fill';
 import { chooseRoute } from '@/lib/ai/routes';
@@ -59,7 +59,7 @@ const FIXED_KINDS = ['airport_arrive', 'airport_depart', 'home_start', 'home_end
 
 /** 이동 방식·출발 지역 확인 → { mode, departAreaId } | { error } */
 function travelOf(region, mode, departAreaId) {
-  const m = TRAVEL_MODES.some((x) => x.id === mode) ? mode : 'fly';
+  const m = modesFor(region).some((x) => x.id === mode) ? mode : modesFor(region)[0].id;
   if (m === 'fly') return { mode: 'fly', departAreaId: null };
   if (!departAreasFor(region).some((a) => a.id === departAreaId)) return { error: '어디서 출발하는지 골라 주세요' };
   return { mode: 'car', departAreaId };
@@ -137,8 +137,8 @@ export async function createTrip(input) {
   if (n < 1) return fail('오는 날이 가는 날보다 빨라요');
   if (n > MAX_TRIP_DAYS) return fail(`여행은 최대 ${MAX_TRIP_DAYS}일까지 짤 수 있어요`);
   const travel = travelOf(region, mode, departAreaId);
-  if (travel.error) return fail(travel.error);
   if (!TIME.test(arrivalTime || '') || !TIME.test(departureTime || '')) return fail(travel.mode === 'car' ? '출발·도착 시각을 확인해 주세요' : '비행기 시각을 확인해 주세요');
+  if (travel.error) return fail(travel.error);
   if (n === 1 && arrivalTime >= departureTime) return fail(travel.mode === 'car' ? '돌아오는 시각이 출발보다 빨라요' : '제주 출발이 도착보다 빨라요');
 
   const ages = companion === 'kids' ? kidsAges.map((a) => parseInt(a, 10)).filter((a) => a >= 0 && a <= 13).slice(0, 6) : [];
@@ -234,7 +234,7 @@ export async function aiFill(tripId) {
   const { trip, writer } = ed;
 
   try {
-    const places = await getApprovedPlaces(sidoOfRegion(trip.region));
+    const places = await getApprovedPlaces(...placeScope(trip.region));
     const placeMap = Object.fromEntries(places.map((p) => [p.id, p]));
     // 카카오 검색으로 넣은 후보 장소는 승인 목록에 없다 → 위치·검사용으로만 따로 읽는다
     const extraIds = usedPlaceIds(trip.days).filter((id) => !placeMap[id]);

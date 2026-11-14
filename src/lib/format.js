@@ -1,5 +1,5 @@
 /** format.js — 화면 문구 조립 (순수 함수) */
-import { CATEGORIES, COMPANIONS, REGIONS, SLOT_TYPES, SERVICE_NAME } from './config.js';
+import { CATEGORIES, COMPANIONS, REGIONS, SLOT_TYPES, SERVICE_NAME, regionName } from './config.js';
 import { hoursText, isAlwaysOpen, isClosedOn, shortDate, weekdayLabel, WEEKDAY_NAMES } from './hours.js';
 
 /** 운영자가 후기를 참고해 짠 추천 루트인지 (작성자 이름 = 서비스명, 일반 사용자는 이 이름을 못 씀) */
@@ -32,8 +32,7 @@ export function nightsText(n) {
  * placeNames 는 루트에 들어간 순서대로
  */
 export function routeShareText(trip, placeNames = []) {
-  const r = regionShort(trip.region);
-  const head = [r.startsWith('제주') ? r : `제주 ${r}`, nightsText(trip.days?.length || 1), companionText(trip), placeNames.length && `${placeNames.length}곳`]
+  const head = [regionName(trip.region), nightsText(trip.days?.length || 1), companionText(trip), placeNames.length && `${placeNames.length}곳`]
     .filter(Boolean)
     .join(' · ');
   const names = placeNames.slice(0, 5).join(', ');
@@ -71,5 +70,11 @@ export function routeLink(from, to) {
 }
 
 export function blogLink(place) {
-  return place.external_links?.blog || `https://search.naver.com/search.naver?where=blog&query=${encodeURIComponent(`제주 ${place.name}`)}`;
+  return place.external_links?.blog || `https://search.naver.com/search.naver?where=blog&query=${encodeURIComponent(`${blogPrefix(place)} ${place.name}`)}`;
+}
+
+/** 블로그 검색 앞말: 제주는 「제주」, 그 밖은 주소의 시·군 (「용인시」) */
+function blogPrefix(place) {
+  if (String(place.region || '').startsWith('jeju')) return '제주';
+  return String(place.address || '').trim().split(/s+/)[1] || '';
 }

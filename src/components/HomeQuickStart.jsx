@@ -5,16 +5,17 @@ import { COMPANIONS, DESTINATIONS, TRAVEL_MODES } from '@/lib/config';
 
 /**
  * S01 홈 첫 질문: 어디 가요? / 뭐 타고 가요? / 누구랑 가요?
- * 고른 값은 주소(?c=&m=)에 담는다. 동행을 바꾸면 아래 인기 루트도 서버에서 다시 걸러진다.
+ * 고른 값은 주소(?to=&c=&m=)에 담는다. 제주 밖은 차로만 간다. 동행을 바꾸면 아래 인기 루트도 서버에서 다시 걸러진다.
  * 「여행 짜러 가기」는 같은 값을 S02(/trips/new)로 넘긴다.
  */
-export default function HomeQuickStart({ companion, mode }) {
+export default function HomeQuickStart({ dest: destId, companion, mode }) {
   const router = useRouter();
-  const dest = DESTINATIONS.find((d) => d.open);
+  const dest = DESTINATIONS.find((d) => d.id === destId) || DESTINATIONS.find((d) => d.open);
+  const modes = dest.id === 'jeju' ? TRAVEL_MODES : TRAVEL_MODES.filter((m) => m.id === 'car');
   const who = COMPANIONS.find((c) => c.id === companion) || COMPANIONS[0];
 
   function pick(next) {
-    const q = new URLSearchParams({ c: companion, m: mode, ...next });
+    const q = new URLSearchParams({ to: dest.id, c: companion, m: mode, ...next });
     router.replace(`/?${q}`, { scroll: false });
   }
 
@@ -34,7 +35,7 @@ export default function HomeQuickStart({ companion, mode }) {
         <div className="grid grid-cols-3 gap-1.5">
           {DESTINATIONS.map((d) =>
             d.open ? (
-              <button key={d.id} type="button" aria-pressed={d.id === dest.id} className={`${pill(d.id === dest.id)} px-0`}>
+              <button key={d.id} type="button" aria-pressed={d.id === dest.id} onClick={() => pick({ to: d.id, m: d.id === 'jeju' ? 'fly' : 'car' })} className={`${pill(d.id === dest.id)} px-0`}>
                 {d.label}
               </button>
             ) : (
@@ -53,8 +54,8 @@ export default function HomeQuickStart({ companion, mode }) {
 
       <div className="relative flex flex-col gap-1.5">
         <h2 className="m-0 text-sm font-bold text-[#4E3A2C]">뭐 타고 가요?</h2>
-        <div className="grid grid-cols-2 gap-1.5">
-          {TRAVEL_MODES.map((m) => (
+        <div className={`grid gap-1.5 ${modes.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          {modes.map((m) => (
             <button key={m.id} type="button" aria-pressed={mode === m.id} onClick={() => pick({ m: m.id })} className={`${pill(mode === m.id)} px-0`}>
               {m.label}
             </button>

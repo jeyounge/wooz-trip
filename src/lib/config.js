@@ -20,16 +20,30 @@ export const POLICY_DATE = process.env.NEXT_PUBLIC_POLICY_DATE || '';
  */
 export const DESTINATIONS = [
   { id: 'jeju', label: '제주', open: true },
-  { id: 'yongin', label: '용인', open: false },
+  { id: 'gyeonggi-south', label: '경기 남부', open: true }, // 2026-11-14 오픈
   { id: 'incheon', label: '인천', open: false },
 ];
 
+/** 여행 권역. dest = DESTINATIONS.id. 장소의 region 값과 같다 (경기 남부 시 묶음은 tourapi/transform.js GYEONGGI_SOUTH) */
 export const REGIONS = [
-  { id: 'jeju-west', label: '서쪽 (애월·협재)', short: '서쪽' },
-  { id: 'jeju-east', label: '동쪽', short: '동쪽' },
-  { id: 'jeju-south', label: '서귀포', short: '서귀포' },
-  { id: 'jeju-city', label: '제주시', short: '제주시' },
+  { id: 'jeju-west', label: '서쪽 (애월·협재)', short: '서쪽', dest: 'jeju' },
+  { id: 'jeju-east', label: '동쪽', short: '동쪽', dest: 'jeju' },
+  { id: 'jeju-south', label: '서귀포', short: '서귀포', dest: 'jeju' },
+  { id: 'jeju-city', label: '제주시', short: '제주시', dest: 'jeju' },
+  { id: 'gyeonggi-suwon', label: '수원·화성·오산·평택', short: '수원·화성', dest: 'gyeonggi-south' },
+  { id: 'gyeonggi-yongin', label: '용인·이천·여주·안성·광주', short: '용인·이천', dest: 'gyeonggi-south' },
+  { id: 'gyeonggi-seongnam', label: '성남·하남·과천·안양·군포·의왕', short: '성남·안양', dest: 'gyeonggi-south' },
+  { id: 'gyeonggi-ansan', label: '안산·시흥·부천·광명', short: '안산·시흥', dest: 'gyeonggi-south' },
 ];
+export const destinationOf = (region) => DESTINATIONS.find((d) => d.id === REGIONS.find((r) => r.id === region)?.dest) || DESTINATIONS[0];
+export const regionsOf = (destId) => REGIONS.filter((r) => r.dest === destId);
+/** 화면에 쓰는 지역 이름: 「제주 서쪽」, 「경기 남부 용인·이천」 */
+export const regionName = (region) => {
+  const r = REGIONS.find((x) => x.id === region);
+  if (!r) return DESTINATIONS[0].label;
+  const d = destinationOf(region).label;
+  return r.short.startsWith(d) ? r.short : `${d} ${r.short}`;
+};
 
 export const COMPANIONS = [
   { id: 'kids', label: '아이들과', with: '아이랑', color: '#FFC93C' },
@@ -71,7 +85,18 @@ export const TRAVEL_MODES = [
   { id: 'car', label: '차' },
 ];
 /** 권역(REGIONS.id) → 출발 지역 묶음. 지역을 새로 열면 여기에 추가한다 */
-export const REGION_ZONE = { 'jeju-west': 'jeju', 'jeju-east': 'jeju', 'jeju-south': 'jeju', 'jeju-city': 'jeju' };
+export const REGION_ZONE = {
+  'jeju-west': 'jeju',
+  'jeju-east': 'jeju',
+  'jeju-south': 'jeju',
+  'jeju-city': 'jeju',
+  'gyeonggi-suwon': 'capital',
+  'gyeonggi-yongin': 'capital',
+  'gyeonggi-seongnam': 'capital',
+  'gyeonggi-ansan': 'capital',
+};
+/** 비행기로 가는 권역 묶음 (그 밖은 차만) */
+export const modesFor = (region) => (zoneOf(region) === 'jeju' ? TRAVEL_MODES : TRAVEL_MODES.filter((m) => m.id === 'car'));
 export const ZONE_DEFAULT_MODE = { jeju: 'fly', capital: 'car' };
 
 /**

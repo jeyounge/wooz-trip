@@ -1,6 +1,7 @@
 // AI 루트 SQL 생성기: data/ai-routes/*.json → supabase/migrations/0003_wooz_trip_ai_routes.sql
 // 루트 만드는 법은 docs/ai-routes.md 참고.
 // 실행: node scripts/gen_ai_routes_sql.mjs   (npm run routes:sql)
+//       npm run routes:sql -- --apply         SQL 파일과 함께 DB 에도 바로 넣는다 (.env.local 의 service_role 키, 같은 code 는 덮어씀)
 //
 // 검사하는 것 (하나라도 틀리면 SQL 을 만들지 않는다)
 //  - code 형식·중복, 지역·동행 유형·슬롯 종류 값
@@ -163,3 +164,35 @@ on conflict (code) do update set
 }
 writeFileSync(OUT, sql);
 console.log(`루트 ${routes.length}개 (파일 ${files.length}개, 경고 ${warns.length}건) → supabase/migrations/0003_wooz_trip_ai_routes.sql`);
+
+// --apply: 같은 내용을 DB 에 바로 넣는다 (데이터 작업이라 service_role 로 직접. 꺼 둔 루트(is_active)는 그대로)
+if (process.argv.includes('--apply') && routes.length) {
+  try {
+    process.loadEnvFile(new URL('.env.local', ROOT));
+  } catch {
+    // 환경변수가 이미 있으면 그대로 쓴다
+  }
+  const { createClient } = await import('@supabase/supabase-js');
+  const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+  const rows = routes.map((r) => ({
+    code: r.code,
+    title: r.title,
+    summary: r.summary,
+    region: r.region,
+    companion_type: r.companion,
+    day_count: r.dayCount,
+    kid_age_min: r.ageMin,
+    kid_age_max: r.ageMax,
+    tags: r.tags,
+    days: r.days,
+    source: r.source,
+  }));
+  for (let i = 0; i < rows.length; i += 100) {
+    const { error } = await db.from('wooz_trip_ai_routes').upsert(rows.slice(i, i + 100), { onConflict: 'code' });
+    if (error) {
+      console.error('DB 반영 실패:', error.message);
+      process.exit(1);
+    }
+  }
+  console.log(`DB 반영 ${rows.length}개`);
+}

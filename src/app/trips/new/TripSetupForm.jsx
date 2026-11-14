@@ -2,7 +2,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { BackLink } from '@/components/ui';
-import { COMPANIONS, DESTINATIONS, MAX_TRIP_DAYS, REGIONS, TRAVEL_MODES, defaultMode, departAreasFor, zoneOf } from '@/lib/config';
+import { COMPANIONS, DESTINATIONS, MAX_TRIP_DAYS, TRAVEL_MODES, defaultMode, departAreasFor, modesFor, regionsOf, zoneOf } from '@/lib/config';
 import { addDays, dayCount, shortDate, weekdayLabel } from '@/lib/hours';
 import { createTrip } from '@/app/actions/trips';
 import AiThinking, { waitAtLeast } from '@/components/AiThinking';
@@ -23,18 +23,21 @@ function today() {
 // 기본 시각: 비행기는 도착·출발, 차는 출발·집 도착
 const DEFAULT_TIMES = { fly: ['10:30', '18:40'], car: ['08:00', '20:00'] };
 
-export default function TripSetupForm({ initialCompanion, initialMode, fromHome = false }) {
+export default function TripSetupForm({ initialDest, initialCompanion, initialMode, fromHome = false }) {
   const router = useRouter();
   const [editBasics, setEditBasics] = useState(!fromHome); // 홈에서 고른 동행·이동 방식을 다시 펼쳐 고칠 때
   const base = useMemo(() => addDays(today(), 14), []);
   const [companion, setCompanion] = useState(COMPANIONS.some((c) => c.id === initialCompanion) ? initialCompanion : 'kids');
   const [ages, setAges] = useState([7, 3]);
-  const [region, setRegion] = useState('jeju-west');
+  const firstDest = DESTINATIONS.find((d) => d.open && d.id === initialDest) || DESTINATIONS.find((d) => d.open);
+  const firstRegion = regionsOf(firstDest.id)[0].id;
+  const [dest, setDest] = useState(firstDest);
+  const [region, setRegion] = useState(firstRegion);
   const [startDate, setStartDate] = useState(base);
   const [endDate, setEndDate] = useState(addDays(base, 2));
-  const firstMode = TRAVEL_MODES.some((m) => m.id === initialMode) ? initialMode : defaultMode('jeju-west');
+  const firstMode = modesFor(firstRegion).some((m) => m.id === initialMode) ? initialMode : defaultMode(firstRegion);
   const [mode, setMode] = useState(firstMode);
-  const [departAreaId, setDepartAreaId] = useState(departAreasFor('jeju-west')[0]?.id || '');
+  const [departAreaId, setDepartAreaId] = useState(departAreasFor(firstRegion)[0]?.id || '');
   const [arrivalTime, setArrivalTime] = useState(DEFAULT_TIMES[firstMode][0]);
   const [departureTime, setDepartureTime] = useState(DEFAULT_TIMES[firstMode][1]);
   const [stay, setStay] = useState(null); // { name, address?, lat?, lng? }
@@ -56,6 +59,11 @@ export default function TripSetupForm({ initialCompanion, initialMode, fromHome 
     setRegion(id);
   }
 
+  function onDest(d) {
+    setDest(d);
+    onRegion(regionsOf(d.id)[0].id);
+  }
+
   function onMode(m) {
     setMode(m);
     setArrivalTime(DEFAULT_TIMES[m][0]);
@@ -73,7 +81,7 @@ export default function TripSetupForm({ initialCompanion, initialMode, fromHome 
     if (isCar && !departAreaId) return setError('어디서 출발하는지 골라 주세요');
     if (n === 1 && arrivalTime >= departureTime) return setError(isCar ? '돌아오는 시각이 출발보다 빨라요' : '제주 출발이 도착보다 빨라요');
     if (start === 'browse') {
-      const q = new URLSearchParams({ c: companion, start: startDate, arr: arrivalTime, dep: departureTime, mode });
+      const q = new URLSearchParams({ to: dest.id, c: companion, start: startDate, arr: arrivalTime, dep: departureTime, mode });
       if (isCar) q.set('area', departAreaId);
       if (stay?.name) q.set('stay', stay.name);
       if (Number.isFinite(stay?.lat)) {
@@ -123,7 +131,7 @@ export default function TripSetupForm({ initialCompanion, initialMode, fromHome 
             <div className="min-w-0 flex-1">
               <div className="text-xs text-sub">홈에서 고른 것</div>
               <div className="truncate font-display text-base">
-                {DESTINATIONS.find((d) => d.open)?.label} · {TRAVEL_MODES.find((m) => m.id === mode)?.label} · {COMPANIONS.find((c) => c.id === companion)?.label}
+                {dest.label} · {TRAVEL_MODES.find((m) => m.id === mode)?.label} · {COMPANIONS.find((c) => c.id === companion)?.label}
               </div>
             </div>
             <button type="button" onClick={() => setEditBasics(true)} className="h-11 flex-none px-2 text-sm text-sub underline">
@@ -193,9 +201,18 @@ export default function TripSetupForm({ initialCompanion, initialMode, fromHome 
         )}
 
         <section className={card}>
-          <h2 className="m-0 h-display text-lg">제주 어느 쪽이에요?</h2>
+          {editBasics && (
+            <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="어디 가요?">
+              {DESTINATIONS.filter((d) => d.open).map((d) => (
+                <button key={d.id} type="button" aria-pressed={dest.id === d.id} onClick={() => onDest(d)} className={`pill px-0 ${dest.id === d.id ? 'pill-on' : ''}`}>
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <h2 className="m-0 h-display text-lg">{dest.label} 어느 쪽이에요?</h2>
           <div className="flex flex-wrap gap-1.5">
-            {REGIONS.map((r) => (
+            {regionsOf(dest.id).map((r) => (
               <button
                 key={r.id}
                 type="button"
@@ -211,9 +228,9 @@ export default function TripSetupForm({ initialCompanion, initialMode, fromHome 
 
         <section className={card}>
           <h2 className="m-0 h-display text-lg">{editBasics ? '언제, 어떻게 가요?' : '언제 가요?'}</h2>
-          {editBasics && (
+          {editBasics && modesFor(region).length > 1 && (
             <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="어떻게 가요?">
-              {TRAVEL_MODES.map((m) => (
+              {modesFor(region).map((m) => (
                 <button key={m.id} type="button" aria-pressed={mode === m.id} onClick={() => onMode(m.id)} className={`pill px-0 ${mode === m.id ? 'pill-on' : ''}`}>
                   {m.label}
                 </button>

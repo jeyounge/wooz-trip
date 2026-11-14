@@ -9,6 +9,8 @@
 //
 // 뺀 곳 (예): 골프장, 수영장, 항구 대합실·여객선, 도서관·문화원·책방, 양조장, 성인 대상 시설,
 //            밤에만 여는 곳(오후 슬롯에 못 넣음), 새벽 등산로 입구, 우도·마라도 안 장소(배 시간 필요)
+import { LINES as GYEONGGI_LINES } from './pool-gyeonggi.mjs';
+
 const LINES = `
 43|kpcf|exp|감귤밭 체험
 57|kpcf|exp|감귤밭 체험
@@ -227,9 +229,13 @@ const LINES = `
 1465|kcf|exp|카트 체험|o
 `;
 
+// 경기 남부는 pool-gyeonggi.mjs (장소 번호가 겹치지 않아서 한 목록으로 합친다)
 export const POOL = new Map(
-  LINES.trim()
+  [LINES, GYEONGGI_LINES]
+    .join('\n')
+    .trim()
     .split('\n')
+    .filter((line) => line.trim())
     .map((line) => {
       const [ref, comp, themes, note, flag] = line.split('|');
       return [Number(ref), { comp: new Set(comp.split('')), themes: themes.split(','), note, older: flag === 'o' }];

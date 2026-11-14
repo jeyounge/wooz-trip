@@ -2,7 +2,7 @@ import Link from 'next/link';
 import BottomNav from '@/components/BottomNav';
 import RouteCard from '@/components/RouteCard';
 import { EmptyCard, ErrorCard, TopBar } from '@/components/ui';
-import { COMPANIONS, REGIONS } from '@/lib/config';
+import { COMPANIONS, DESTINATIONS, REGIONS, destinationOf, regionsOf } from '@/lib/config';
 import { getPublicRoutes } from '@/lib/trips';
 import { usedPlaceIds } from '@/lib/trip';
 
@@ -13,6 +13,8 @@ export default async function RoutesPage({ searchParams }) {
   const sp = await searchParams;
   const companion = COMPANIONS.some((c) => c.id === sp?.c) ? sp.c : '';
   const region = REGIONS.some((r) => r.id === sp?.r) ? sp.r : '';
+  const dest = region ? destinationOf(region) : DESTINATIONS.find((d) => d.open && d.id === sp?.to) || DESTINATIONS[0];
+  const opened = DESTINATIONS.filter((d) => d.open);
 
   // S02 "따라가기"에서 넘어온 내 여행 정보는 상세 → 복사 시트까지 그대로 넘긴다
   const setup = new URLSearchParams();
@@ -23,7 +25,9 @@ export default async function RoutesPage({ searchParams }) {
     const q = new URLSearchParams(setup);
     const c = patch.c ?? companion;
     const r = patch.r ?? region;
+    const to = patch.to ?? dest.id;
     if (c) q.set('c', c);
+    if (to !== DESTINATIONS[0].id) q.set('to', to);
     if (r) q.set('r', r);
     const s = q.toString();
     return s ? `/routes?${s}` : '/routes';
@@ -32,7 +36,7 @@ export default async function RoutesPage({ searchParams }) {
   let routes = [];
   let error = null;
   try {
-    routes = await getPublicRoutes({ companion, region, limit: 40 });
+    routes = await getPublicRoutes({ companion, region, regions: regionsOf(dest.id).map((r) => r.id), limit: 40 });
   } catch (e) {
     error = e.message;
   }
@@ -56,11 +60,20 @@ export default async function RoutesPage({ searchParams }) {
             </Link>
           ))}
         </div>
+        {opened.length > 1 && (
+          <div className="flex gap-1.5 overflow-x-auto pb-1" aria-label="여행지">
+            {opened.map((d) => (
+              <Link key={d.id} href={href({ to: d.id, r: '' })} className={chip(dest.id === d.id)} scroll={false}>
+                {d.label}
+              </Link>
+            ))}
+          </div>
+        )}
         <div className="flex gap-1.5 overflow-x-auto pb-1">
           <Link href={href({ r: '' })} className={chip(!region)} scroll={false}>
-            제주 전체
+            {dest.label} 전체
           </Link>
-          {REGIONS.map((r) => (
+          {regionsOf(dest.id).map((r) => (
             <Link key={r.id} href={href({ r: r.id })} className={chip(region === r.id)} scroll={false}>
               {r.short}
             </Link>

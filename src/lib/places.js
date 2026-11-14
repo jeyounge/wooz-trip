@@ -11,6 +11,7 @@ import { createClient } from './supabase/server.js';
 import { TABLES } from './tables.js';
 import { createAdminClient } from './supabase/admin.js';
 import { areaBySlug } from './areas.js';
+import { REGIONS } from './config.js';
 export { rankCandidates } from './candidates.js';
 
 export const PLACE_COLUMNS =
@@ -23,20 +24,33 @@ export function sidoOfRegion(region) {
   return areaBySlug(String(region || '').split('-')[0])?.code || '50';
 }
 
-/** 한 시·도의 승인 장소 (공개 RLS: status = approved). 누구에게나 같은 목록이라 쿠키 없는 anon 클라이언트로 읽는다 */
-async function fetchApprovedPlaces(sidoCode = '50') {
+/**
+ * 여행 지역 id → 장소를 읽을 범위 [시·도 코드, 권역 목록|null].
+ * 제주는 시·도 전체, 경기는 연 권역(경기 남부)만 읽는다 (경기 전체는 캐시 한도 2MB 를 넘는다)
+ */
+export function placeScope(region) {
+  const sido = sidoOfRegion(region);
+  const dest = REGIONS.find((r) => r.id === region)?.dest;
+  if (!dest || dest === 'jeju') return [sido, null];
+  return [sido, REGIONS.filter((r) => r.dest === dest).map((r) => r.id)];
+}
+
+/** 한 시·도(또는 그 안 권역들)의 승인 장소 (공개 RLS: status = approved). 누구에게나 같은 목록이라 쿠키 없는 anon 클라이언트로 읽는다 */
+async function fetchApprovedPlaces(sidoCode = '50', regions = null) {
   const s = createPublicClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, { auth: { persistSession: false } });
   // Supabase 는 한 번에 1,000행까지만 준다 → 나눠서 읽는다
   const all = [];
   for (let from = 0; ; from += 1000) {
-    const { data, error } = await s.from(TABLES.places).select(PLACE_COLUMNS).eq('status', 'approved').eq('sido_code', sidoCode).order('id').range(from, from + 999);
+    let q = s.from(TABLES.places).select(PLACE_COLUMNS).eq('status', 'approved').eq('sido_code', sidoCode);
+    if (regions?.length) q = q.in('region', regions);
+    const { data, error } = await q.order('id').range(from, from + 999);
     if (error) throw new Error(error.message);
     all.push(...(data || []));
     if (!data || data.length < 1000) return all;
   }
 }
 
-/** getApprovedPlaces(sidoCode) — 인자가 캐시 키에 들어가서 시·도별로 따로 캐시된다 */
+/** getApprovedPlaces(...placeScope(region)) — 인자가 캐시 키에 들어가서 범위별로 따로 캐시된다 */
 export const getApprovedPlaces = unstable_cache(fetchApprovedPlaces, ['approved-places-v2'], { revalidate: 300, tags: [PLACES_TAG] });
 
 /**

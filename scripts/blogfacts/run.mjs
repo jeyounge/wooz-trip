@@ -15,6 +15,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
 import { AREAS, areaBySlug } from '../../src/lib/areas.js';
+import { REGIONS } from '../../src/lib/config.js';
 import { aggregate, analyzePost, FACT_RULES, factsInSentence, htmlToSentences } from '../../src/lib/blogfacts/rules.js';
 
 const ROOT = new URL('../../', import.meta.url);
@@ -168,7 +169,11 @@ async function fetchPost(url) {
 // ── 대상 장소 ──
 async function targetPlaces() {
   const build = readJson(new URL(`data/build/${area.slug}.json`, ROOT), { rows: [] }).rows;
-  let list = build.map((r) => ({ key: r.source_external_id, name: r.name, address: r.address, category: r.category, status: 'candidate' }));
+  // 서비스를 연 권역만 (경기는 남부 4권역만 열림. 제주는 4권역 전부)
+  const open = REGIONS.filter((r) => r.id.startsWith(`${area.slug}-`)).map((r) => r.id);
+  let list = build
+    .filter((r) => !open.length || open.includes(r.region))
+    .map((r) => ({ key: r.source_external_id, name: r.name, address: r.address, category: r.category, status: 'candidate' }));
   // DB 에 승인된 장소가 있으면 먼저 (정확도가 중요한 곳부터)
   if (process.env.SUPABASE_SERVICE_ROLE_KEY && !args.includes('--sample')) {
     try {

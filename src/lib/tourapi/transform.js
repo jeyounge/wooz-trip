@@ -66,6 +66,19 @@ export function regionOf(address, lat, lng) {
   return lat > 33.44 ? 'jeju-city' : 'jeju-south';
 }
 
+// 경기 남부 (2026-11-14 오픈): 시 이름으로 4권역. 북부·동부 시·군은 아직 시·도 단위(gyeonggi)로 둔다
+const GYEONGGI_SOUTH = {
+  'gyeonggi-suwon': ['수원시', '화성시', '오산시', '평택시'],
+  'gyeonggi-yongin': ['용인시', '이천시', '여주시', '안성시', '광주시'],
+  'gyeonggi-seongnam': ['성남시', '하남시', '과천시', '안양시', '군포시', '의왕시'],
+  'gyeonggi-ansan': ['안산시', '시흥시', '부천시', '광명시'],
+};
+
+export function gyeonggiRegionOf(address) {
+  const city = String(address || '').trim().split(/\s+/)[1] || '';
+  return Object.keys(GYEONGGI_SOUTH).find((r) => GYEONGGI_SOUTH[r].includes(city)) || 'gyeonggi';
+}
+
 // ─────────────────────────────────────────────
 // 영업시간
 // ─────────────────────────────────────────────
@@ -311,8 +324,8 @@ export function toPlace(item, intro = {}, withTour = {}, codeNames = {}, { commo
   flags.push(...h.flags, ...c.flags);
   if (!Object.keys(intro).length) flags.push('no_detail');
 
-  // 제주는 서비스 권역(서쪽·동쪽·서귀포·제주시)으로, 다른 시·도는 우선 시·도 단위로 둔다
-  const region = isJeju ? regionOf(address, lat, lng) : area.slug;
+  // 제주·경기 남부는 서비스 권역으로, 다른 시·도는 우선 시·도 단위로 둔다
+  const region = isJeju ? regionOf(address, lat, lng) : area.slug === 'gyeonggi' ? gyeonggiRegionOf(address) : area.slug;
   if (!region) flags.push('region_check');
   const homepage = homepageOf(pick(common, 'homepage'));
   const kid = kidTagsOf(intro, withTour);

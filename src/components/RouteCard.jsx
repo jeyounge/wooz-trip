@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { COMPANIONS, REGIONS } from '@/lib/config';
+import { COMPANIONS, regionName } from '@/lib/config';
 import { isEditorRoute } from '@/lib/format';
 import { IconMap, IconUmbrella, IconWave } from './Icons';
 
@@ -12,7 +12,7 @@ const ICONS = [
 /** 공개 루트 카드 (S01 홈, 둘러보기 목록) */
 export default function RouteCard({ route, index = 0, placeCount, query = '' }) {
   const look = ICONS[index % ICONS.length];
-  const region = REGIONS.find((r) => r.id === route.region)?.short || '제주';
+  const region = regionName(route.region);
   const companion = COMPANIONS.find((c) => c.id === route.companion_type)?.label;
   const n = route.days?.length || 1;
   return (

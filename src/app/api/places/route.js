@@ -5,7 +5,7 @@
  * 응답: { ok: true, data: [{ id, name, ..., travel, check }] } | { ok: false, message }
  */
 import { NextResponse } from 'next/server';
-import { getApprovedPlaces, rankCandidates, sidoOfRegion } from '@/lib/places';
+import { getApprovedPlaces, rankCandidates, placeScope } from '@/lib/places';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +22,7 @@ export async function GET(request) {
   const lng = parseFloat(sp.get('lng'));
 
   try {
-    const places = await getApprovedPlaces(sidoOfRegion(sp.get('region')));
+    const places = await getApprovedPlaces(...placeScope(sp.get('region')));
     const data = rankCandidates(places, {
       date,
       time,

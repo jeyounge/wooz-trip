@@ -21,6 +21,7 @@ node scripts\tourapi\collect.mjs auto >> "%LOG%" 2>&1
 node scripts\tourapi\build.mjs >> "%LOG%" 2>&1
 node scripts\tourapi\import.mjs >> "%LOG%" 2>&1
 node scripts\blogfacts\run.mjs --area jeju --limit 35 >> "%LOG%" 2>&1
+node scripts\blogfacts\run.mjs --area gyeonggi --limit 35 >> "%LOG%" 2>&1
 node scripts\blogfacts\sync.mjs >> "%LOG%" 2>&1
 if "%HOUR%"=="0" node scripts\golf\collect.mjs >> "%LOG%" 2>&1
 echo. >> "%LOG%"

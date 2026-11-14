@@ -1,7 +1,8 @@
-// AI 루트 조립기: 고른 볼거리(pool.mjs) + 승인 장소(data/places-for-llm.json) → data/ai-routes/jeju-real.json
+// AI 루트 조립기: 고른 볼거리(pool.mjs) + 승인 장소(data/places-for-llm.json) → data/ai-routes/<여행지>.json
 //
 //   npm run places:export     먼저 승인 장소 목록을 뽑는다
-//   node scripts/ai-routes/build.mjs
+//   node scripts/ai-routes/build.mjs                        제주 → jeju-real.json
+//   node scripts/ai-routes/build.mjs --dest gyeonggi-south  경기 남부 → gyeonggi-south.json (당일·1박 2일만)
 //   npm run routes:sql        검사 후 SQL 생성 (docs/ai-routes.md)
 //
 // 볼거리는 운영자·LLM 이 고른 pool.mjs 안에서만 쓴다. 식당·카페는 승인 장소 중에서 코드가 고른다:
@@ -13,27 +14,50 @@
 // 추천 이유는 장소 데이터(종류·태그·실내)와 계산한 이동시간으로만 쓴다. 같은 입력이면 늘 같은 결과(시드 고정).
 import { readFileSync, writeFileSync } from 'node:fs';
 import { estimateCarMinutes } from '../../src/lib/geo.js';
-import { COMPANIONS, REGIONS } from '../../src/lib/config.js';
+import { COMPANIONS, regionsOf } from '../../src/lib/config.js';
 import { POOL } from './pool.mjs';
 
 const ROOT = new URL('../../', import.meta.url);
-const OUT = new URL('data/ai-routes/jeju-real.json', ROOT);
+const argAt = process.argv.indexOf('--dest');
+const DEST = argAt > 0 ? process.argv[argAt + 1] : 'jeju';
+const REGIONS = regionsOf(DEST);
+if (!REGIONS.length) throw new Error(`모르는 여행지: ${DEST}`);
+const OUT_NAME = DEST === 'jeju' ? 'jeju-real.json' : `${DEST}.json`;
+const OUT = new URL(`data/ai-routes/${OUT_NAME}`, ROOT);
 const places = JSON.parse(readFileSync(new URL('data/places-for-llm.json', ROOT), 'utf8')).filter(
-  (p) => typeof p.ref === 'number' && p.status === 'approved' && !p.name.startsWith('[샘플]')
+  (p) => typeof p.ref === 'number' && p.status === 'approved' && !p.name.startsWith('[샘플]') && REGIONS.some((r) => r.id === p.region)
 );
 const byRef = new Map(places.map((p) => [p.ref, p]));
 
 // ── 만들 개수: 지역 4 × 동행 4 × 1~4일 ──
-const VARIANTS = {
-  kids: { 1: 4, 2: 5, 3: 5, 4: 3 },
-  parents: { 1: 3, 2: 3, 3: 3, 4: 2 },
-  couple: { 1: 3, 2: 3, 3: 3, 4: 2 },
-  friends: { 1: 3, 2: 3, 3: 3, 4: 2 },
-};
+// 제주는 1~4일, 경기 남부는 차로 가는 당일치기·1박 2일
+const VARIANTS =
+  DEST === 'jeju'
+    ? {
+        kids: { 1: 4, 2: 5, 3: 5, 4: 3 },
+        parents: { 1: 3, 2: 3, 3: 3, 4: 2 },
+        couple: { 1: 3, 2: 3, 3: 3, 4: 2 },
+        friends: { 1: 3, 2: 3, 3: 3, 4: 2 },
+      }
+    : {
+        kids: { 1: 5, 2: 3 },
+        parents: { 1: 3, 2: 2 },
+        couple: { 1: 3, 2: 2 },
+        friends: { 1: 3, 2: 2 },
+      };
 const COMP_CODE = { kids: 'k', parents: 'p', couple: 'c', friends: 'f' };
 const COMP_WORD = { kids: '아이랑', parents: '부모님과', couple: '둘이서', friends: '친구랑' };
-const DAY_WORD = { 1: '하루', 2: '1박 2일', 3: '2박 3일', 4: '3박 4일' };
-const REGION_CODE = { 'jeju-west': 'west', 'jeju-east': 'east', 'jeju-south': 'south', 'jeju-city': 'city' };
+const DAY_WORD = { 1: DEST === 'jeju' ? '하루' : '당일치기', 2: '1박 2일', 3: '2박 3일', 4: '3박 4일' };
+const REGION_CODE = {
+  'jeju-west': 'west',
+  'jeju-east': 'east',
+  'jeju-south': 'south',
+  'jeju-city': 'city',
+  'gyeonggi-suwon': 'gg-suwon',
+  'gyeonggi-yongin': 'gg-yongin',
+  'gyeonggi-seongnam': 'gg-seongnam',
+  'gyeonggi-ansan': 'gg-ansan',
+};
 const THEME_WORD = { sea: '바다', nature: '숲·정원', animal: '동물', exp: '체험', museum: '전시', park: '테마파크', history: '역사' };
 const THEME_TAG = { sea: 'beach', nature: 'nature', animal: 'animal', exp: 'experience', museum: 'museum', park: 'themepark', history: 'history' };
 
@@ -131,6 +155,8 @@ function foodBonus(p, comp) {
 }
 // 비슷한 활동은 한 루트에 한 번 (감귤 체험 두 번, 승마 두 번 같은 것)
 const KIND_WORDS = [['감귤', '감귤'], ['승마', '승마'], ['카트', '카트'], ['카약', '카약'], ['잠수함', '배'], ['유람선', '배'], ['요트', '배'], ['보트', '배'], ['테디베어', '곰인형'], ['곰인형', '곰인형'], ['초콜릿', '초콜릿'], ['미디어아트', '미디어아트']];
+// 경기 남부: 같은 종류(동물원 두 번, 식물원 두 번 등)는 하루·한 루트에 한 번
+if (DEST !== 'jeju') KIND_WORDS.push(['동물원', '동물원'], ['아쿠아리움', '아쿠아리움'], ['왕릉', '왕릉'], ['목장', '목장'], ['농장', '목장'], ['식물원', '식물원'], ['수목원', '식물원'], ['호수', '호수'], ['도자', '도자'], ['행궁', '행궁'], ['워터파크', '워터파크']);
 const kindKey = (note) => `note:${KIND_WORDS.find(([w]) => note.includes(w))?.[1] || note}`;
 const isIndoor = (p) => p.indoor || POOL.get(p.ref)?.themes.includes('in');
 const closedCount = (list) => list.filter((p) => p.closed?.length).length;
@@ -223,7 +249,7 @@ let seed = 20261018;
 for (const region of REGIONS.map((r) => r.id)) {
   const short = REGIONS.find((r) => r.id === region).short;
   for (const { id: comp } of COMPANIONS) {
-    for (const dayCount of [1, 2, 3, 4]) {
+    for (const dayCount of Object.keys(VARIANTS[comp]).map(Number)) {
       const n = VARIANTS[comp][dayCount];
       for (let v = 0; v < n; v++) {
         const rand = rng(seed++);
@@ -273,4 +299,4 @@ for (const region of REGIONS.map((r) => r.id)) {
 
 writeFileSync(OUT, JSON.stringify(routes, null, 1));
 const slots = routes.flatMap((r) => r.days.flat());
-console.log(`루트 ${routes.length}개 → data/ai-routes/jeju-real.json (슬롯 ${slots.length}개, 쓴 장소 ${new Set(slots.map((s) => s.place)).size}곳)`);
+console.log(`루트 ${routes.length}개 → data/ai-routes/${OUT_NAME} (슬롯 ${slots.length}개, 쓴 장소 ${new Set(slots.map((s) => s.place)).size}곳)`);

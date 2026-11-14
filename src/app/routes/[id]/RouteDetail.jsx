@@ -209,7 +209,7 @@ const HIDDEN_TAGS = new Set(['regular_closed']); // 정기휴무는 영업시간
 /** "제주특별자치도 제주시 구좌읍 비자숲길 55" → "제주시 구좌읍" */
 function areaOf(address) {
   return String(address || '')
-    .replace(/^제주특별자치도\s*/, '')
+    .replace(/^(제주특별자치도|경기도)\s*/, '')
     .split(/\s+/)
     .slice(0, 2)
     .join(' ');

@@ -2,7 +2,7 @@
 import { Fragment, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { TopBar } from '@/components/ui';
-import { AREAS } from '@/lib/areas';
+import { AREAS, areaBySlug } from '@/lib/areas';
 import { CATEGORIES, COMPANIONS, REGIONS, WEEKDAYS } from '@/lib/config';
 import { createPlace, draftIntro, resolveReport, setAiRouteActive, setPlacesStatus, updatePlace } from './actions';
 
@@ -155,7 +155,9 @@ const KID_ONLY = ['baby_chair', 'kids_menu', 'stroller', 'nursing', 'floor_seat'
 
 function PlacesTab({ area, places, setPlaces, tags }) {
   const router = useRouter();
-  const isJeju = area === '50';
+  // 서비스 권역이 있는 시·도 (제주 4권역, 경기 남부 4권역 + 그 밖 경기)
+  const areaRegions = REGIONS.filter((r) => areaBySlug(r.id.split('-')[0])?.code === area);
+  const hasRegions = areaRegions.length > 0;
   const [filter, setFilter] = useState('candidate');
   const [region, setRegion] = useState('');
   const [category, setCategory] = useState('');
@@ -255,10 +257,10 @@ function PlacesTab({ area, places, setPlaces, tags }) {
             </option>
           ))}
         </select>
-        <select className={sel} value={region} onChange={(e) => setRegion(e.target.value)} aria-label="권역 필터" disabled={!isJeju}>
-          <option value="">{isJeju ? '권역 전체' : '권역 없음'}</option>
-          {isJeju &&
-            REGIONS.map((r) => (
+        <select className={sel} value={region} onChange={(e) => setRegion(e.target.value)} aria-label="권역 필터" disabled={!hasRegions}>
+          <option value="">{hasRegions ? '권역 전체' : '권역 없음'}</option>
+          {hasRegions &&
+            areaRegions.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.short}
               </option>

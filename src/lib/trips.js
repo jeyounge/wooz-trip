@@ -6,7 +6,7 @@
 import { createClient } from './supabase/server.js';
 import { createAdminClient } from './supabase/admin.js';
 import { TABLES } from './tables.js';
-import { getApprovedPlaces, getPlaceMap, getKidTags, sidoOfRegion } from './places.js';
+import { getApprovedPlaces, getPlaceMap, getKidTags, placeScope } from './places.js';
 import { rainyAlternatives } from './rainy.js';
 import { usedPlaceIds } from './trip.js';
 import { tripRole } from './members.js';
@@ -34,7 +34,8 @@ export async function getMyTrips(userId) {
   return data || [];
 }
 
-export async function getPublicRoutes({ companion, region, limit = 20 } = {}) {
+/** region: 권역 하나, regions: 권역 여러 개 (여행지 전체) */
+export async function getPublicRoutes({ companion, region, regions, limit = 20 } = {}) {
   const s = await createClient();
   let q = s
     .from(TABLES.trips)
@@ -45,6 +46,7 @@ export async function getPublicRoutes({ companion, region, limit = 20 } = {}) {
     .limit(limit);
   if (companion) q = q.eq('companion_type', companion);
   if (region) q = q.eq('region', region);
+  else if (regions?.length) q = q.in('region', regions);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
   return data || [];
@@ -92,7 +94,7 @@ export async function loadTagProofs(ids) {
 /** 비 오는 날 대안 (야외 볼거리 옆 가까운 실내 볼거리). 실패해도 화면은 그대로 → 빈 객체 */
 export async function loadRainy(trip, placeMap) {
   try {
-    return rainyAlternatives(trip, placeMap, await getApprovedPlaces(sidoOfRegion(trip.region)));
+    return rainyAlternatives(trip, placeMap, await getApprovedPlaces(...placeScope(trip.region)));
   } catch {
     return {};
   }
