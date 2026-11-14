@@ -21,6 +21,7 @@ import LocationSearch from '@/components/LocationSearch';
 import { countRainy } from '@/components/CheckedBadge';
 import ShareSheet from '@/components/ShareSheet';
 import KidTagProof from '@/components/KidTagProof';
+import { useDesktopMap } from '@/components/useDesktop';
 
 function today() {
   const d = new Date();
@@ -39,6 +40,7 @@ export default function RouteDetail({ trip, placeMap, tags, stats, places, isLog
   const travelFn = useMemo(() => makeTravelFn(travel?.minutes), [travel]);
   const perDay = useMemo(() => summarize(trip, placeMap, travelFn).perDay, [trip, placeMap, travelFn]);
   const mapData = useMemo(() => withRoads(mapDays(trip.days, placeMap, trip), travel?.paths), [trip, placeMap, travel]);
+  const deskMap = useDesktopMap();
   const rainyCount = useMemo(() => countRainy(trip.days, rainy), [trip.days, rainy]);
   const tagLabels = useMemo(() => Object.fromEntries((tags || []).map((t) => [t.id, t.label])), [tags]);
 
@@ -72,7 +74,15 @@ export default function RouteDetail({ trip, placeMap, tags, stats, places, isLog
 
   return (
     <>
-      <div className="relative flex flex-none flex-col gap-3 overflow-hidden rounded-b-[36px] bg-mint px-5 pt-4 pb-6">
+      <div className="lg:mx-auto lg:grid lg:w-full lg:max-w-[1280px] lg:grid-cols-[minmax(0,1fr)_480px] lg:gap-8 lg:px-8">
+        {/* PC: 왼쪽 큰 지도(스크롤해도 고정) · 오른쪽 일정 */}
+        {deskMap && (
+          <aside className="sticky top-20 self-start pt-4">
+            <RouteMap days={mapData} active={open} height={deskMap} />
+          </aside>
+        )}
+        <div className="flex min-w-0 flex-col">
+      <div className="relative flex flex-none flex-col gap-3 overflow-hidden rounded-b-[36px] bg-mint px-5 pt-4 pb-6 lg:mt-4 lg:rounded-[36px]">
         <svg width="100%" height="90" viewBox="0 0 390 90" preserveAspectRatio="none" aria-hidden="true" className="absolute bottom-0 left-0">
           <path d="M0 50 Q 50 25 100 50 T 200 50 T 300 50 T 400 50 V90 H0 Z" fill="#A9DCC8" />
         </svg>
@@ -114,7 +124,7 @@ export default function RouteDetail({ trip, placeMap, tags, stats, places, isLog
 
         {/* 동선 지도 + 일자 탭 (지도는 고른 날 동선을 진하게) */}
         <div className="card flex flex-col gap-3 p-3">
-          <RouteMap days={mapData} active={open} />
+          {!deskMap && <RouteMap days={mapData} active={open} />}
           <div className="flex gap-1.5 overflow-x-auto" role="tablist" aria-label="일자">
             {trip.days.map((d, i) => (
               <button
@@ -182,6 +192,8 @@ export default function RouteDetail({ trip, placeMap, tags, stats, places, isLog
           </button>
         )}
         <div className="mt-1.5 text-center text-xs text-sub">가져오면 내 날짜·숙소 기준으로 휴무와 이동시간을 다시 확인해요</div>
+      </div>
+        </div>
       </div>
 
       {toast && (

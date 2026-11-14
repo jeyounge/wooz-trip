@@ -45,8 +45,8 @@ export default async function RoutesPage({ searchParams }) {
 
   return (
     <>
-      <TopBar back={fromSetup ? '/trips/new' : undefined} title="둘러보기" sub="다른 가족이 다녀온 루트를 그대로 가져올 수 있어요" />
-      <main className="flex flex-1 flex-col gap-3 px-5 pt-2 pb-4">
+      <TopBar wide back={fromSetup ? '/trips/new' : undefined} title="둘러보기" sub="다른 가족이 다녀온 루트를 그대로 가져올 수 있어요" />
+      <main className="flex flex-1 flex-col gap-3 px-5 pt-2 pb-4 lg:mx-auto lg:w-full lg:max-w-[1280px] lg:px-8 lg:pb-16">
         {fromSetup && (
           <div className="rounded-2xl bg-accent px-3.5 py-2.5 text-[13px]">마음에 드는 루트를 고르면 입력한 날짜로 가져올 수 있어요.</div>
         )}
@@ -83,7 +83,11 @@ export default async function RoutesPage({ searchParams }) {
         {error ? (
           <ErrorCard message={error} />
         ) : routes.length ? (
-          routes.map((r, i) => <RouteCard key={r.id} route={r} index={i} placeCount={usedPlaceIds(r.days).length} query={fromSetup} />)
+          <div className="flex flex-col gap-3 lg:mt-2 lg:grid lg:grid-cols-3">
+            {routes.map((r, i) => (
+              <RouteCard key={r.id} route={r} index={i} placeCount={usedPlaceIds(r.days).length} query={fromSetup} />
+            ))}
+          </div>
         ) : (
           <EmptyCard
             title="조건에 맞는 공개 루트가 없어요"

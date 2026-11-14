@@ -15,6 +15,7 @@ import { LogLine, LogSummary } from '@/components/TripLog';
 import { slotLog, logTotals, won } from '@/lib/triplog';
 import CheckedBadge, { DayDrive, countRainy } from '@/components/CheckedBadge';
 import NowNext, { localToday, todayIndex } from '@/components/NowNext';
+import { useDesktopMap } from '@/components/useDesktop';
 
 /** 읽기 전용 루트: 지도 + 일자 탭 + 타임라인 */
 export default function SharedRoute({ trip, placeMap, log, rainy = {}, travel }) {
@@ -28,6 +29,7 @@ export default function SharedRoute({ trip, placeMap, log, rainy = {}, travel })
   const sum = useMemo(() => summarize(trip, placeMap, travelFn), [trip, placeMap, travelFn]);
   const mapData = useMemo(() => withRoads(mapDays(trip.days, placeMap, trip), travel?.paths), [trip, placeMap, travel]);
   const rows = sum.perDay[day] || [];
+  const deskMap = useDesktopMap();
   const st = dayStyle(day);
   const totals = useMemo(() => (log ? logTotals(log, trip.days) : null), [log, trip.days]);
   // 이날 요약: 들르는 곳 수, 이동 합계
@@ -37,6 +39,14 @@ export default function SharedRoute({ trip, placeMap, log, rainy = {}, travel })
 
   return (
     <>
+      <div className="lg:mx-auto lg:grid lg:w-full lg:max-w-[1280px] lg:grid-cols-[minmax(0,1fr)_480px] lg:gap-8 lg:px-8">
+        {/* PC: 왼쪽 큰 지도(스크롤해도 고정) · 오른쪽 일정 */}
+        {deskMap && (
+          <aside className="sticky top-20 self-start pt-4">
+            <RouteMap days={mapData} active={day} height={deskMap} />
+          </aside>
+        )}
+        <div className="flex min-w-0 flex-col">
       <header className="flex flex-col gap-0.5 px-5 pt-5 pb-3">
         <div className="text-xs text-sub">가족이 공유한 여행 동선</div>
         <h1 className="m-0 h-display text-2xl">{trip.title}</h1>
@@ -50,7 +60,7 @@ export default function SharedRoute({ trip, placeMap, log, rainy = {}, travel })
       <div className="flex flex-col gap-2.5 px-5">
         <NowNext rows={rows} placeMap={placeMap} isToday={trip.days[day]?.date === localToday()} />
         <CheckedBadge sum={sum} rainyCount={countRainy(trip.days, rainy)} />
-        <RouteMap days={mapData} active={day} />
+        {!deskMap && <RouteMap days={mapData} active={day} />}
       </div>
       <nav aria-label="일자" className="flex gap-2 overflow-x-auto px-5 pt-3.5 pb-2">
         {trip.days.map((d, i) => (
@@ -141,6 +151,8 @@ export default function SharedRoute({ trip, placeMap, log, rainy = {}, travel })
           {SERVICE_NAME}에서 우리 가족 여행도 짜 보기
         </Link>
       </main>
+        </div>
+      </div>
     </>
   );
 }

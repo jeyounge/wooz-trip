@@ -118,7 +118,20 @@ function KakaoMap({ appKey, days, active, height }) {
   const el = useRef(null);
   const map = useRef(null);
   const layers = useRef([]);
+  const lastBounds = useRef(null);
   const [error, setError] = useState(null);
+
+  // 칸 크기가 바뀌면(PC 2단 ↔ 모바일, 창 크기) 지도를 다시 그리고 동선이 다 보이게 맞춘다
+  useEffect(() => {
+    if (!el.current || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => {
+      if (!map.current) return;
+      map.current.relayout();
+      if (lastBounds.current && !lastBounds.current.isEmpty()) map.current.setBounds(lastBounds.current, 40, 40, 40, 40);
+    });
+    ro.observe(el.current);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -158,6 +171,7 @@ function KakaoMap({ appKey, days, active, height }) {
             });
           }
         });
+        lastBounds.current = bounds;
         if (!bounds.isEmpty()) map.current.setBounds(bounds, 40, 40, 40, 40);
       })
       .catch((e) => alive && setError(e.message));

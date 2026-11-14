@@ -24,16 +24,17 @@ export default function Sheet({ title, sub, onClose, children, tall = false }) {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-center">
+    <div className="fixed inset-0 z-40 flex justify-center lg:items-center">
       <button type="button" aria-label="닫기" onClick={onClose} className="absolute inset-0 bg-[#6E5A4C]/80" />
+      {/* PC 는 바텀시트 대신 가운데 창 */}
       <section
         ref={ref}
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`sheet-in absolute bottom-0 flex w-full max-w-app flex-col rounded-t-[32px] bg-bg outline-none ${
-          tall ? 'top-16' : 'max-h-[88dvh]'
+        className={`sheet-in absolute bottom-0 flex w-full max-w-app flex-col rounded-t-[32px] bg-bg outline-none lg:relative lg:bottom-auto lg:max-w-[560px] lg:rounded-[32px] lg:pb-3 ${
+          tall ? 'top-16 lg:top-auto lg:h-[86dvh]' : 'max-h-[88dvh] lg:max-h-[86dvh]'
         }`}
       >
         <div className="flex justify-center pt-3 pb-0.5" aria-hidden="true">

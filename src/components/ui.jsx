@@ -11,9 +11,10 @@ export function BackLink({ href, label = '뒤로' }) {
 }
 
 /** 상단 바: 뒤로 + 제목/부제 + 오른쪽 영역 */
-export function TopBar({ back, title, sub, right, subClass = 'text-sub' }) {
+/** wide: PC 에서 넓게 쓰는 화면의 본문 폭(1280px)에 맞춘다 */
+export function TopBar({ back, title, sub, right, subClass = 'text-sub', wide = false }) {
   return (
-    <header className="flex items-center gap-2.5 px-4 pt-4 pb-1.5">
+    <header className={`flex items-center gap-2.5 px-4 pt-4 pb-1.5 ${wide ? 'lg:mx-auto lg:w-full lg:max-w-[1280px] lg:px-8 lg:pt-8' : ''}`}>
       {back && <BackLink href={back} />}
       <div className="flex min-w-0 flex-1 flex-col">
         {title && <div className="truncate font-display text-xl">{title}</div>}

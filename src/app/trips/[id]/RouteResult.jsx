@@ -20,6 +20,7 @@ import { canLogSpend, canReview, hasLog, logTotals, slotLog, won } from '@/lib/t
 import TripMembers from '@/components/TripMembers';
 import CheckedBadge, { DayDrive, countRainy } from '@/components/CheckedBadge';
 import NowNext, { localToday, todayIndex } from '@/components/NowNext';
+import { useDesktopMap } from '@/components/useDesktop';
 
 /** S05 루트 결과: 지도 동선 + 타임라인 + 순서 바꾸기·메모 + 쓴 돈·한마디 기록 + 저장/공유/공개 */
 export default function RouteResult({ trip: initialTrip, rev: initialRev, role = 'owner', members, userId, placeMap, userEmail, log: initialLog, rainy = {}, travel: initialTravel }) {
@@ -59,6 +60,7 @@ export default function RouteResult({ trip: initialTrip, rev: initialRev, role =
   const sum = useMemo(() => summarize(view, placeMap, travelFn), [view, placeMap, travelFn]);
   const rows = sum.perDay[day] || [];
   const mapData = useMemo(() => withRoads(mapDays(days, placeMap, view), travel.paths), [days, placeMap, view, travel]);
+  const deskMap = useDesktopMap();
 
   useEffect(
     () => () => {
@@ -187,6 +189,14 @@ export default function RouteResult({ trip: initialTrip, rev: initialRev, role =
 
   return (
     <>
+      <div className="lg:mx-auto lg:grid lg:w-full lg:max-w-[1280px] lg:grid-cols-[minmax(0,1fr)_480px] lg:gap-8 lg:px-8">
+        {/* PC: 왼쪽 큰 지도(스크롤해도 고정) · 오른쪽 일정 */}
+        {deskMap && (
+          <aside className="sticky top-20 self-start pt-4">
+            <RouteMap days={mapData} active={day} height={deskMap} />
+          </aside>
+        )}
+        <div className="flex min-w-0 flex-col">
       <header className="flex items-center gap-2.5 px-4 pt-4 pb-2">
         <BackLink href={`/trips/${trip.id}/edit?day=${day}`} label="편집으로 돌아가기" />
         <div className="min-w-0 flex-1">
@@ -205,7 +215,7 @@ export default function RouteResult({ trip: initialTrip, rev: initialRev, role =
       <div className="flex flex-col gap-2.5 px-5">
         <NowNext rows={rows} placeMap={placeMap} isToday={days[day]?.date === localToday()} />
         <CheckedBadge sum={sum} rainyCount={rainyCount} />
-        <RouteMap days={mapData} active={day} />
+        {!deskMap && <RouteMap days={mapData} active={day} />}
       </div>
 
       <nav aria-label="일자" className="flex gap-2 overflow-x-auto px-5 pt-3.5 pb-2">
@@ -371,6 +381,8 @@ export default function RouteResult({ trip: initialTrip, rev: initialRev, role =
             일정 고치기
           </Link>
         )}
+      </div>
+        </div>
       </div>
 
       {toast && (

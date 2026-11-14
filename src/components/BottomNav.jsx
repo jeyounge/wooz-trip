@@ -16,7 +16,7 @@ export default function BottomNav() {
   return (
     <nav
       aria-label="하단 메뉴"
-      className="sticky bottom-0 z-20 mx-4 mb-5 mt-2 grid grid-cols-4 rounded-[30px] bg-selected p-1.5"
+      className="sticky bottom-0 z-20 mx-4 mb-5 mt-2 grid grid-cols-4 rounded-[30px] bg-selected p-1.5 lg:hidden"
     >
       {TABS.map((t) => {
         const on = t.match(path);

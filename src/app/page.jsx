@@ -28,15 +28,16 @@ export default async function HomePage({ searchParams }) {
 
   return (
     <>
-      <header className="flex items-center justify-between px-5 pt-5 pb-1">
+      <header className="flex items-center justify-between px-5 pt-5 pb-1 lg:hidden">
         <div className="font-display text-[22px] text-cta">{SERVICE_NAME}</div>
         <Link href="/routes" aria-label="루트 찾기" className="icon-btn">
           <IconSearch />
         </Link>
       </header>
 
-      <main className="flex flex-1 flex-col gap-[22px] px-5 pt-3 pb-4">
-        <section className="relative flex flex-col gap-3.5 overflow-hidden rounded-[28px] bg-accent px-[22px] pt-6 pb-[22px]">
+      {/* PC: 왼쪽 첫 질문(스크롤해도 고정) · 오른쪽 루트 카드 2열 */}
+      <main className="flex flex-1 flex-col gap-[22px] px-5 pt-3 pb-4 lg:mx-auto lg:grid lg:w-full lg:max-w-[1280px] lg:grid-cols-[440px_minmax(0,1fr)] lg:items-start lg:gap-10 lg:px-8 lg:pt-10 lg:pb-16">
+        <section className="relative flex flex-col gap-3.5 overflow-hidden rounded-[28px] bg-accent px-[22px] pt-6 pb-[22px] lg:sticky lg:top-24 lg:px-7 lg:pt-8 lg:pb-8">
           <svg width="150" height="150" viewBox="0 0 150 150" aria-hidden="true" className="absolute -right-[30px] -top-[34px]">
             <circle cx="75" cy="75" r="44" fill="#FFE08A" />
             <circle cx="75" cy="75" r="26" fill="#FFF3C9" />
@@ -48,12 +49,16 @@ export default async function HomePage({ searchParams }) {
         </section>
 
         <section className="flex flex-col gap-3">
-          <h2 className="m-0 h-display text-xl">{dest.label} · {who.label} 다녀온 루트</h2>
+          <h2 className="m-0 h-display text-xl lg:text-2xl">{dest.label} · {who.label} 다녀온 루트</h2>
 
           {error ? (
             <ErrorCard message={error} />
           ) : routes.length ? (
-            routes.map((r, i) => <RouteCard key={r.id} route={r} index={i} placeCount={usedPlaceIds(r.days).length} />)
+            <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2">
+              {routes.map((r, i) => (
+                <RouteCard key={r.id} route={r} index={i} placeCount={usedPlaceIds(r.days).length} />
+              ))}
+            </div>
           ) : (
             <EmptyCard
               title="아직 공개된 루트가 없어요"
