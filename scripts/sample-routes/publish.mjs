@@ -2,6 +2,8 @@
 //
 //   node scripts/sample-routes/publish.mjs            시험: 루트를 만들고 검사 결과만 보여 줌
 //   node scripts/sample-routes/publish.mjs --apply    실제로 넣기 (이전에 넣은 추천 루트는 지우고 다시 넣음)
+//   --dest gyeonggi-south                             경기 남부 (routes-gyeonggi.mjs, 차로 가는 여행). 기본은 제주
+//   지울 때는 그 여행지 지역의 추천 루트만 지운다
 //
 // - 볼거리는 routes.mjs 에서 고른 것만. 식당·카페는 승인된 제주 장소 중에서 코드가 고른다
 //   (그 날짜에 쉬지 않고, 그 시각에 영업하고, 앞 장소에서 25분 안쪽, 여러 루트에 고르게 퍼지게)
@@ -9,11 +11,10 @@
 // - 검사: 서비스 타임라인과 같은 함수(computeDay)로 휴무·영업시간·늦음 경고가 하나라도 있으면 넣지 않는다
 // - 작성자는 운영자 계정(ADMIN_EMAIL 첫 번째), 이름은 서비스명 → 공개 화면에 「추천 루트」로 표시된다
 import { createClient } from '@supabase/supabase-js';
-import { SERVICE_NAME, SLOT_TYPES, AIRPORT } from '../../src/lib/config.js';
+import { SERVICE_NAME, SLOT_TYPES, AIRPORT, departArea, regionsOf } from '../../src/lib/config.js';
 import { buildDays, computeDay, rowWarning, newSlotId } from '../../src/lib/trip.js';
 import { addDays, checkVisit, isClosedOn, toMin, WEEKDAY_NAMES as WEEKDAYS } from '../../src/lib/hours.js';
 import { estimateCarMinutes } from '../../src/lib/geo.js';
-import { SAMPLE_ROUTES } from './routes.mjs';
 
 const ROOT = new URL('../../', import.meta.url);
 try {
@@ -22,16 +23,28 @@ try {
   // 이미 환경변수가 있으면 그대로
 }
 const apply = process.argv.includes('--apply');
+const argOf = (k) => {
+  const i = process.argv.indexOf(k);
+  return i > 0 ? process.argv[i + 1] : null;
+};
+const DEST = argOf('--dest') || 'jeju';
+const REGIONS = regionsOf(DEST).map((r) => r.id);
+if (!REGIONS.length) throw new Error(`여행지 ${DEST} 를 모르겠어요`);
+const CAR = DEST !== 'jeju';
+// 차로 가는 여행: 서울 강남에서 출발·도착 (복사할 때 사용자가 출발 지역을 바꾼다)
+const HOME = CAR ? departArea('seoul-gangnam') : null;
+const BASE = CAR ? HOME : AIRPORT; // 첫날 출발점·마지막 날 도착점
+const { SAMPLE_ROUTES } = await import(CAR ? `./routes-${DEST.split('-')[0]}.mjs` : './routes.mjs');
 const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
-// ── 승인된 제주 장소 ──
+// ── 승인된 장소 (그 여행지 지역만) ──
 const places = [];
 for (let from = 0; ; from += 1000) {
   const { data, error } = await db
     .from('wooz_trip_places')
     .select('id, name, category, sub_category, region, lat, lng, opening_hours, regular_closed_days, kid_tags, indoor, status, review_facts')
     .eq('status', 'approved')
-    .like('region', 'jeju-%')
+    .in('region', REGIONS)
     .order('id')
     .range(from, from + 999);
   if (error) throw error;
@@ -39,7 +52,7 @@ for (let from = 0; ; from += 1000) {
   if (data.length < 1000) break;
 }
 const byId = Object.fromEntries(places.map((p) => [p.id, p]));
-console.log(`승인된 제주 장소 ${places.length}곳`);
+console.log(`승인된 장소 ${places.length}곳 (${DEST})`);
 
 const mins = (a, b) => estimateCarMinutes(a, b) ?? 999;
 const shortName = (n) => n.replace(/\s*[[(（【].*?[\])）】]/g, '').trim();
@@ -114,9 +127,10 @@ for (const r of SAMPLE_ROUTES) {
   // 마지막 날: 카페(16~17시) 뒤 공항까지 + 2시간 → 비행기 시각 (19:00~20:30)
   const lastPm = byId[r.days[n - 1].pm] || byId[r.days[n - 1].am];
   const toAirport = lastPm ? mins(lastPm, AIRPORT) + 15 : 30;
-  const departure = hhmm(Math.min(Math.max(ceil30(17 * 60 + toAirport + 120), 19 * 60), 20 * 60 + 30));
-  const arrival = r.arrival || '09:00';
-  const days = buildDays({ startDate: r.start, endDate, arrivalTime: arrival, departureTime: departure, stayName: '숙소', mode: 'fly' });
+  // 차: 저녁까지 먹고 집 도착 21:00 으로 잡아 두고, 아래에서 실제 이동시간으로 다시 맞춘다
+  const departure = CAR ? '21:00' : hhmm(Math.min(Math.max(ceil30(17 * 60 + toAirport + 120), 19 * 60), 20 * 60 + 30));
+  const arrival = CAR ? r.depart || '09:00' : r.arrival || '09:00';
+  const days = buildDays({ startDate: r.start, endDate, arrivalTime: arrival, departureTime: departure, stayName: '숙소', mode: CAR ? 'car' : 'fly', departAreaId: HOME?.id || null });
   const taken = new Set();
   const trip = { companion_type: r.companion, kids_ages: r.kidsAges || [] };
 
@@ -125,8 +139,8 @@ for (const r of SAMPLE_ROUTES) {
     const plan = r.days[i];
     let prev = null; // 앞 장소
     // 시각 다시 잡기: 앞 장소가 끝나고 이동시간만큼 지난 뒤로 민다 (10분 단위)
-    let prevPt = i === 0 ? AIRPORT : null; // 사이 날 숙소는 좌표가 없어서 이동시간 계산 안 함 (서비스 화면과 같음)
-    let prevEnd = i === 0 ? toMin(arrival) + 40 : toMin('09:30');
+    let prevPt = i === 0 ? BASE : null; // 사이 날 숙소는 좌표가 없어서 이동시간 계산 안 함 (서비스 화면과 같음)
+    let prevEnd = i === 0 ? toMin(arrival) + (CAR ? 0 : 40) : toMin('09:30');
     const ceil10 = (m) => Math.ceil(m / 10) * 10;
     for (const s of day.slots) {
       if (s.fixed) {
@@ -135,6 +149,10 @@ for (const r of SAMPLE_ROUTES) {
           s.time = hhmm(t);
           finalDeparture = hhmm(ceil30(t + 120));
           s.fixed.note = `${finalDeparture} 출발 · 렌터카 반납`;
+        }
+        if (s.fixed.kind === 'home_end' && prevPt) {
+          s.time = hhmm(ceil10(prevEnd + mins(prevPt, HOME)));
+          finalDeparture = s.time;
         }
         if (s.fixed.kind === 'stay_end') s.time = hhmm(Math.max(toMin('20:00'), ceil10(prevEnd)));
         continue;
@@ -186,14 +204,15 @@ for (const r of SAMPLE_ROUTES) {
   const lastPlace = days[n - 1].slots.filter((s) => s.placeId).map((s) => byId[s.placeId]).pop();
   const extra = [];
   if (closed.length) extra.push(`쉬는 요일: ${closed.join(', ')} — 날짜를 바꾸면 화면에서 다시 알려 줘요.`);
-  if (lastPlace) extra.push(`마지막 장소에서 공항까지 차로 약 ${mins(lastPlace, AIRPORT)}분이에요.`);
+  // 차로 가는 여행은 집까지 시간을 팁에 적지 않는다 (출발 지역이 사람마다 다르고, 화면 타임라인이 다시 계산한다)
+  if (lastPlace && !CAR) extra.push(`마지막 장소에서 공항까지 차로 약 ${mins(lastPlace, AIRPORT)}분이에요.`);
   const tip = [r.tip, ...extra].join('\n').slice(0, 500);
 
   const all = [...problems, ...warns];
   if (all.length) bad++;
   const placeCount = days.reduce((a, d) => a + d.slots.filter((s) => s.placeId).length, 0);
-  console.log(`\n${all.length ? '✗' : '✓'} ${r.title}  (${r.start}~${endDate} ${WEEKDAYS[new Date(r.start + 'T00:00:00').getDay()]}, ${arrival} 도착 · ${finalDeparture} 출발, ${placeCount}곳)`);
-  days.forEach((d, i) => console.log(`   ${i + 1}일차 ${d.slots.map((s) => (s.placeId ? `${s.time} ${shortName(byId[s.placeId].name)}` : s.fixed.kind.startsWith('airport') ? `${s.time} 공항` : '')).filter(Boolean).join(' → ')}`));
+  console.log(`\n${all.length ? '✗' : '✓'} ${r.title}  (${r.start}~${endDate} ${WEEKDAYS[new Date(r.start + 'T00:00:00').getDay()]}, ${arrival} ${CAR ? '출발' : '도착'} · ${finalDeparture} ${CAR ? '도착' : '출발'}, ${placeCount}곳)`);
+  days.forEach((d, i) => console.log(`   ${i + 1}일차 ${d.slots.map((s) => (s.placeId ? `${s.time} ${shortName(byId[s.placeId].name)}` : s.fixed.kind.startsWith('airport') ? `${s.time} 공항` : s.fixed.kind.startsWith('home') ? `${s.time} 집` : '')).filter(Boolean).join(' → ')}`));
   for (const a of all) console.log(`   ! ${a}`);
 
   built.push({
@@ -232,8 +251,8 @@ if (uErr) throw uErr;
 const owner = users.users.find((u) => u.email?.toLowerCase() === adminEmail);
 if (!owner) throw new Error('ADMIN_EMAIL 계정을 찾을 수 없어요');
 
-// 이전에 넣은 추천 루트 지우기 (운영자 계정 + 서비스명 작성자)
-const del = await db.from('wooz_trip_trips').delete().eq('owner_id', owner.id).eq('author_name', SERVICE_NAME).eq('visibility', 'public').select('id');
+// 이전에 넣은 추천 루트 지우기 (운영자 계정 + 서비스명 작성자, 이 여행지 지역만)
+const del = await db.from('wooz_trip_trips').delete().eq('owner_id', owner.id).eq('author_name', SERVICE_NAME).eq('visibility', 'public').in('region', REGIONS).select('id');
 if (del.error) throw del.error;
 console.log(`이전 추천 루트 ${del.data.length}개 지움`);
 

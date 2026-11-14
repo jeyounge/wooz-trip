@@ -35,7 +35,10 @@ Claude 에게 이렇게 말하면 된다: **"handoff 읽고 이어서 하자"**
   → `node scripts/ai-routes/build.mjs --dest gyeonggi-south` → `npm run routes:sql -- --apply` (이제 SQL 파일과 함께 DB 에도 바로 넣음).
   에버랜드·캐리비안베이·서울랜드·웅진플레이도시처럼 하루 종일 노는 곳은 자동 루트에서 뺌 (사용자가 직접 넣음)
 - 블로그 후기 수집에 경기 남부 추가 (`daily.cmd` 에 `--area gyeonggi`, 연 권역만)
-- **남은 것**: 경기 남부 **추천 루트(공개 루트)가 0개** → 홈·둘러보기에서 「아직 공개된 루트가 없어요」. `scripts/sample-routes` 는 제주(공항) 전용이라 차 여행용으로 고쳐야 함
+- **추천 루트(공개 루트) 20개** (아이 8 · 부모님 4 · 연인 4 · 친구 4, 당일치기·1박 2일, 서울 강남 출발):
+  `scripts/sample-routes/research.mjs` 가 카카오 블로그 검색 결과(제목·요약, 글 7,033개)에서 볼거리 풀 장소가 함께 나오는 횟수를 셈
+  → `data/sample-routes/gyeonggi-research.json` → 많이 같이 나오는 짝으로 `routes-gyeonggi.mjs` 작성
+  → `node scripts/sample-routes/publish.mjs --dest gyeonggi-south --apply`. publish 는 이제 `--dest` 를 받고 그 여행지 지역의 추천 루트만 지운다
 
 **PC 화면 (1024px 이상)** — 모바일 화면은 그대로
 - 위쪽 가로 메뉴 `DesktopNav` (하단 탭은 PC 에서 숨김), 화면 틀 `PageFrame` (넓게 쓰는 화면 목록 `WIDE`, 나머지는 640px 가운데 칸)
