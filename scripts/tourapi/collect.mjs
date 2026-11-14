@@ -9,10 +9,12 @@
 //
 // 규칙
 //  - 지역 순서는 src/lib/areas.js (제주 → 인천 → 경기 → 나머지). 앞 지역을 다 받아야 다음 지역으로 간다.
-//  - 목록은 7일마다 다시 받고, 목록의 수정일(modifiedtime)이 바뀐 장소만 상세를 다시 받는다.
+//  - 목록은 서비스에 연 지역(config.js DESTINATIONS open)은 7일, 아직 안 연 지역은 30일마다 다시 받고,
+//    목록의 수정일(modifiedtime)이 바뀐 장소만 상세를 다시 받는다.
 //  - 개발 계정은 API 별 하루 1,000회 → 기본 950회에서 멈춘다 (TOURAPI_DAILY_LIMIT 로 조정, 운영계정이면 올린다).
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
 import { AREAS, areaBySlug } from '../../src/lib/areas.js';
+import { DESTINATIONS } from '../../src/lib/config.js';
 
 const ROOT = new URL('../../', import.meta.url);
 const RAW = new URL('data/raw/tourapi/', ROOT);
@@ -20,7 +22,9 @@ const BASE = 'https://apis.data.go.kr/B551011/KorService2';
 const WITH = 'https://apis.data.go.kr/B551011/KorWithService2';
 const TYPES = [12, 14, 39, 28]; // 관광지 → 문화시설 → 음식점 → 레포츠
 const DAILY_LIMIT = Number(process.env.TOURAPI_DAILY_LIMIT || 950);
-const RELIST_DAYS = 7;
+// 안 연 지역까지 매주 다시 받으면 수정일만 바뀐 장소를 다시 받느라 다음 지역으로 못 넘어간다 (2026-11-14)
+const OPEN_AREAS = new Set(DESTINATIONS.filter((d) => d.open).map((d) => d.id.split('-')[0]));
+const relistDays = (area) => (OPEN_AREAS.has(area.slug) ? 7 : 30);
 
 try {
   process.loadEnvFile(new URL('.env.local', ROOT));
@@ -228,7 +232,7 @@ async function auto() {
     if (out.kor && out.with) break;
     const d = areaDir(area);
     const s = d.state();
-    const stale = !s.listedAt || Date.now() - Date.parse(s.listedAt) > RELIST_DAYS * 86400000;
+    const stale = !s.listedAt || Date.now() - Date.parse(s.listedAt) > relistDays(area) * 86400000;
     if (stale) await guard('kor', () => listArea(area));
     if (!d.state().listedAt) continue; // 목록도 못 받았으면 다음 날
     await guard('kor', () => fetchDetails(area, 'intro'));
