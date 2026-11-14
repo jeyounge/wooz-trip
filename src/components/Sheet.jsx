@@ -54,3 +54,31 @@ export default function Sheet({ title, sub, onClose, children, tall = false }) {
     </div>
   );
 }
+
+/**
+ * PC 오른쪽 칸에 바로 펼치는 시트 (배경 어둡게·스크롤 막기 없음). 머리 모양은 Sheet 와 같다.
+ * height: 칸 높이(px). Esc 로 닫힌다.
+ */
+export function SidePanel({ title, sub, onClose, children, height }) {
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && closeRef.current();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  return (
+    <section aria-label={title} style={{ height }} className="flex flex-col overflow-hidden rounded-[32px] border-2 border-line bg-bg">
+      <div className="flex items-center gap-2 px-5 pt-4 pb-3">
+        <div className="min-w-0 flex-1">
+          <div className="font-display text-[22px] leading-snug">{title}</div>
+          {sub && <div className="text-[13px] text-sub">{sub}</div>}
+        </div>
+        <button type="button" aria-label="닫기" onClick={onClose} className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-surface">
+          <IconClose />
+        </button>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+    </section>
+  );
+}

@@ -18,8 +18,8 @@ export default function AdminPanel({ places: initialPlaces, area = '50', tags, r
 
   return (
     <>
-      <TopBar back="/my" title="운영자 화면" sub="장소 검수 · 제보 · AI 루트 · 지표" />
-      <nav className="grid grid-cols-4 gap-1.5 px-5 pb-3" role="tablist">
+      <TopBar wide back="/my" title="운영자 화면" sub="장소 검수 · 제보 · AI 루트 · 지표" />
+      <nav className="grid grid-cols-4 gap-1.5 px-5 pb-3 lg:mx-auto lg:w-full lg:max-w-[1280px] lg:grid-cols-[repeat(4,160px)] lg:px-8 lg:pt-2" role="tablist">
         {[
           ['places', `장소 ${places.length}`],
           ['reports', `제보 ${reports.length}`],
@@ -31,14 +31,16 @@ export default function AdminPanel({ places: initialPlaces, area = '50', tags, r
           </button>
         ))}
       </nav>
-      <main className="flex flex-1 flex-col gap-3 px-5 pb-10">
+      <main className="flex flex-1 flex-col gap-3 px-5 pb-10 lg:mx-auto lg:w-full lg:max-w-[1280px] lg:px-8">
         {tab === 'places' && <PlacesTab key={area} area={area} places={places} setPlaces={setPlaces} tags={tags} />}
         {tab === 'reports' && (
-          <ReportsTab reports={reports} placeName={placeName} tagLabel={tagLabel} onResolved={(id) => setReports((r) => r.filter((x) => x.id !== id))} />
+          <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4">
+            <ReportsTab reports={reports} placeName={placeName} tagLabel={tagLabel} onResolved={(id) => setReports((r) => r.filter((x) => x.id !== id))} />
+          </div>
         )}
         {tab === 'routes' && <AiRoutesTab routes={aiRoutes} />}
         {tab === 'metrics' && (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
             {metrics.map((m) => (
               <div key={m.label} className="card flex flex-col gap-0.5 p-4">
                 <div className="text-xs text-sub">{m.label}</div>
@@ -46,7 +48,7 @@ export default function AdminPanel({ places: initialPlaces, area = '50', tags, r
                 {m.hint && <div className="text-[11px] text-sub">{m.hint}</div>}
               </div>
             ))}
-            <p className="col-span-2 m-0 text-xs text-sub">최근 90일 기준. 목표 수치는 첫 달 데이터를 보고 정해요.</p>
+            <p className="col-span-2 m-0 text-xs text-sub lg:col-span-4">최근 90일 기준. 목표 수치는 첫 달 데이터를 보고 정해요.</p>
             {funnel && <Funnel funnel={funnel} />}
           </div>
         )}
@@ -59,7 +61,7 @@ export default function AdminPanel({ places: initialPlaces, area = '50', tags, r
 function Funnel({ funnel }) {
   const top = Math.max(1, funnel.steps[0].value);
   return (
-    <section className="card col-span-2 flex flex-col gap-2 p-4" aria-label="단계별 흐름">
+    <section className="card col-span-2 flex flex-col gap-2 p-4 lg:col-span-4" aria-label="단계별 흐름">
       <div className="font-display text-base">단계별 흐름</div>
       {funnel.steps.map((st, i) => {
         const prev = funnel.steps[i - 1]?.value;
@@ -106,7 +108,7 @@ function AiRoutesTab({ routes: initial }) {
         켜진 루트 {routes.filter((r) => r.is_active).length}개 · 끈 루트는 AI 초안에서 고르지 않아요. 내용 수정은 data/ai-routes 파일을 고친 뒤 SQL을 다시 실행해요.
       </p>
       {msg && <p className="m-0 text-xs font-bold text-warn-ink">{msg}</p>}
-      <ul className="m-0 flex list-none flex-col gap-2 p-0">
+      <ul className="m-0 flex list-none flex-col gap-2 p-0 lg:grid lg:grid-cols-2 lg:gap-3">
         {routes.map((r) => (
           <li key={r.id} className={`card flex items-center gap-3 p-3.5 ${r.is_active ? '' : 'opacity-60'}`}>
             <div className="min-w-0 flex-1">
@@ -309,9 +311,11 @@ function PlacesTab({ area, places, setPlaces, tags }) {
           }}
         />
       )}
-      {visible.map((p) => (
-        <PlaceForm key={p.id} place={p} tags={tags} onSaved={replace} selected={selected.has(p.id)} onSelect={() => toggleSel(p.id)} />
-      ))}
+      <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4">
+        {visible.map((p) => (
+          <PlaceForm key={p.id} place={p} tags={tags} onSaved={replace} selected={selected.has(p.id)} onSelect={() => toggleSel(p.id)} />
+        ))}
+      </div>
       {list.length > shown && (
         <button type="button" onClick={() => setShown((n) => n + PAGE)} className="h-11 rounded-2xl bg-surface text-sm">
           더 보기 ({list.length - shown}곳 남음)

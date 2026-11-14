@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import Sheet from './Sheet';
+import Sheet, { SidePanel } from './Sheet';
 import { IconCheck, IconSearch } from './Icons';
 import { KidTags } from './ui';
 import { SLOT_TYPES } from '@/lib/config';
@@ -22,8 +22,9 @@ const TITLES = {
  * S04 장소 선택 바텀시트
  * - 앞 장소 기준 가까운 순, 아이 태그 필터, 쉬는 날은 선택 불가, 영업시간 임박 경고
  * - 사진·리뷰·블로그는 저장하지 않고 외부 링크로만 연결
+ * - panelHeight 가 있으면(PC) 시트 대신 루트 짜기 화면 오른쪽 칸에 펼친다
  */
-export default function PlacePicker({ region, date, dayLabel, slot, from, tags, companion, excludeIds, onPick, onCustom, onReport, onClose }) {
+export default function PlacePicker({ region, date, dayLabel, slot, from, tags, companion, excludeIds, onPick, onCustom, onReport, onClose, panelHeight = null }) {
   const filterTags = useMemo(() => tags.filter((t) => t.filterable), [tags]);
   const [on, setOn] = useState(() =>
     companion === 'kids' && SLOT_TYPES[slot.slotType]?.categories.includes('food') ? { baby_chair: true } : {}
@@ -73,10 +74,11 @@ export default function PlacePicker({ region, date, dayLabel, slot, from, tags, 
 
   const tagLabels = useMemo(() => Object.fromEntries(tags.map((t) => [t.id, t.label])), [tags]);
   const sub = `${dayLabel} ${slot.time}${from?.name ? ` · ${from.name}에서 가까운 순` : ''}`;
+  const Wrap = panelHeight ? SidePanel : Sheet;
   const openCount = state.list.filter((p) => !p.check.closed).length;
 
   return (
-    <Sheet title={TITLES[slot.slotType] || '어디로 갈까?'} sub={sub} onClose={onClose} tall>
+    <Wrap title={TITLES[slot.slotType] || '어디로 갈까?'} sub={sub} onClose={onClose} tall height={panelHeight}>
       <div className="flex flex-col gap-2 px-5 pb-3">
         <label className="flex h-11 items-center gap-2 rounded-2xl bg-surface px-3.5 text-sub">
           <IconSearch size={18} />
@@ -174,7 +176,7 @@ export default function PlacePicker({ region, date, dayLabel, slot, from, tags, 
         <KakaoMore q={q} from={from} known={state.list} onPick={onPick} onCustom={onCustom} />
         <p className="m-0 px-1 pb-2 text-center text-[11px] text-sub">장소 기본 정보 일부 출처: 한국관광공사 TourAPI · 방문 전 영업 여부를 한 번 더 확인해 주세요</p>
       </div>
-    </Sheet>
+    </Wrap>
   );
 }
 

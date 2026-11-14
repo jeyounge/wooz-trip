@@ -13,45 +13,50 @@ export default async function MyPage() {
   return (
     <>
       <TopBar title="마이" />
-      <main className="flex flex-1 flex-col gap-3 px-5 pt-2 pb-4">
-        {user ? (
-          <>
-            <div className="card flex flex-col gap-1 p-5">
-              <div className="text-xs text-sub">로그인 계정 (Z-Labs 공용)</div>
-              <div className="font-display text-lg break-all">{user.email}</div>
-            </div>
-            <Link href="/trips" className="card flex h-14 items-center px-5 font-display">
-              내 여행
-            </Link>
-            {isAdmin(user) && (
-              <Link href="/admin" className="card flex h-14 items-center px-5 font-display">
-                운영자 화면
+      {/* PC: 왼쪽 계정·메뉴, 오른쪽 안내 */}
+      <main className="flex flex-1 flex-col gap-3 px-5 pt-2 pb-4 lg:grid lg:grid-cols-2 lg:content-start lg:items-start lg:gap-6 lg:px-8 lg:pt-6">
+        <div className="flex flex-col gap-3">
+          {user ? (
+            <>
+              <div className="card flex flex-col gap-1 p-5">
+                <div className="text-xs text-sub">로그인 계정 (Z-Labs 공용)</div>
+                <div className="font-display text-lg break-all">{user.email}</div>
+              </div>
+              <Link href="/trips" className="card flex h-14 items-center px-5 font-display">
+                내 여행
               </Link>
-            )}
-            <form action={signOut}>
-              <button type="submit" className="btn-outline w-full">
-                로그아웃
-              </button>
-            </form>
-          </>
-        ) : (
-          <div className="card flex flex-col gap-3 p-5">
-            <div className="font-display text-lg">로그인하면 루트를 저장하고 공유할 수 있어요</div>
-            <Link href="/login?next=/my" className="btn-cta">
-              로그인
+              {isAdmin(user) && (
+                <Link href="/admin" className="card flex h-14 items-center px-5 font-display">
+                  운영자 화면
+                </Link>
+              )}
+              <form action={signOut}>
+                <button type="submit" className="btn-outline w-full">
+                  로그아웃
+                </button>
+              </form>
+            </>
+          ) : (
+            <div className="card flex flex-col gap-3 p-5">
+              <div className="font-display text-lg">로그인하면 루트를 저장하고 공유할 수 있어요</div>
+              <Link href="/login?next=/my" className="btn-cta">
+                로그인
+              </Link>
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col gap-3 lg:card lg:p-5">
+          <p className="m-0 mt-2 text-xs leading-relaxed text-sub lg:mt-0 lg:text-sm">
+            {SERVICE_NAME}는 공식 API·공공데이터와 운영자 검수로 장소 정보를 모아요. 리뷰·사진은 저장하지 않고 원본 링크로만 연결해요. 장소 정보는 실제와 다를 수 있으니 방문 전에 한 번 더 확인해 주세요. 장소 기본 정보 일부는 한국관광공사 TourAPI(공공데이터)를 이용해요.
+          </p>
+          <div className="flex gap-3 text-xs text-sub">
+            <Link href="/terms" className="underline">
+              이용약관
+            </Link>
+            <Link href="/privacy" className="font-bold underline">
+              개인정보처리방침
             </Link>
           </div>
-        )}
-        <p className="m-0 mt-2 text-xs leading-relaxed text-sub">
-          {SERVICE_NAME}는 공식 API·공공데이터와 운영자 검수로 장소 정보를 모아요. 리뷰·사진은 저장하지 않고 원본 링크로만 연결해요. 장소 정보는 실제와 다를 수 있으니 방문 전에 한 번 더 확인해 주세요. 장소 기본 정보 일부는 한국관광공사 TourAPI(공공데이터)를 이용해요.
-        </p>
-        <div className="flex gap-3 text-xs text-sub">
-          <Link href="/terms" className="underline">
-            이용약관
-          </Link>
-          <Link href="/privacy" className="font-bold underline">
-            개인정보처리방침
-          </Link>
         </div>
       </main>
       <BottomNav />

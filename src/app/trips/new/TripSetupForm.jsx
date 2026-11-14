@@ -123,11 +123,11 @@ export default function TripSetupForm({ initialDest, initialCompanion, initialMo
         <div className="pr-1 text-[13px] text-sub">1/2</div>
       </header>
 
-      <main className="flex flex-1 flex-col gap-4 px-5 pt-2 pb-6">
-        <h1 className="m-0 h-display text-[26px] leading-snug">{editBasics ? '몇 가지만 알려주세요!' : '거의 다 왔어요!'}</h1>
+      <main className="flex flex-1 flex-col gap-4 px-5 pt-2 pb-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6 lg:px-8 lg:pt-6">
+        <h1 className="m-0 h-display text-[26px] leading-snug lg:col-span-2">{editBasics ? '몇 가지만 알려주세요!' : '거의 다 왔어요!'}</h1>
 
         {!editBasics && (
-          <section className="card flex items-center gap-3 p-4 shadow-card" aria-label="홈에서 고른 것">
+          <section className="card flex items-center gap-3 p-4 shadow-card lg:col-span-2" aria-label="홈에서 고른 것">
             <div className="min-w-0 flex-1">
               <div className="text-xs text-sub">홈에서 고른 것</div>
               <div className="truncate font-display text-base">
@@ -140,91 +140,93 @@ export default function TripSetupForm({ initialDest, initialCompanion, initialMo
           </section>
         )}
 
-        {(editBasics || companion === 'kids') && (
-          <section className={card}>
-            <h2 className="m-0 h-display text-lg">{editBasics ? '누구랑 가요?' : '아이가 몇 살이에요?'}</h2>
-            {editBasics && (
-              <div className="grid grid-cols-4 gap-1.5">
-                {COMPANIONS.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    aria-pressed={companion === c.id}
-                    onClick={() => setCompanion(c.id)}
-                    className={`pill px-0 ${companion === c.id ? 'pill-on' : ''}`}
-                  >
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-            )}
-            {companion === 'kids' && (
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                {editBasics && <span className="text-sm text-sub">아이 나이</span>}
-                {ages.map((a, i) => (
-                  <span key={i} className="flex h-10 items-center gap-1 rounded-full bg-accent pl-3 pr-1 text-[15px] font-bold">
-                    <select
-                      aria-label={`${i + 1}번째 아이 나이`}
-                      value={a}
-                      onChange={(e) => setAges(ages.map((x, j) => (j === i ? Number(e.target.value) : x)))}
-                      className="appearance-none bg-transparent font-bold outline-none"
+        <div className="flex flex-col gap-4">
+          {(editBasics || companion === 'kids') && (
+            <section className={card}>
+              <h2 className="m-0 h-display text-lg">{editBasics ? '누구랑 가요?' : '아이가 몇 살이에요?'}</h2>
+              {editBasics && (
+                <div className="grid grid-cols-4 gap-1.5">
+                  {COMPANIONS.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      aria-pressed={companion === c.id}
+                      onClick={() => setCompanion(c.id)}
+                      className={`pill px-0 ${companion === c.id ? 'pill-on' : ''}`}
                     >
-                      {Array.from({ length: 14 }, (_, k) => (
-                        <option key={k} value={k}>
-                          {k}살
-                        </option>
-                      ))}
-                    </select>
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {companion === 'kids' && (
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  {editBasics && <span className="text-sm text-sub">아이 나이</span>}
+                  {ages.map((a, i) => (
+                    <span key={i} className="flex h-10 items-center gap-1 rounded-full bg-accent pl-3 pr-1 text-[15px] font-bold">
+                      <select
+                        aria-label={`${i + 1}번째 아이 나이`}
+                        value={a}
+                        onChange={(e) => setAges(ages.map((x, j) => (j === i ? Number(e.target.value) : x)))}
+                        className="appearance-none bg-transparent font-bold outline-none"
+                      >
+                        {Array.from({ length: 14 }, (_, k) => (
+                          <option key={k} value={k}>
+                            {k}살
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        aria-label={`${i + 1}번째 아이 빼기`}
+                        onClick={() => setAges(ages.filter((_, j) => j !== i))}
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-sub"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                  {ages.length < 6 && (
                     <button
                       type="button"
-                      aria-label={`${i + 1}번째 아이 빼기`}
-                      onClick={() => setAges(ages.filter((_, j) => j !== i))}
-                      className="flex h-8 w-8 items-center justify-center rounded-full text-sub"
+                      aria-label="아이 추가"
+                      onClick={() => setAges([...ages, 3])}
+                      className="h-10 w-10 rounded-full border-2 border-dashed border-line-strong text-xl text-sub"
                     >
-                      ×
+                      +
                     </button>
-                  </span>
-                ))}
-                {ages.length < 6 && (
-                  <button
-                    type="button"
-                    aria-label="아이 추가"
-                    onClick={() => setAges([...ages, 3])}
-                    className="h-10 w-10 rounded-full border-2 border-dashed border-line-strong text-xl text-sub"
-                  >
-                    +
+                  )}
+                </div>
+              )}
+            </section>
+          )}
+
+          <section className={card}>
+            {editBasics && (
+              <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="어디 가요?">
+                {DESTINATIONS.filter((d) => d.open).map((d) => (
+                  <button key={d.id} type="button" aria-pressed={dest.id === d.id} onClick={() => onDest(d)} className={`pill px-0 ${dest.id === d.id ? 'pill-on' : ''}`}>
+                    {d.label}
                   </button>
-                )}
+                ))}
               </div>
             )}
-          </section>
-        )}
-
-        <section className={card}>
-          {editBasics && (
-            <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="어디 가요?">
-              {DESTINATIONS.filter((d) => d.open).map((d) => (
-                <button key={d.id} type="button" aria-pressed={dest.id === d.id} onClick={() => onDest(d)} className={`pill px-0 ${dest.id === d.id ? 'pill-on' : ''}`}>
-                  {d.label}
+            <h2 className="m-0 h-display text-lg">{dest.label} 어느 쪽이에요?</h2>
+            <div className="flex flex-wrap gap-1.5">
+              {regionsOf(dest.id).map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  aria-pressed={region === r.id}
+                  onClick={() => onRegion(r.id)}
+                  className={`pill ${region === r.id ? 'pill-on' : ''}`}
+                >
+                  {r.label}
                 </button>
               ))}
             </div>
-          )}
-          <h2 className="m-0 h-display text-lg">{dest.label} 어느 쪽이에요?</h2>
-          <div className="flex flex-wrap gap-1.5">
-            {regionsOf(dest.id).map((r) => (
-              <button
-                key={r.id}
-                type="button"
-                aria-pressed={region === r.id}
-                onClick={() => onRegion(r.id)}
-                className={`pill ${region === r.id ? 'pill-on' : ''}`}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
-        </section>
+          </section>
+        </div>
 
         <section className={card}>
           <h2 className="m-0 h-display text-lg">{editBasics ? '언제, 어떻게 가요?' : '언제 가요?'}</h2>
@@ -285,7 +287,7 @@ export default function TripSetupForm({ initialDest, initialCompanion, initialMo
           )}
         </section>
 
-        <section className="flex flex-col gap-2.5">
+        <section className="flex flex-col gap-2.5 lg:col-span-2">
           <h2 className="m-0 h-display text-lg">어떻게 시작할까요?</h2>
           <div className="grid grid-cols-3 gap-2">
             {STARTS.map((s) => {
@@ -309,14 +311,14 @@ export default function TripSetupForm({ initialDest, initialCompanion, initialMo
           </div>
         </section>
         {error && (
-          <p role="alert" className="m-0 text-sm font-bold text-warn-ink">
+          <p role="alert" className="m-0 text-sm font-bold text-warn-ink lg:col-span-2">
             {error}
           </p>
         )}
       </main>
 
-      <div className="sticky bottom-0 bg-bg px-5 pt-3 pb-6">
-        <button type="button" onClick={submit} disabled={pending} className="btn-cta w-full">
+      <div className="sticky bottom-0 bg-bg px-5 pt-3 pb-6 lg:flex lg:justify-end lg:px-8">
+        <button type="button" onClick={submit} disabled={pending} className="btn-cta w-full lg:w-[360px]">
           {pending ? (start === 'ai' ? 'AI가 동선을 고르는 중…' : '만드는 중…') : NEXT_LABEL[start]}
         </button>
       </div>

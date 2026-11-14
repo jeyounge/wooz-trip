@@ -17,6 +17,7 @@ import { aiFill, markRouteDrawn, saveDays, updateTripMeta } from '@/app/actions/
 import AiThinking, { waitAtLeast } from '@/components/AiThinking';
 import CustomSlotSheet from '@/components/CustomSlotSheet';
 import LocationSearch from '@/components/LocationSearch';
+import { useDesktopMap } from '@/components/useDesktop';
 
 export default function SlotEditor({ trip: initialTrip, rev: initialRev, role = 'owner', initialPlaces, initialTravel, tags, fromAi, initialDay = 0 }) {
   const isOwner = role === 'owner';
@@ -37,6 +38,8 @@ export default function SlotEditor({ trip: initialTrip, rev: initialRev, role = 
   const [goPending, startGo] = useTransition();
   const timer = useRef(null);
   const latest = useRef(days);
+  // PC: 장소 고르기를 시트 대신 오른쪽 칸에 펼친다 (칸 높이)
+  const panel = useDesktopMap(112);
 
   const tagLabels = useMemo(() => Object.fromEntries(tags.map((t) => [t.id, t.label])), [tags]);
   const tripView = useMemo(() => ({ ...trip, days }), [trip, days]);
@@ -181,127 +184,141 @@ export default function SlotEditor({ trip: initialTrip, rev: initialRev, role = 
 
   const aiCount = days.flatMap((d) => d.slots).filter((s) => s.aiReason).length;
 
+  const pickerEl = picker && pickerSlot && (
+    <PlacePicker
+      key={pickerSlot.id}
+      panelHeight={panel}
+      region={trip.region}
+      date={days[day].date}
+      dayLabel={DAY_LABELS[day] || `${day + 1}일차`}
+      slot={pickerSlot}
+      from={pickerFrom}
+      tags={tags}
+      companion={trip.companion_type}
+      excludeIds={days.flatMap((d) => d.slots.map((s) => s.placeId)).filter((id) => id && id !== pickerSlot.placeId)}
+      onPick={onPick}
+      onCustom={(name) => setCustom({ slotId: pickerSlot.id, name })}
+      onReport={(p) => setReport(p)}
+      onClose={() => setPicker(null)}
+    />
+  );
+
   return (
     <>
-      <header className="flex items-center gap-2.5 px-4 pt-4 pb-1.5">
-        <BackLink href="/trips" />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <div className="truncate font-display text-xl">{trip.title}</div>
-          <div className="truncate text-[13px] text-sub">
-            {!isOwner && '같이 고치는 여행 · '}
-            {tripSubtitle(trip)}
-          </div>
-        </div>
-        {isOwner && (
-          <button type="button" aria-label="여행 정보 수정" onClick={() => setMetaOpen(true)} className="icon-btn">
-            <IconEdit />
-          </button>
-        )}
-      </header>
+      <div className="flex flex-1 flex-col lg:mx-auto lg:grid lg:w-full lg:max-w-[1280px] lg:grid-cols-[minmax(0,1fr)_520px] lg:items-start lg:gap-8 lg:px-8">
+        <div className="flex min-w-0 flex-1 flex-col lg:min-h-[calc(100dvh-64px)]">
+          <header className="flex items-center gap-2.5 px-4 pt-4 pb-1.5">
+            <BackLink href="/trips" />
+            <div className="flex min-w-0 flex-1 flex-col">
+              <div className="truncate font-display text-xl">{trip.title}</div>
+              <div className="truncate text-[13px] text-sub">
+                {!isOwner && '같이 고치는 여행 · '}
+                {tripSubtitle(trip)}
+              </div>
+            </div>
+            {isOwner && (
+              <button type="button" aria-label="여행 정보 수정" onClick={() => setMetaOpen(true)} className="icon-btn">
+                <IconEdit />
+              </button>
+            )}
+          </header>
 
-      <nav aria-label="일자" className="flex gap-2 overflow-x-auto px-5 pt-2 pb-2.5">
-        {days.map((d, i) => (
-          <button
-            key={d.date}
-            type="button"
-            aria-pressed={day === i}
-            onClick={() => setDay(i)}
-            className={`flex h-11 min-w-[88px] flex-1 flex-col items-center justify-center rounded-full font-display text-[15px] leading-none ${
-              day === i ? 'bg-selected text-selected-ink' : 'border-2 border-line bg-surface'
-            }`}
-          >
-            {DAY_LABELS[i] || `${i + 1}일차`}
-            <span className="mt-0.5 font-sans text-[11px] opacity-80">
-              {shortDate(d.date)} {weekdayLabel(d.date)}
-            </span>
-          </button>
-        ))}
-      </nav>
+          <nav aria-label="일자" className="flex gap-2 overflow-x-auto px-5 pt-2 pb-2.5">
+            {days.map((d, i) => (
+              <button
+                key={d.date}
+                type="button"
+                aria-pressed={day === i}
+                onClick={() => setDay(i)}
+                className={`flex h-11 min-w-[88px] flex-1 flex-col items-center justify-center rounded-full font-display text-[15px] leading-none ${
+                  day === i ? 'bg-selected text-selected-ink' : 'border-2 border-line bg-surface'
+                }`}
+              >
+                {DAY_LABELS[i] || `${i + 1}일차`}
+                <span className="mt-0.5 font-sans text-[11px] opacity-80">
+                  {shortDate(d.date)} {weekdayLabel(d.date)}
+                </span>
+              </button>
+            ))}
+          </nav>
 
-      {aiMsg && (
-        <div className="mx-5 mb-2 flex items-start gap-2 rounded-2xl bg-accent px-3.5 py-2.5 text-[13px]" role="status">
-          <IconSpark />
-          <span className="flex-1">
-            {aiMsg === 'ai-done'
-              ? aiCount
-                ? `AI가 ${aiCount}곳을 골랐어요. 카드마다 고른 이유를 적어 뒀어요. 마음에 안 들면 바꾸면 돼요.`
-                : 'AI가 채울 수 있는 빈칸이 없었어요.'
-              : aiMsg}
-          </span>
-          <button type="button" onClick={() => setAiMsg(null)} aria-label="안내 닫기" className="px-1 text-sub">
-            ×
-          </button>
-        </div>
-      )}
-
-      <main className="relative flex-1 px-5 pt-1.5 pb-4">
-        <div className="pointer-events-none absolute left-[42px] top-5 bottom-5 border-l-[3px] border-dashed border-line-strong" aria-hidden="true" />
-        <ol className="relative m-0 flex list-none flex-col gap-2.5 p-0">
-          {rows.map((r) => (
-            <SlotRow
-              key={r.slot.id}
-              row={r}
-              tagLabels={tagLabels}
-              withKids={trip.companion_type === 'kids'}
-              onOpen={() => setPicker({ slotId: r.slot.id })}
-              onClear={() => patchSlot(r.slot.id, { placeId: null, custom: undefined, aiReason: undefined })}
-              onEditCustom={() => setCustom({ slotId: r.slot.id })}
-              onRemove={() => removeSlot(r.slot.id)}
-              onTime={(t) => setSlotTime(r.slot.id, t)}
-              onStay={(m) => patchSlot(r.slot.id, { stayMinutes: m })}
-            />
-          ))}
-        </ol>
-        <div className="mt-3 grid grid-cols-[1fr_auto] gap-1">
-          <div className="grid grid-cols-2 gap-1">
-            <button type="button" onClick={() => addSlot()} className="h-11 rounded-2xl text-sm font-bold text-ok">
-              + 칸 추가
-            </button>
-            <button type="button" onClick={() => setCustom({ slotId: null })} className="h-11 rounded-2xl text-sm font-bold text-ok">
-              + 직접 넣기
-            </button>
-          </div>
-          {!days[day].slots.some((s) => s.slotType === 'golf') && (
-            <button type="button" onClick={addGolf} className="h-11 rounded-2xl px-3 text-sm font-bold text-ok">
-              + 골프 칸
-            </button>
+          {aiMsg && (
+            <div className="mx-5 mb-2 flex items-start gap-2 rounded-2xl bg-accent px-3.5 py-2.5 text-[13px]" role="status">
+              <IconSpark />
+              <span className="flex-1">
+                {aiMsg === 'ai-done'
+                  ? aiCount
+                    ? `AI가 ${aiCount}곳을 골랐어요. 카드마다 고른 이유를 적어 뒀어요. 마음에 안 들면 바꾸면 돼요.`
+                    : 'AI가 채울 수 있는 빈칸이 없었어요.'
+                  : aiMsg}
+              </span>
+              <button type="button" onClick={() => setAiMsg(null)} aria-label="안내 닫기" className="px-1 text-sub">
+                ×
+              </button>
+            </div>
           )}
-        </div>
-      </main>
 
-      <div className="sticky bottom-0 z-10 flex flex-col gap-1.5 bg-bg px-5 pt-2 pb-6">
-        <div className="text-center text-xs text-sub" aria-live="polite">
-          빈 슬롯 {stats.empty}개 · 확인 필요 {stats.warns}건
-          {save.state === 'saving' && ' · 저장 중…'}
-          {save.state === 'saved' && ' · 저장됨'}
-          {save.state === 'error' && <span className="font-bold text-warn-ink"> · 저장 실패: {save.message}</span>}
+          <main className="relative flex-1 px-5 pt-1.5 pb-4">
+            <div className="pointer-events-none absolute left-[42px] top-5 bottom-5 border-l-[3px] border-dashed border-line-strong" aria-hidden="true" />
+            <ol className="relative m-0 flex list-none flex-col gap-2.5 p-0">
+              {rows.map((r) => (
+                <SlotRow
+                  key={r.slot.id}
+                  row={r}
+                  active={!!panel && picker?.slotId === r.slot.id}
+                  tagLabels={tagLabels}
+                  withKids={trip.companion_type === 'kids'}
+                  onOpen={() => setPicker({ slotId: r.slot.id })}
+                  onClear={() => patchSlot(r.slot.id, { placeId: null, custom: undefined, aiReason: undefined })}
+                  onEditCustom={() => setCustom({ slotId: r.slot.id })}
+                  onRemove={() => removeSlot(r.slot.id)}
+                  onTime={(t) => setSlotTime(r.slot.id, t)}
+                  onStay={(m) => patchSlot(r.slot.id, { stayMinutes: m })}
+                />
+              ))}
+            </ol>
+            <div className="mt-3 grid grid-cols-[1fr_auto] gap-1">
+              <div className="grid grid-cols-2 gap-1">
+                <button type="button" onClick={() => addSlot()} className="h-11 rounded-2xl text-sm font-bold text-ok">
+                  + 칸 추가
+                </button>
+                <button type="button" onClick={() => setCustom({ slotId: null })} className="h-11 rounded-2xl text-sm font-bold text-ok">
+                  + 직접 넣기
+                </button>
+              </div>
+              {!days[day].slots.some((s) => s.slotType === 'golf') && (
+                <button type="button" onClick={addGolf} className="h-11 rounded-2xl px-3 text-sm font-bold text-ok">
+                  + 골프 칸
+                </button>
+              )}
+            </div>
+          </main>
+
+          <div className="sticky bottom-0 z-10 flex flex-col gap-1.5 bg-bg px-5 pt-2 pb-6">
+            <div className="text-center text-xs text-sub" aria-live="polite">
+              빈 슬롯 {stats.empty}개 · 확인 필요 {stats.warns}건
+              {save.state === 'saving' && ' · 저장 중…'}
+              {save.state === 'saved' && ' · 저장됨'}
+              {save.state === 'error' && <span className="font-bold text-warn-ink"> · 저장 실패: {save.message}</span>}
+            </div>
+            <div className="flex gap-2">
+              <button type="button" onClick={runAi} disabled={aiPending || stats.empty === 0} className="btn-outline flex-1">
+                {aiPending ? 'AI가 고르는 중…' : '빈칸 AI가 채우기'}
+              </button>
+              <button type="button" onClick={goResult} disabled={goPending} className="btn-cta flex-1 text-base">
+                {goPending ? '그리는 중…' : '동선 그리기'}
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <button type="button" onClick={runAi} disabled={aiPending || stats.empty === 0} className="btn-outline flex-1">
-            {aiPending ? 'AI가 고르는 중…' : '빈칸 AI가 채우기'}
-          </button>
-          <button type="button" onClick={goResult} disabled={goPending} className="btn-cta flex-1 text-base">
-            {goPending ? '그리는 중…' : '동선 그리기'}
-          </button>
-        </div>
+        {panel && (
+          <aside className="sticky top-20 hidden pt-4 lg:block">
+            {pickerEl || <EditorGuide rows={rows} dayLabel={DAY_LABELS[day] || `${day + 1}일차`} stats={stats} height={panel} onOpen={(slotId) => setPicker({ slotId })} />}
+          </aside>
+        )}
       </div>
 
-      {picker && pickerSlot && (
-        <PlacePicker
-          region={trip.region}
-          date={days[day].date}
-          dayLabel={DAY_LABELS[day] || `${day + 1}일차`}
-          slot={pickerSlot}
-          from={pickerFrom}
-          tags={tags}
-          companion={trip.companion_type}
-          excludeIds={days.flatMap((d) => d.slots.map((s) => s.placeId)).filter((id) => id && id !== pickerSlot.placeId)}
-          onPick={onPick}
-          onCustom={(name) => setCustom({ slotId: pickerSlot.id, name })}
-          onReport={(p) => setReport(p)}
-          onClose={() => setPicker(null)}
-        />
-      )}
+      {!panel && pickerEl}
       {custom && (
         <CustomSlotSheet
           initial={custom.slotId ? days[day].slots.find((s) => s.id === custom.slotId)?.custom : null}
@@ -341,10 +358,15 @@ export default function SlotEditor({ trip: initialTrip, rev: initialRev, role = 
   );
 }
 
-function SlotRow({ row, tagLabels, withKids, onOpen, onClear, onEditCustom, onRemove, onTime, onStay }) {
+function SlotRow({ row, active = false, tagLabels, withKids, onOpen, onClear, onEditCustom, onRemove, onTime, onStay }) {
   const { slot: s, place, travelFromPrev: tr } = row;
   const warn = rowWarning(row);
   const isWarn = row.check.level === 'warn' || row.lateBy > 0;
+  // PC 에서 오른쪽 칸으로 고르는 중인 칸은 왼쪽 일정에서 보이게 스크롤
+  const ref = useRef(null);
+  useEffect(() => {
+    if (active) ref.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [active]);
   const travelText = tr ? `차로 ${formatDuration(tr.minutes) || '바로'}${tr.nap && withKids ? ' · 낮잠 타임' : ''}` : '';
 
   const pinCls = s.fixed
@@ -356,7 +378,7 @@ function SlotRow({ row, tagLabels, withKids, onOpen, onClear, onEditCustom, onRe
     : 'bg-accent text-ink';
 
   return (
-    <li className="flex items-start gap-3">
+    <li ref={ref} className={`flex items-start gap-3 ${active ? 'rounded-[24px] outline outline-[3px] outline-offset-[3px] outline-cta' : ''}`}>
       <label className={`relative flex h-[46px] w-[46px] flex-none items-center justify-center rounded-full text-xs font-bold ${pinCls}`}>
         <span aria-hidden="true">{s.time}</span>
         <input
@@ -442,6 +464,34 @@ function SlotRow({ row, tagLabels, withKids, onOpen, onClear, onEditCustom, onRe
         </div>
       )}
     </li>
+  );
+}
+
+/** PC 오른쪽 칸: 장소를 고르기 전 안내 + 오늘 빈 칸 바로 가기 */
+function EditorGuide({ rows, dayLabel, stats, height, onOpen }) {
+  const empty = rows.filter((r) => isEmptySlot(r.slot));
+  return (
+    <section aria-label="장소 고르기 안내" style={{ minHeight: Math.min(height, 420) }} className="flex flex-col gap-3 rounded-[32px] border-2 border-dashed border-line-strong p-6">
+      <div className="font-display text-[22px] leading-snug">여기서 장소를 골라요</div>
+      <p className="m-0 text-sm text-sub">왼쪽 일정에서 빈 칸이나 장소를 누르면 이 자리에 고를 수 있는 곳이 가까운 순으로 나와요.</p>
+      <div className="text-[13px] text-sub">
+        전체 빈 칸 {stats.empty}개 · 확인 필요 {stats.warns}건
+      </div>
+      {empty.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          <div className="font-display text-base">{dayLabel} 빈 칸</div>
+          {empty.map((r) => (
+            <button key={r.slot.id} type="button" onClick={() => onOpen(r.slot.id)} className="flex h-12 items-center gap-3 rounded-2xl bg-surface px-4 text-left shadow-soft">
+              <span className="text-sm font-bold text-sub">{r.slot.time}</span>
+              <span className="flex-1 font-display text-base">{SLOT_TYPES[r.slot.slotType]?.emptyName || '장소 고르기'}</span>
+              <span className="text-sm font-bold text-ok">고르기</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-2xl bg-surface px-4 py-3 text-sm">{dayLabel}은 빈 칸이 없어요.</div>
+      )}
+    </section>
   );
 }
 

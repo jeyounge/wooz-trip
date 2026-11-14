@@ -27,25 +27,32 @@ export default async function MyTripsPage() {
 
   return (
     <>
-      <TopBar title="내 여행" sub="짜 둔 루트를 다시 열어 고칠 수 있어요" />
-      <main className="flex flex-1 flex-col gap-3 px-5 pt-2 pb-4">
-        <Link href="/trips/new" className="btn-cta">
+      <TopBar wide title="내 여행" sub="짜 둔 루트를 다시 열어 고칠 수 있어요" />
+      <main className="flex flex-1 flex-col gap-3 px-5 pt-2 pb-4 lg:mx-auto lg:w-full lg:max-w-[1280px] lg:px-8 lg:pb-12">
+        {/* PC 는 위쪽 메뉴에 「우리 여행 짜기」가 있다 */}
+        <Link href="/trips/new" className="btn-cta lg:hidden">
           새 여행 짜기
         </Link>
         {error ? (
           <ErrorCard message={error} />
         ) : trips.length ? (
-          trips.map((t) => <TripCard key={t.id} t={t} badge={VIS[t.visibility]} />)
+          <div className="flex flex-col gap-3 lg:grid lg:grid-cols-3 lg:gap-4">
+            {trips.map((t) => (
+              <TripCard key={t.id} t={t} badge={VIS[t.visibility]} />
+            ))}
+          </div>
         ) : (
           <EmptyCard title="아직 짠 여행이 없어요" desc="여행 정보를 넣고 슬롯을 채우면 동선이 자동으로 그려져요." />
         )}
         {shared.length > 0 && (
           <>
-            <h2 className="m-0 mt-3 font-display text-lg">같이 고치는 여행</h2>
+            <h2 className="m-0 mt-3 font-display text-lg lg:mt-6">같이 고치는 여행</h2>
             <p className="m-0 -mt-2 text-xs text-sub">초대받은 여행이에요. 일정과 쓴 돈을 같이 고칠 수 있어요</p>
-            {shared.map((t) => (
-              <TripCard key={t.id} t={t} badge="같이 고치는 중" />
-            ))}
+            <div className="flex flex-col gap-3 lg:grid lg:grid-cols-3 lg:gap-4">
+              {shared.map((t) => (
+                <TripCard key={t.id} t={t} badge="같이 고치는 중" />
+              ))}
+            </div>
           </>
         )}
       </main>
