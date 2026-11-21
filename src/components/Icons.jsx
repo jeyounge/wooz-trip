@@ -65,6 +65,13 @@ export const IconCar = ({ size = 14 }) => (
     <path d="M5 16h14M6 16l2-6h8l2 6M7 19v-3M17 19v-3" />
   </svg>
 );
+export const IconUsers = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...base}>
+    <circle cx="9" cy="8" r="3.5" />
+    <path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5" />
+    <path d="M15.5 4.8a3.5 3.5 0 0 1 0 6.4M18 14.8c2 .7 3.2 2.4 3.5 5.2" />
+  </svg>
+);
 export const IconEdit = ({ size = 18 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" {...base}>
     <path d="M4 20h4L19 9l-4-4L4 16z" />

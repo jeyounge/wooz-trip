@@ -3,10 +3,11 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { BackLink, KidTags } from '@/components/ui';
-import { IconEdit, IconSpark, IconSwap, IconTrash, IconWarn } from '@/components/Icons';
+import { IconEdit, IconUsers, IconSpark, IconSwap, IconTrash, IconWarn } from '@/components/Icons';
 import PlacePicker from '@/components/PlacePicker';
 import ReportSheet from '@/components/ReportSheet';
 import Sheet from '@/components/Sheet';
+import TripMembers from '@/components/TripMembers';
 import { DAY_LABELS, SLOT_TYPES } from '@/lib/config';
 import { makeTravelFn, mergeTravel } from '@/lib/travel';
 import { computeDay, isEmptySlot, newSlotId, rowWarning, slotPoint, slotTitle } from '@/lib/trip';
@@ -19,7 +20,7 @@ import CustomSlotSheet from '@/components/CustomSlotSheet';
 import LocationSearch from '@/components/LocationSearch';
 import { useDesktopMap } from '@/components/useDesktop';
 
-export default function SlotEditor({ trip: initialTrip, rev: initialRev, role = 'owner', initialPlaces, initialTravel, tags, fromAi, initialDay = 0 }) {
+export default function SlotEditor({ trip: initialTrip, rev: initialRev, role = 'owner', userId, members: initialMembers = null, initialPlaces, initialTravel, tags, fromAi, initialDay = 0 }) {
   const isOwner = role === 'owner';
   const rev = useRef(initialRev); // 마지막으로 받은 일정 지문 (같이 고칠 때 충돌 확인)
   const conflicted = useRef(false); // 충돌 뒤에는 다시 불러올 때까지 저장하지 않는다
@@ -32,6 +33,8 @@ export default function SlotEditor({ trip: initialTrip, rev: initialRev, role = 
   const [custom, setCustom] = useState(null); // { slotId: string|null(새 칸), name }
   const [report, setReport] = useState(null); // place
   const [metaOpen, setMetaOpen] = useState(false);
+  const [members, setMembers] = useState(initialMembers); // null = 0008 실행 전 (버튼 숨김)
+  const [membersOpen, setMembersOpen] = useState(false);
   const [save, setSave] = useState({ state: 'idle', message: '' }); // idle | saving | saved | error
   const [aiMsg, setAiMsg] = useState(fromAi ? 'ai-done' : null);
   const [aiPending, startAi] = useTransition();
@@ -216,6 +219,21 @@ export default function SlotEditor({ trip: initialTrip, rev: initialRev, role = 
                 {tripSubtitle(trip)}
               </div>
             </div>
+            {isOwner && members && (
+              <button
+                type="button"
+                aria-label={`같이 고치기${members.length ? ` (${members.length}명)` : ''}`}
+                onClick={() => setMembersOpen(true)}
+                className="icon-btn relative"
+              >
+                <IconUsers />
+                {members.length > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-selected px-1 text-[11px] text-selected-ink">
+                    {members.length}
+                  </span>
+                )}
+              </button>
+            )}
             {isOwner && (
               <button type="button" aria-label="여행 정보 수정" onClick={() => setMetaOpen(true)} className="icon-btn">
                 <IconEdit />
@@ -330,6 +348,13 @@ export default function SlotEditor({ trip: initialTrip, rev: initialRev, role = 
       )}
       {aiPending && <AiThinking companion={trip.companion_type} />}
       {report && <ReportSheet place={report} tripId={trip.id} tags={tags} onClose={() => setReport(null)} />}
+      {membersOpen && (
+        <Sheet title="같이 고치기" onClose={() => setMembersOpen(false)}>
+          <div className="px-5 pb-6">
+            <TripMembers tripId={trip.id} role={role} userId={userId} members={members} onChange={setMembers} />
+          </div>
+        </Sheet>
+      )}
       {metaOpen && (
         <MetaSheet
           trip={trip}

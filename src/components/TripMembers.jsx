@@ -9,7 +9,7 @@ import { SERVICE_NAME } from '@/lib/config';
  * 작성자: 가입한 이메일로 같이 고칠 사람 넣기 · 빼기. 멤버: 초대받은 여행 안내 · 나가기.
  * members 가 null 이면 0008 실행 전 → 카드를 숨긴다.
  */
-export default function TripMembers({ tripId, role, userId, members: initial }) {
+export default function TripMembers({ tripId, role, userId, members: initial, onChange }) {
   const router = useRouter();
   const [members, setMembers] = useState(initial || []);
   const [email, setEmail] = useState('');
@@ -66,6 +66,7 @@ export default function TripMembers({ tripId, role, userId, members: initial }) 
                     const res = await removeTripMember(tripId, m.userId);
                     if (!res.ok) return setMsg(res.message);
                     setMembers(res.members);
+                    onChange?.(res.members);
                     setMsg(null);
                   })
                 }
@@ -85,6 +86,7 @@ export default function TripMembers({ tripId, role, userId, members: initial }) 
             const res = await addTripMember(tripId, email);
             if (!res.ok) return setMsg(res.message);
             setMembers(res.members);
+            onChange?.(res.members);
             setEmail('');
             setMsg('넣었어요. 그분의 「내 여행」에 이 여행이 보여요');
           });
