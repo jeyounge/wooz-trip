@@ -18,6 +18,7 @@ import { publishTrip, saveDays, saveTripLog, shareTrip, unpublishTrip } from '@/
 import { ExtrasEditor, LogEditor, LogLine, ReviewEditor } from '@/components/TripLog';
 import { canLogSpend, canReview, hasLog, logTotals, slotLog, won } from '@/lib/triplog';
 import TripMembers from '@/components/TripMembers';
+import PlaceInfo, { PlaceName } from '@/components/PlaceInfo';
 import CheckedBadge, { DayDrive, countRainy } from '@/components/CheckedBadge';
 import NowNext, { localToday, todayIndex } from '@/components/NowNext';
 import { useDesktopMap } from '@/components/useDesktop';
@@ -279,8 +280,15 @@ export default function RouteResult({ trip: initialTrip, rev: initialRev, role =
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <div className="flex items-baseline gap-2">
                     <span className="text-[13px] font-bold text-sub">{s.time}</span>
-                    <span className="truncate font-display text-base">{slotTitle(s, placeMap)}</span>
+                    {isPlace ? (
+                      <PlaceName place={placeMap[s.placeId]} className="truncate font-display text-base">
+                        {slotTitle(s, placeMap)}
+                      </PlaceName>
+                    ) : (
+                      <span className="truncate font-display text-base">{slotTitle(s, placeMap)}</span>
+                    )}
                   </div>
+                  {isPlace && <PlaceInfo place={placeMap[s.placeId]} />}
                   {s.custom?.address && <div className="truncate text-xs text-sub">{s.custom.address}</div>}
                   {isStop && s.stayMinutes > 0 && <div className="text-xs text-sub">머무는 시간 {formatDuration(s.stayMinutes)}</div>}
                   {s.memo && memoFor !== s.id && <div className="text-xs text-warn-ink">챙길 것 · {s.memo}</div>}

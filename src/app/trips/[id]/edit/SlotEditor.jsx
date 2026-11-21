@@ -8,6 +8,7 @@ import PlacePicker from '@/components/PlacePicker';
 import ReportSheet from '@/components/ReportSheet';
 import Sheet from '@/components/Sheet';
 import TripMembers from '@/components/TripMembers';
+import PlaceInfo, { PlaceName } from '@/components/PlaceInfo';
 import { DAY_LABELS, SLOT_TYPES } from '@/lib/config';
 import { makeTravelFn, mergeTravel } from '@/lib/travel';
 import { computeDay, isEmptySlot, newSlotId, rowWarning, slotPoint, slotTitle } from '@/lib/trip';
@@ -434,7 +435,10 @@ function SlotRow({ row, active = false, tagLabels, withKids, onOpen, onClear, on
               </button>
             </div>
           </div>
-          <div className="font-display text-[17px] leading-snug">{place.name}</div>
+          <PlaceName place={place} className="font-display text-[17px] leading-snug">
+            {place.name}
+          </PlaceName>
+          <PlaceInfo place={place} />
           <KidTags ids={place.kid_tags} labels={tagLabels} />
           <StayControl value={s.stayMinutes} onChange={onStay} />
           {s.aiReason && <div className="rounded-xl bg-bg px-2.5 py-1.5 text-xs text-sub">AI 추천 이유 · {s.aiReason}</div>}

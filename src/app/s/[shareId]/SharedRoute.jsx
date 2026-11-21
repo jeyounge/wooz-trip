@@ -6,7 +6,8 @@ import { IconHome } from '@/components/Icons';
 import { DAY_LABELS, SERVICE_NAME, dayStyle } from '@/lib/config';
 import { isEmptySlot, mapDays, rowWarning, slotTitle, summarize } from '@/lib/trip';
 import { formatDuration } from '@/lib/geo';
-import { mapLink, routeLink, tripSubtitle } from '@/lib/format';
+import { routeLink, tripSubtitle } from '@/lib/format';
+import PlaceInfo, { PlaceName } from '@/components/PlaceInfo';
 import RainyAlt from '@/components/RainyAlt';
 import { rainyKey } from '@/lib/rainy';
 import { makeTravelFn, withRoads } from '@/lib/travel';
@@ -118,7 +119,14 @@ export default function SharedRoute({ trip, placeMap, log, rainy = {}, travel })
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <div className="text-[13px] font-bold text-sub">{timeText}</div>
-                  <div className="font-display text-base leading-snug">{name}</div>
+                  {place ? (
+                    <PlaceName place={place} className="font-display text-base leading-snug">
+                      {name}
+                    </PlaceName>
+                  ) : (
+                    <div className="font-display text-base leading-snug">{name}</div>
+                  )}
+                  {place && <PlaceInfo place={place} />}
                   {s.custom?.address && <div className="text-xs text-sub">{s.custom.address}</div>}
                   {s.fixed?.note && <div className="text-xs text-sub">{s.fixed.note}</div>}
                   {s.memo && <div className="text-xs text-warn-ink">챙길 것 · {s.memo}</div>}
@@ -126,18 +134,13 @@ export default function SharedRoute({ trip, placeMap, log, rainy = {}, travel })
                   {warn && (r.check.level === 'warn' || r.lateBy > 0) && <div className="text-xs font-bold text-warn-ink">{warn}</div>}
                   {place && <RainyAlt alt={rainy[rainyKey(trip.days[day].date, s.placeId)]} />}
                 </div>
-                {place ? (
-                  <a href={mapLink(place)} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center text-xs text-ok underline">
-                    지도
-                  </a>
-                ) : (
+                {!place &&
                   s.custom &&
                   r.point && (
                     <a href={routeLink(null, { ...r.point, name })} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center text-xs text-ok underline">
                       지도
                     </a>
-                  )
-                )}
+                  )}
               </div>
             </div>
           );
